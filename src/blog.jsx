@@ -1,6 +1,22 @@
 /* ============================================================
    Blog: list (filter + sort) and article (TOC + components)
    ============================================================ */
+import { useContext, useEffect, useMemo, useState } from "react";
+import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
+import { createHighlighterCore } from "shiki/core";
+import { createOnigurumaEngine } from "shiki/engine/oniguruma";
+import wasm from "shiki/wasm";
+import rust from "shiki/langs/rust.mjs";
+import typescript from "shiki/langs/typescript.mjs";
+import githubLight from "shiki/themes/github-light.mjs";
+import githubDark from "shiki/themes/github-dark.mjs";
+import { AppCtx, Dropdown, Icon, L, PageHead, Ph, bodyText, fmtDate } from "./components.jsx";
+
+const highlighterPromise = createHighlighterCore({
+  themes: [githubLight, githubDark],
+  langs: [rust, typescript],
+  engine: createOnigurumaEngine(wasm),
+});
 
 /* ===================== BLOG LIST (Notion-style filter/sort) ===================== */
 /* bodyText lives in components.jsx (shared with the search modal) */
@@ -88,29 +104,65 @@ function FilterPill({ prop, filters, setFilters, t }) {
   );
 }
 
-function BlogList() {
+export function BlogList() {
   const { t, lang, nav, tw } = useContext(AppCtx);
   const { POSTS } = window.BlogData;
   const [filters, setFilters] = useState({ tags: [], title: "", body: "" });
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc");  // asc | desc
 
-  const list = useMemo(() => {
-    let r = POSTS.filter((p) => {
-      if (filters.tags.length && !filters.tags.some((tg) => p.tags.includes(tg))) return false;
-      if (filters.title && !L(p.title, lang).toLowerCase().includes(filters.title.toLowerCase())) return false;
-      if (filters.body) {
-        const hay = (L(p.summary, lang) + " " + bodyText(p.id, lang)).toLowerCase();
-        if (!hay.includes(filters.body.toLowerCase())) return false;
-      }
-      return true;
-    });
-    const cmp = sortKey === "date"
-      ? (a, b) => a.date.localeCompare(b.date)
-      : (a, b) => a.kana.localeCompare(b.kana, "ja");
-    r = [...r].sort((a, b) => sortDir === "asc" ? cmp(a, b) : cmp(b, a));
-    return r;
-  }, [filters, sortKey, sortDir, lang]);
+  const rows = useMemo(() => POSTS.map((p) => ({
+    raw: p,
+    title: L(p.title, lang),
+    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
+    tags: p.tags,
+    date: p.date,
+    kana: p.kana,
+  })), [POSTS, lang]);
+  const columns = useMemo(() => {
+    const column = createColumnHelper();
+    return [
+      column.accessor("title", {
+        id: "title",
+        filterFn: "includesString",
+      }),
+      column.accessor("body", {
+        id: "body",
+        filterFn: "includesString",
+      }),
+      column.accessor("tags", {
+        id: "tags",
+        filterFn: (row, columnId, value) => {
+          if (!value?.length) return true;
+          const tags = row.getValue(columnId);
+          return value.some((tag) => tags.includes(tag));
+        },
+      }),
+      column.accessor("date", {
+        id: "date",
+        sortingFn: "text",
+      }),
+      column.accessor("kana", {
+        id: "kana",
+        sortingFn: (a, b, columnId) => a.getValue(columnId).localeCompare(b.getValue(columnId), "ja"),
+      }),
+    ];
+  }, []);
+  const columnFilters = useMemo(() => [
+    ...(filters.tags.length ? [{ id: "tags", value: filters.tags }] : []),
+    ...(filters.title ? [{ id: "title", value: filters.title }] : []),
+    ...(filters.body ? [{ id: "body", value: filters.body }] : []),
+  ], [filters]);
+  const sorting = useMemo(() => [{ id: sortKey, desc: sortDir === "desc" }], [sortKey, sortDir]);
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: { columnFilters, sorting },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+  const list = table.getRowModel().rows.map((row) => row.original.raw);
 
   const activeProps = [];
   if (filters.tags.length) activeProps.push("tags");
@@ -143,7 +195,8 @@ function BlogList() {
 
         <Dropdown width={230} align="right" button={({ open, toggle }) => (
           <button className={"fbtn" + (open ? " on" : "")} onClick={toggle}>
-            <Icon.sort width={14} height={14} /> Sort: {sortKey === "date" ? t.s_date : t.s_kana}
+            <Icon.sort width={14} height={14} /> {t.sort}
+            <span className="faint">{sortKey === "date" ? t.s_date : t.s_kana}</span>
             <span className="faint">{sortDir === "asc" ? "↑" : "↓"}</span>
           </button>
         )}>
@@ -193,7 +246,7 @@ function BlogList() {
 }
 
 /* ===================== ARTICLE ===================== */
-function Article({ id }) {
+export function Article({ id }) {
   const { t, lang, nav } = useContext(AppCtx);
   const { POSTS } = window.BlogData;
   const post = POSTS.find((p) => p.id === id);
@@ -282,7 +335,7 @@ function Article({ id }) {
 }
 
 /* render one content block */
-function Block({ b, lang }) {
+export function Block({ b, lang }) {
   switch (b.kind) {
     case "h2":
       return <h2 id={"sec-" + b.id} data-cf-change={b.id === "problem" ? "ch-heading-decoration" : undefined}>{L({ ja: b.ja, en: b.en }, lang)}</h2>;
@@ -295,10 +348,8 @@ function Block({ b, lang }) {
     case "code":
       return <CodeBlock lang={b.lang} code={b.code} />;
     case "msg": {
-      const glyph = { info: "i", tip: "✓", warn: "!", note: "•" }[b.variant] || "i";
       return (
         <div className={"msg msg-" + b.variant} data-cf-change="ch-message-boxes">
-          <div className="msg-icon">{glyph}</div>
           <div className="msg-body">
             <p>{L({ ja: b.ja, en: b.en }, lang)}</p>
           </div>
@@ -309,8 +360,24 @@ function Block({ b, lang }) {
   }
 }
 
-function CodeBlock({ lang, code }) {
+export function CodeBlock({ lang, code }) {
   const [copied, setCopied] = useState(false);
+  const [html, setHtml] = useState("");
+  useEffect(() => {
+    let live = true;
+    highlighterPromise.then((highlighter) => highlighter.codeToHtml(code, {
+      lang: lang || "text",
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+    })).then((nextHtml) => {
+      if (live) setHtml(nextHtml);
+    }).catch(() => {
+      if (live) setHtml("");
+    });
+    return () => { live = false; };
+  }, [lang, code]);
   const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1400); };
   return (
     <div className="code" data-cf-change="ch-code-block">
@@ -320,9 +387,11 @@ function CodeBlock({ lang, code }) {
           {copied ? <Icon.check width={13} height={13} /> : <Icon.copy width={13} height={13} />}
         </button>
       </div>
-      <pre><code>{code}</code></pre>
+      {html ? (
+        <div className="code-highlight" dangerouslySetInnerHTML={{ __html: html }} />
+      ) : (
+        <pre><code>{code}</code></pre>
+      )}
     </div>
   );
 }
-
-Object.assign(window, { BlogList, Article, Block, CodeBlock });

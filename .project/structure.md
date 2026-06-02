@@ -2,8 +2,33 @@
 
 ## Top-level Directories
 
+- `src/`: React application source, app CSS, content data modules, and the static search adapter.
+- `scripts/`: repository automation, including the verification runner and Lighthouse helper.
+- `.project/`: short contributor-facing project documentation.
+- `.plans/`: task plans.
+- `.decisions/`: accepted project decisions.
+- `.github/workflows/`: CI configuration.
+
 ## Important Modules
+
+- `src/main.jsx`: Vite React entry point.
+- `src/app.jsx`: route selection, theme/language state, and the app shell.
+- `src/components.jsx`: shared UI components, icons, helpers, and search modal.
+- `src/blog.jsx`: blog list, filters, article rendering, and code highlighting.
+- `src/pages.jsx`: top, about, application, reading, and RSS pages.
+- `src/softmatcha2Search.js`: static SoftMatcha2-style browser search adapter.
+- `src/data.js`, `src/articleBody.js`, `src/i18n.js`: site content and localized strings.
+- `src/styles.css`, `src/app.css`: global styles and app-specific styles.
 
 ## Where To Make Changes
 
+- Change frontend behavior in `src/`.
+- Change build, lint, and Lighthouse configuration in the root tool config files.
+- Change verification commands in `.project/verification.toml`, then keep `.project/testing.md`, `.pre-commit-config.yaml`, and `.github/workflows/ci.yml` aligned.
+- Record task plans in `.plans/` and accepted structural or policy decisions in `.decisions/`.
+
 ## Areas That Require Extra Care
+
+- The site is statically deployed; avoid adding backend requirements without an accepted decision.
+- `index.html` must point at the Vite entry `src/main.jsx`.
+- Search currently uses a local static adapter, not the upstream SoftMatcha2 CLI binary.

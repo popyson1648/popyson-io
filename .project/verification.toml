@@ -1,0 +1,49 @@
+version = 1
+
+[phases.format]
+enabled = true
+command = ""
+
+[phases.lint]
+enabled = true
+command = ""
+
+[phases.typecheck]
+enabled = true
+command = ""
+
+[phases.build]
+enabled = true
+command = ""
+
+[phases.test_unit]
+enabled = true
+command = ""
+
+[phases.test_integration]
+enabled = false
+command = ""
+
+[phases.test_e2e]
+enabled = false
+command = ""
+
+[phases.test_component]
+enabled = false
+command = ""
+
+[phases.test_contract]
+enabled = false
+command = ""
+
+[phases.accessibility]
+enabled = false
+command = ""
+
+[phases.performance]
+enabled = false
+command = ""
+
+[phases.bundle_size]
+enabled = false
+command = ""

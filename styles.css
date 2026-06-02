@@ -1,0 +1,137 @@
+/* ============================================================
+   Wireframe Blog — design tokens
+   Monochrome + one accent per theme. No shadows. No gradients.
+   Slightly rounded. Everything composed with 1px lines.
+   ============================================================ */
+
+:root {
+  --r: 8px;
+  --r-sm: 5px;
+  --line-w: 1px;
+  --maxw: 1160px;
+  --gap: 24px;
+  --font: "M PLUS Rounded 1c", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --t: 140ms ease;
+}
+
+/* ---- Light theme (calm warm paper + slate-indigo accent) ---- */
+:root, [data-theme="light"] {
+  --bg:          #f7f4e8;
+  --bg-subtle:   #f0ecdf;
+  --surface:     #fbf8ed;
+  --text:        #242526;
+  --text-muted:  #6f716d;
+  --text-faint:  #aeb0a8;
+  --line:        #e2dccb;
+  --line-strong: #c9c0a9;
+  --accent:      #667471;
+  --accent-soft: #e8eadf;
+  --on-accent:   #fbf8ed;
+
+  /* message boxes — calm, distinct */
+  --msg-info-b:  #6f8aa8;  --msg-info-bg:  #eaeff4;  --msg-info-tx:  #3a4d63;
+  --msg-tip-b:   #6f9a7e;  --msg-tip-bg:   #e9f1ec;  --msg-tip-tx:   #3c5e49;
+  --msg-warn-b:  #b9985a;  --msg-warn-bg:  #f5efe2;  --msg-warn-tx:  #6e5828;
+  --msg-note-b:  #9a8fb0;  --msg-note-bg:  #efecf4;  --msg-note-tx:  #4f4663;
+}
+
+/* ---- Dark theme (soft ink + warm sand accent) ---- */
+[data-theme="dark"] {
+  --bg:          #1b1b19;
+  --bg-subtle:   #24231f;
+  --surface:     #20201d;
+  --text:        #ebe7db;
+  --text-muted:  #a29d91;
+  --text-faint:  #6f6a60;
+  --line:        #39372f;
+  --line-strong: #555145;
+  --accent:      #c5ad7f;
+  --accent-soft: #302c22;
+  --on-accent:   #191916;
+
+  --msg-info-b:  #587b9b;  --msg-info-bg:  #1c242b;  --msg-info-tx:  #a8c2d8;
+  --msg-tip-b:   #5d8a6e;  --msg-tip-bg:   #1b241e;  --msg-tip-tx:   #a4ccb0;
+  --msg-warn-b:  #a88a4f;  --msg-warn-bg:  #28231a;  --msg-warn-tx:  #d9bd84;
+  --msg-note-b:  #8479a0;  --msg-note-bg:  #232029;  --msg-note-tx:  #c0b6d4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.26;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(78, 77, 64, 0.05) 0 2px, transparent 3px),
+    radial-gradient(circle at 64% 8%, rgba(78, 77, 64, 0.045) 0 2px, transparent 4px),
+    radial-gradient(circle at 88% 38%, rgba(78, 77, 64, 0.04) 0 3px, transparent 5px);
+  background-size: 160px 170px, 220px 190px, 260px 240px;
+}
+
+/* no theme transition on body — transitioning var()-resolved shorthands
+   can freeze the computed value in some browsers */
+
+a { color: inherit; text-decoration: none; }
+
+::selection { background: var(--accent); color: var(--on-accent); }
+
+/* ---------- reusable wire primitives ---------- */
+.wire {
+  border: var(--line-w) solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+.wire-strong { border-color: var(--line-strong); }
+
+.hr {
+  border: none;
+  border-top: var(--line-w) solid var(--line);
+  margin: 0;
+}
+
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- placeholder thumbnail (× box) ---------- */
+.ph {
+  position: relative;
+  background: var(--bg-subtle);
+  border: var(--line-w) solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  flex: none;
+}
+
+/* utility */
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+.mono { font-family: var(--mono); }
+.nowrap { white-space: nowrap; }
+.row { display: flex; align-items: center; }
+.col { display: flex; flex-direction: column; }
+.gap8 { gap: 8px; } .gap12 { gap: 12px; } .gap16 { gap: 16px; } .gap24 { gap: 24px; }
+.grow { flex: 1 1 auto; min-width: 0; }

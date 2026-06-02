@@ -3,7 +3,7 @@
   window.I18N = {
     ja: {
       brand: "線のノート",
-      nav: { top: "トップ", about: "About", blog: "Blog", app: "Application", reading: "Reading List" },
+      nav: { top: "top", about: "About", blog: "Blog", app: "Application", reading: "Reading List" },
       top_lead: "分散システムと開発者ツールについて、線で考えた記録。",
       top_enter: "見る",
       top_latest: "最近の記事",
@@ -71,7 +71,7 @@
     },
     en: {
       brand: "Notes in Lines",
-      nav: { top: "Top", about: "About", blog: "Blog", app: "Application", reading: "Reading List" },
+      nav: { top: "top", about: "About", blog: "Blog", app: "Application", reading: "Reading List" },
       top_lead: "Notes thought through in lines — about distributed systems and developer tools.",
       top_enter: "View",
       top_latest: "Recent posts",

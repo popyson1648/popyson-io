@@ -1,24 +1,25 @@
 /* ============================================================
    Shared components, icons, helpers.  Exports to window.
    ============================================================ */
-const { useState, useEffect, useRef, useMemo, useContext, createContext } = React;
+import { useState, useEffect, useRef, useMemo, useContext, createContext } from "react";
+import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
-const AppCtx = createContext(null);
+export const AppCtx = createContext(null);
 
 /* ---------- helpers ---------- */
-function fmtDate(iso, lang) {
+export function fmtDate(iso, lang) {
   const d = new Date(iso + "T00:00:00");
   if (lang === "ja") return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
-function L(obj, lang) { // localize {ja,en} or plain string
+export function L(obj, lang) { // localize {ja,en} or plain string
   if (obj == null) return "";
   if (typeof obj === "string") return obj;
   return obj[lang] ?? obj.ja ?? "";
 }
 
 /* searchable body text for "body" search/filter */
-function bodyText(id, lang) {
+export function bodyText(id, lang) {
   const blocks = window.ArticleBody.get(id);
   const parts = [];
   for (const b of blocks) {
@@ -31,7 +32,7 @@ function bodyText(id, lang) {
 
 /* ---------- line icons (stroke, currentColor) ---------- */
 const sIcon = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" };
-const Icon = {
+export const Icon = {
   arrow: (p) => <svg {...sIcon} {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
   chevron: (p) => <svg {...sIcon} {...p}><path d="M9 6l6 6-6 6" /></svg>,
   back: (p) => <svg {...sIcon} {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>,
@@ -52,7 +53,7 @@ const Icon = {
 };
 
 /* ---------- placeholder thumbnail (× box) ---------- */
-function Ph({ className = "", style, label }) {
+export function Ph({ className = "", style, label }) {
   return (
     <div className={"ph " + className} style={style} aria-hidden="true">
       <svg className="ph-x" viewBox="0 0 100 100" preserveAspectRatio="none"
@@ -72,7 +73,7 @@ function Ph({ className = "", style, label }) {
 }
 
 /* ---------- tag / chip ---------- */
-function Chip({ children, on, onClick, isStatic }) {
+export function Chip({ children, on, onClick, isStatic }) {
   return (
     <button className={"chip" + (on ? " on" : "") + (isStatic ? " static" : "")}
             onClick={onClick} type="button" tabIndex={isStatic ? -1 : 0}>
@@ -82,10 +83,9 @@ function Chip({ children, on, onClick, isStatic }) {
 }
 
 /* ---------- top bar ---------- */
-function TopBar() {
+export function TopBar() {
   const { t, lang, setLang, theme, setTheme, route, nav, openSearch } = useContext(AppCtx);
   const here = route.name;
-  const inBlog = here === "blog" || here === "article";
   const link = (to, key) => (
     <a href={"#" + to} className={here === key ? "active" : ""}
        onClick={(e) => { e.preventDefault(); nav(to); }}>{t.nav[key]}</a>
@@ -93,11 +93,8 @@ function TopBar() {
   return (
     <header className="topbar">
       <div className="container topbar-inner">
-        <a className="brand" href="#/" onClick={(e) => { e.preventDefault(); nav("/"); }}>
-          <span className="brand-mark">線</span>
-          <span>{t.brand}</span>
-        </a>
         <nav className="nav">
+          {link("/", "top")}
           {link("/about", "about")}
           {link("/blog", "blog")}
           {link("/app", "app")}
@@ -105,11 +102,12 @@ function TopBar() {
         </nav>
         <div className="topbar-spacer" />
         <div className="topbar-tools">
-          {inBlog && (
-            <button className="icon-btn" onClick={openSearch} title={t.search} aria-label={t.search}>
-              <Icon.search />
-            </button>
-          )}
+          <button className="icon-btn" onClick={openSearch} title={t.search} aria-label={t.search}>
+            <Icon.search />
+          </button>
+          <a className="icon-btn rss-topbar" href="#/rss" onClick={(e) => { e.preventDefault(); nav("/rss"); }} title="RSS" aria-label="RSS">
+            <Icon.rss />
+          </a>
           <button className="btn btn-ghost" onClick={() => setLang(lang === "ja" ? "en" : "ja")}
                   title="Language" style={{ fontWeight: 700, fontSize: 13 }}>
             {t.lang}
@@ -126,7 +124,7 @@ function TopBar() {
 }
 
 /* ---------- footer ---------- */
-function Footer() {
+export function Footer() {
   const { t, nav } = useContext(AppCtx);
   return (
     <footer className="foot">
@@ -141,7 +139,7 @@ function Footer() {
 }
 
 /* ---------- page header ---------- */
-function PageHead({ title, sub }) {
+export function PageHead({ title, sub }) {
   return (
     <div className="page-head">
       <h1>{title}</h1>
@@ -151,7 +149,7 @@ function PageHead({ title, sub }) {
 }
 
 /* ---------- dropdown (Notion-style popover menu) ---------- */
-function Dropdown({ button, width = 240, align = "left", children }) {
+export function Dropdown({ button, width = 240, align = "left", children }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef(null);
   useEffect(() => {
@@ -175,14 +173,14 @@ function Dropdown({ button, width = 240, align = "left", children }) {
 }
 
 /* ---------- search modal (with live suggest) ---------- */
-function highlight(text, q) {
+export function highlight(text, q) {
   if (!q) return text;
   const i = text.toLowerCase().indexOf(q.toLowerCase());
   if (i < 0) return text;
   return <>{text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
 }
 
-function SearchModal({ onClose }) {
+export function SearchModal({ onClose }) {
   const { t, lang, nav } = useContext(AppCtx);
   const { POSTS } = window.BlogData;
   const [q, setQ] = useState("");
@@ -190,20 +188,15 @@ function SearchModal({ onClose }) {
   const inputRef = useRef(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(POSTS.map((p) => ({
+    p,
+    title: L(p.title, lang),
+    tags: p.tags.join(" "),
+    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
+  }))), [POSTS, lang]);
   const results = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return [...POSTS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((p) => ({ p, where: null }));
-    return POSTS.map((p) => {
-      const title = L(p.title, lang).toLowerCase();
-      const tags = p.tags.join(" ").toLowerCase();
-      const body = (L(p.summary, lang) + " " + bodyText(p.id, lang)).toLowerCase();
-      let where = null;
-      if (title.includes(query)) where = "title";
-      else if (tags.includes(query)) where = "tag";
-      else if (body.includes(query)) where = "body";
-      return where ? { p, where } : null;
-    }).filter(Boolean);
-  }, [q, lang]);
+    return searchIndex.search(q.trim(), { limit: q.trim() ? 20 : 5 });
+  }, [q, searchIndex]);
 
   useEffect(() => { setActive(0); }, [q]);
   const go = (p) => { nav("/blog/" + p.id); onClose(); };
@@ -250,6 +243,3 @@ function SearchModal({ onClose }) {
     </div>
   );
 }
-
-Object.assign(window, { AppCtx, fmtDate, L, bodyText, Icon, Ph, Chip, TopBar, Footer, PageHead, Dropdown, SearchModal, highlight,
-  useState, useEffect, useRef, useMemo, useContext });

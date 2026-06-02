@@ -1,6 +1,11 @@
 /* ============================================================
    App shell: routing, theme, language, tweaks
    ============================================================ */
+import { useEffect, useState } from "react";
+import { AppCtx, Footer, SearchModal, TopBar } from "./components.jsx";
+import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage, TopPage } from "./pages.jsx";
+import { Article, BlogList } from "./blog.jsx";
+import { TweakColor, TweakRadio, TweakSection, TweaksPanel, useTweaks } from "./tweaks-panel.jsx";
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "topLayout": "hero",
@@ -37,7 +42,7 @@ function useSystemDark() {
   return dark;
 }
 
-function App() {
+export default function App() {
   const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));
   const [lang, setLang] = useState(() => localStorage.getItem("blog.lang") || "ja");
@@ -133,5 +138,3 @@ function App() {
     </AppCtx.Provider>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);

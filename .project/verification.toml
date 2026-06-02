@@ -1,24 +1,31 @@
 version = 1
 
 [phases.format]
-enabled = true
+enabled = false
 command = ""
+reason = "No formatter is configured yet."
 
 [phases.lint]
 enabled = true
-command = ""
+command = "npm run lint"
+run_pre_commit = true
+run_in_ci = true
 
 [phases.typecheck]
-enabled = true
+enabled = false
 command = ""
+reason = "No TypeScript typecheck is configured for this JavaScript project."
 
 [phases.build]
 enabled = true
-command = ""
+command = "npm run build"
+run_pre_push = true
+run_in_ci = true
 
 [phases.test_unit]
-enabled = true
+enabled = false
 command = ""
+reason = "No unit test suite is configured yet."
 
 [phases.test_integration]
 enabled = false
@@ -41,8 +48,11 @@ enabled = false
 command = ""
 
 [phases.performance]
-enabled = false
-command = ""
+enabled = true
+command = "npm run build && npm run lighthouse"
+run_pre_commit = false
+run_pre_push = true
+run_in_ci = true
 
 [phases.bundle_size]
 enabled = false

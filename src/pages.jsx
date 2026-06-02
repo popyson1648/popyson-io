@@ -1,16 +1,17 @@
 /* ============================================================
    Pages: Top, About, Application(+detail), Reading List, RSS
    ============================================================ */
+import { useContext, useEffect, useState } from "react";
+import { AppCtx, Chip, Icon, L, PageHead, Ph, fmtDate } from "./components.jsx";
 
 /* ===================== TOP ===================== */
-function TopPage() {
+export function TopPage() {
   const { t, nav } = useContext(AppCtx);
   const pages = [
     { to: "/about",   key: "about",   no: "01" },
     { to: "/blog",    key: "blog",    no: "02" },
     { to: "/app",     key: "app",     no: "03" },
     { to: "/reading", key: "reading", no: "04" },
-    { to: "/rss",     key: "rss",     no: "05", label: "RSS" },
   ];
   return (
     <div className="container route-fade top-simple">
@@ -27,7 +28,7 @@ function TopPage() {
   );
 }
 
-function RecentList({ posts }) {
+export function RecentList({ posts }) {
   const { lang, nav } = useContext(AppCtx);
   return (
     <div className="reading-list">
@@ -46,7 +47,7 @@ function RecentList({ posts }) {
 }
 
 /* ===================== ABOUT ===================== */
-function AboutPage() {
+export function AboutPage() {
   const { t, lang, nav, tw } = useContext(AppCtx);
   const { PERSON, APPS } = window.BlogData;
   const linkIcon = (label) => {
@@ -136,7 +137,7 @@ function AboutPage() {
 }
 
 /* ===================== APPLICATION ===================== */
-function ApplicationPage() {
+export function ApplicationPage() {
   const { t, lang, nav, tw } = useContext(AppCtx);
   const { APPS } = window.BlogData;
   const rows = tw.appLayout === "rows";
@@ -176,7 +177,7 @@ function ApplicationPage() {
   );
 }
 
-function ApplicationDetail({ id }) {
+export function ApplicationDetail({ id }) {
   const { t, lang, nav } = useContext(AppCtx);
   const { APPS } = window.BlogData;
   const a = APPS.find((x) => x.id === id);
@@ -202,7 +203,7 @@ function ApplicationDetail({ id }) {
 }
 
 /* ===================== READING LIST ===================== */
-function ReadingPage() {
+export function ReadingPage() {
   const { t, lang } = useContext(AppCtx);
   const { READING } = window.BlogData;
   const [items, setItems] = useState(() => READING.map((r) => ({ ...r })));
@@ -249,7 +250,7 @@ function ReadingPage() {
 }
 
 /* ===================== RSS ===================== */
-function RssPage() {
+export function RssPage() {
   const { t, nav } = useContext(AppCtx);
   const [copied, setCopied] = useState(false);
   const url = "https://sen-no-note.example/feed.xml";
@@ -271,5 +272,3 @@ function RssPage() {
     </div>
   );
 }
-
-Object.assign(window, { TopPage, AboutPage, ApplicationPage, ApplicationDetail, ReadingPage, RssPage, RecentList });

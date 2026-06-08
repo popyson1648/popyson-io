@@ -13,47 +13,57 @@
   --font: "M PLUS Rounded 1c", system-ui, sans-serif;
   --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --t: 140ms ease;
+  --noise-url: url("data:image/svg+xml,%3Csvg%20viewBox%3D'0%200%20200%20200'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cfilter%20id%3D'noiseFilter'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'41'%20numOctaves%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20type%3D'saturate'%20values%3D'0'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23noiseFilter)'%2F%3E%3C%2Fsvg%3E");
+  --bg-noise-url: var(--noise-url);
+  --circle-noise-url: var(--noise-url);
+  --text-noise-url: var(--noise-url);
+  --grain-light: var(--noise-url);
+  --grain-dark: var(--noise-url);
 }
 
-/* ---- Light theme (calm warm paper + slate-indigo accent) ---- */
+/* ---- Light theme (grainy paper + blue/lime ink) ---- */
 :root, [data-theme="light"] {
-  --bg:          #f7f4e8;
-  --bg-subtle:   #f0ecdf;
-  --surface:     #fbf8ed;
-  --text:        #242526;
-  --text-muted:  #6f716d;
-  --text-faint:  #aeb0a8;
-  --line:        #e2dccb;
-  --line-strong: #c9c0a9;
-  --accent:      #667471;
-  --accent-soft: #e8eadf;
-  --on-accent:   #fbf8ed;
+  --bg:          #fdfff7;
+  --bg-subtle:   #fdfff7;
+  --surface:     transparent;
+  --text:        #4960ff;
+  --text-muted:  color-mix(in srgb, #4960ff 72%, #242526);
+  --text-meta:   color-mix(in srgb, #4960ff 82%, #242526);
+  --text-faint:  color-mix(in srgb, #4960ff 44%, #fdfff7);
+  --line:        color-mix(in srgb, #4960ff 42%, #fdfff7);
+  --line-strong: #4960ff;
+  --accent:      #4960ff;
+  --accent-alt:  #d4ff0a;
+  --accent-soft: transparent;
+  --on-accent:   #4960ff;
 
   /* message boxes — calm, distinct */
-  --msg-info-b:  #6f8aa8;  --msg-info-bg:  #eaeff4;  --msg-info-tx:  #3a4d63;
-  --msg-tip-b:   #6f9a7e;  --msg-tip-bg:   #e9f1ec;  --msg-tip-tx:   #3c5e49;
-  --msg-warn-b:  #b9985a;  --msg-warn-bg:  #f5efe2;  --msg-warn-tx:  #6e5828;
-  --msg-note-b:  #9a8fb0;  --msg-note-bg:  #efecf4;  --msg-note-tx:  #4f4663;
+  --msg-info-b:  #4960ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #4960ff;
+  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #4960ff;
+  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #4960ff;
+  --msg-note-b:  #4960ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #4960ff;
 }
 
-/* ---- Dark theme (soft ink + warm sand accent) ---- */
+/* Keep the requested palette stable even when the theme is set to dark. */
 [data-theme="dark"] {
-  --bg:          #1b1b19;
-  --bg-subtle:   #24231f;
-  --surface:     #20201d;
-  --text:        #ebe7db;
-  --text-muted:  #a29d91;
-  --text-faint:  #6f6a60;
-  --line:        #39372f;
-  --line-strong: #555145;
-  --accent:      #c5ad7f;
-  --accent-soft: #302c22;
-  --on-accent:   #191916;
+  --bg:          #fdfff7;
+  --bg-subtle:   #fdfff7;
+  --surface:     transparent;
+  --text:        #4960ff;
+  --text-muted:  color-mix(in srgb, #4960ff 72%, #242526);
+  --text-meta:   color-mix(in srgb, #4960ff 82%, #242526);
+  --text-faint:  color-mix(in srgb, #4960ff 44%, #fdfff7);
+  --line:        color-mix(in srgb, #4960ff 42%, #fdfff7);
+  --line-strong: #4960ff;
+  --accent:      #4960ff;
+  --accent-alt:  #d4ff0a;
+  --accent-soft: transparent;
+  --on-accent:   #4960ff;
 
-  --msg-info-b:  #587b9b;  --msg-info-bg:  #1c242b;  --msg-info-tx:  #a8c2d8;
-  --msg-tip-b:   #5d8a6e;  --msg-tip-bg:   #1b241e;  --msg-tip-tx:   #a4ccb0;
-  --msg-warn-b:  #a88a4f;  --msg-warn-bg:  #28231a;  --msg-warn-tx:  #d9bd84;
-  --msg-note-b:  #8479a0;  --msg-note-bg:  #232029;  --msg-note-tx:  #c0b6d4;
+  --msg-info-b:  #4960ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #4960ff;
+  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #4960ff;
+  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #4960ff;
+  --msg-note-b:  #4960ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #4960ff;
 }
 
 * { box-sizing: border-box; }
@@ -69,18 +79,13 @@ html, body {
   line-height: 1.6;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.26;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(78, 77, 64, 0.05) 0 2px, transparent 3px),
-    radial-gradient(circle at 64% 8%, rgba(78, 77, 64, 0.045) 0 2px, transparent 4px),
-    radial-gradient(circle at 88% 38%, rgba(78, 77, 64, 0.04) 0 3px, transparent 5px);
-  background-size: 160px 170px, 220px 190px, 260px 240px;
+body {
+  min-height: 100vh;
+}
+
+body::before,
+body::after {
+  content: none;
 }
 
 /* no theme transition on body — transitioning var()-resolved shorthands
@@ -94,7 +99,7 @@ a { color: inherit; text-decoration: none; }
 .wire {
   border: var(--line-w) solid var(--line);
   border-radius: var(--r);
-  background: var(--surface);
+  background: transparent;
 }
 .wire-strong { border-color: var(--line-strong); }
 
@@ -113,13 +118,25 @@ a { color: inherit; text-decoration: none; }
 /* focus ring */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---------- placeholder thumbnail (× box) ---------- */
 .ph {
   position: relative;
-  background: var(--bg-subtle);
+  background: transparent;
   border: var(--line-w) solid var(--line);
   border-radius: var(--r-sm);
   overflow: hidden;

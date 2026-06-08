@@ -1,7 +1,7 @@
 /* ============================================================
    App shell: routing, theme, language, tweaks
    ============================================================ */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppCtx, Footer, SearchModal, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage, TopPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
@@ -13,9 +13,43 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "appLayout": "cards",
   "aboutLayout": "two-col",
   "cornerStyle": "rounded",
-  "lightAccent": "#4d6182",
-  "darkAccent": "#cdab74"
+  "lightAccent": "#4960ff",
+  "darkAccent": "#4960ff"
 }/*EDITMODE-END*/;
+
+const RISOGRAPH_DEFAULTS = {
+  bgNoiseOpacity: 30,
+  bgNoiseFrequency: 15.5,
+  bgDistortion: 0,
+  bgRoughness: 0.25,
+  circleOpacity: 100,
+  circleNoiseOpacity: 6,
+  circleNoiseFrequency: 33,
+  circleDistortion: 8,
+  circleRoughness: 0.25,
+  textNoiseOpacity: 11,
+  textNoiseFrequency: 25,
+  textDistortion: 0,
+  textRoughness: 0.16,
+};
+
+function createNoiseUrl(frequency) {
+  const noiseSvg = `
+    <svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'>
+      <filter id='noiseFilter'>
+        <feTurbulence type='fractalNoise' baseFrequency='${frequency}' numOctaves='3' stitchTiles='stitch'/>
+        <feColorMatrix type='saturate' values='0'/>
+      </filter>
+      <rect width='100%' height='100%' filter='url(#noiseFilter)'/>
+    </svg>
+  `;
+  return `url("data:image/svg+xml,${encodeURIComponent(noiseSvg.trim())}")`;
+}
+
+function createFilterId(prefix, distortion, roughness) {
+  const safeRoughness = String(roughness).replace(".", "-");
+  return `${prefix}-${distortion}-${safeRoughness}`;
+}
 
 function parseRoute(hash) {
   const h = (hash || "").replace(/^#/, "");
@@ -47,8 +81,13 @@ export default function App() {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));
   const [lang, setLang] = useState(() => localStorage.getItem("blog.lang") || "ja");
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
+  const riso = RISOGRAPH_DEFAULTS;
   const [searchOpen, setSearchOpen] = useState(false);
   const sysDark = useSystemDark();
+  const bgNoiseUrl = useMemo(() => createNoiseUrl(riso.bgNoiseFrequency), [riso.bgNoiseFrequency]);
+  const circleNoiseUrl = useMemo(() => createNoiseUrl(riso.circleNoiseFrequency), [riso.circleNoiseFrequency]);
+  const bgFilterId = useMemo(() => createFilterId("bg-rough", riso.bgDistortion, riso.bgRoughness), [riso.bgDistortion, riso.bgRoughness]);
+  const circleFilterId = useMemo(() => createFilterId("circle-rough", riso.circleDistortion, riso.circleRoughness), [riso.circleDistortion, riso.circleRoughness]);
 
   // routing
   useEffect(() => {
@@ -83,6 +122,24 @@ export default function App() {
     const v = resolved === "dark" ? tw.darkAccent : tw.lightAccent;
     document.documentElement.style.setProperty("--accent", v);
   }, [tw.lightAccent, tw.darkAccent, resolved]);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--bg-noise-url", bgNoiseUrl);
+    root.style.setProperty("--circle-noise-url", circleNoiseUrl);
+    root.style.setProperty("--text-noise-url", "none");
+    root.style.setProperty("--grain-light", circleNoiseUrl);
+    root.style.setProperty("--grain-dark", circleNoiseUrl);
+    root.style.setProperty("--bg-noise-opacity", riso.bgNoiseOpacity / 100);
+    root.style.setProperty("--bg-edge-filter", `url(#${bgFilterId})`);
+    root.style.setProperty("--grain-circle-opacity", riso.circleOpacity / 100);
+    root.style.setProperty("--grain-noise-opacity", riso.circleNoiseOpacity / 100);
+    root.style.setProperty("--circle-edge-filter", `url(#${circleFilterId})`);
+    root.style.setProperty("--text-edge-filter", "none");
+    root.style.setProperty("--text-ink-opacity", "0%");
+    root.style.setProperty("--text-ink-alt-opacity", "0%");
+    root.style.setProperty("--text-ink-offset", "0px");
+    root.style.setProperty("--text-ink-alt-offset", "0px");
+  }, [bgFilterId, bgNoiseUrl, circleFilterId, circleNoiseUrl, riso]);
 
   const t = window.I18N[lang];
   const ctx = { t, lang, setLang, theme, setTheme, route, nav, tw, openSearch: () => setSearchOpen(true) };
@@ -101,9 +158,30 @@ export default function App() {
 
   return (
     <AppCtx.Provider value={ctx}>
+      <div className="grain-bg" aria-hidden="true">
+        <div className="bg-noise"></div>
+        <div className="grain-circle grain-circle-1">
+          <div className="grain-color"></div>
+          <div className="grain-noise"></div>
+        </div>
+        <div className="grain-circle grain-circle-2">
+          <div className="grain-color"></div>
+          <div className="grain-noise"></div>
+        </div>
+      </div>
       <div className="app">
+        <svg className="grain-filter-defs" aria-hidden="true" focusable="false">
+          <filter id={bgFilterId} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency={riso.bgRoughness} numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale={riso.bgDistortion} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id={circleFilterId} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency={riso.circleRoughness} numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale={riso.circleDistortion} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
         <TopBar />
-        <main className="app-main">{page}</main>
+        <main id="main" className="app-main" tabIndex={-1}>{page}</main>
         <Footer />
       </div>
 
@@ -129,10 +207,10 @@ export default function App() {
                     options={[{label: lang === "ja" ? "角丸" : "Rounded", value: "rounded"}, {label: lang === "ja" ? "直角" : "Square", value: "square"}]}
                     onChange={(v) => setTweak("cornerStyle", v)} />
         <TweakColor label={lang === "ja" ? "アクセント（Light）" : "Accent (Light)"} value={tw.lightAccent}
-                    options={["#4d6182", "#5a7363", "#8a6a52", "#6a5e7e"]}
+                    options={["#4960ff", "#d4ff0a", "#3c4ed6", "#2435b8"]}
                     onChange={(v) => setTweak("lightAccent", v)} />
         <TweakColor label={lang === "ja" ? "アクセント（Dark）" : "Accent (Dark)"} value={tw.darkAccent}
-                    options={["#cdab74", "#9bb9c4", "#b79bc4", "#9cc4a4"]}
+                    options={["#4960ff", "#d4ff0a", "#3c4ed6", "#2435b8"]}
                     onChange={(v) => setTweak("darkAccent", v)} />
       </TweaksPanel>
     </AppCtx.Provider>

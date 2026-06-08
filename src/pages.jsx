@@ -15,12 +15,11 @@ export function TopPage() {
   ];
   return (
     <div className="container route-fade top-simple">
-      <h1>ハロー</h1>
+      <h1>{t.brand}</h1>
       <nav className="top-link-cloud" aria-label={t.top_pages}>
         {pages.map((p) => (
-          <a key={p.key} href={"#" + p.to} onClick={(e) => { e.preventDefault(); nav(p.to); }}>
+          <a key={p.key} href={"#" + p.to} aria-label={t.nav[p.key]} onClick={(e) => { e.preventDefault(); nav(p.to); }}>
             <span>{p.no}</span>
-            {p.label || t.nav[p.key]}
           </a>
         ))}
       </nav>
@@ -72,23 +71,44 @@ export function AboutPage() {
       </div>
     </div>
   );
-  const Activity = () => (
-    <div className="about-block">
-      <h2>{t.about_activity}</h2>
-      <ul className="act-list">
-        {PERSON.activities.map((a, i) => <li key={i}>{L(a, lang)}</li>)}
-      </ul>
-    </div>
-  );
+  const Activity = () => {
+    const [open, setOpen] = useState(null);
+    return (
+      <div className="about-block">
+        <h2>{t.about_activity}</h2>
+        <div className="act-list">
+          {PERSON.activities.map((a, i) => {
+            const title = L(a, lang);
+            const expanded = open === i;
+            return (
+              <div className="act-item" key={i}>
+                <button className="act-toggle" type="button" aria-expanded={expanded}
+                        aria-controls={`activity-detail-${i}`}
+                        onClick={() => setOpen((current) => current === i ? null : i)}>
+                  <span>{title}</span>
+                  <Icon.chevron className={expanded ? "open" : ""} width={14} height={14} />
+                </button>
+                {expanded && (
+                  <div className="act-detail" id={`activity-detail-${i}`}>
+                    {t.activity_detail(title)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   const Made = () => (
     <div className="about-block">
       <h2>{t.about_made}</h2>
       <div className="made-grid">
         {APPS.slice(0, 4).map((a) => (
-          <div className="made-card" key={a.id} onClick={() => nav("/app/" + a.id)}>
+          <button className="made-card" type="button" key={a.id} onClick={() => nav("/app/" + a.id)}>
             <div className="made-title">{a.title}</div>
             <div className="made-sub">{L(a.tagline, lang)}</div>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -96,7 +116,7 @@ export function AboutPage() {
 
   return (
     <div className="container route-fade">
-      <PageHead title={t.page_about.title} sub={t.page_about.sub} />
+      <PageHead title={t.page_about.title} />
       <div className="about-top">
         <div className="avatar">{PERSON.initials}</div>
         <div>
@@ -104,7 +124,12 @@ export function AboutPage() {
           <div className="about-role">{L(PERSON.role, lang)} · {L(PERSON.location, lang)}</div>
           <p className="about-tag">{L(PERSON.tagline, lang)}</p>
           <div className="links-row" data-cf-change="ch-profile-links">
-            {PERSON.links.map((lk) => (
+            {PERSON.links.map((lk) => lk.href.startsWith("mailto:") ? (
+              <span key={lk.label} className="profile-link profile-link-text">
+                {linkIcon(lk.label)}
+                {lk.label}
+              </span>
+            ) : (
               <a key={lk.label} className="profile-link" href={lk.href}
                  onClick={lk.href.startsWith("#") ? (e) => { e.preventDefault(); nav(lk.href.slice(1)); } : undefined}>
                 {linkIcon(lk.label)}
@@ -143,11 +168,11 @@ export function ApplicationPage() {
   const rows = tw.appLayout === "rows";
   return (
     <div className="container route-fade">
-      <PageHead title={t.page_app.title} sub={t.page_app.sub} />
+      <PageHead title={t.page_app.title} />
       <div className={rows ? "post-list" : "app-grid"}>
         {APPS.map((a) => rows ? (
-          <button className="pcard" key={a.id} onClick={() => nav("/app/" + a.id)}>
-            <Ph className="pcard-thumb" label="IMG" />
+          <button className="pcard" type="button" key={a.id} onClick={() => nav("/app/" + a.id)} aria-label={`${t.detail}: ${a.title}`}>
+            <Ph className="pcard-thumb" />
             <div className="pcard-body">
               <h3 className="pcard-title">{a.title}</h3>
               <div className="pcard-meta"><span>{L(a.tagline, lang)}</span><span>· {a.year}</span></div>
@@ -157,7 +182,7 @@ export function ApplicationPage() {
           </button>
         ) : (
           <div className="acard" key={a.id}>
-            <Ph className="acard-img" label="IMAGE" />
+            <Ph className="acard-img" />
             <div className="acard-body">
               <h3 className="acard-title">{a.title}</h3>
               <div className="acard-tagline">{L(a.tagline, lang)}</div>
@@ -165,7 +190,7 @@ export function ApplicationPage() {
               <div className="tag-row">{a.stack.map((s) => <Chip key={s} isStatic>{s}</Chip>)}</div>
               <div className="acard-foot">
                 <span className="acard-year">{a.year}</span>
-                <button className="btn btn-accent" onClick={() => nav("/app/" + a.id)}>
+                <button className="btn btn-accent" type="button" onClick={() => nav("/app/" + a.id)} aria-label={`${t.detail}: ${a.title}`}>
                   {t.detail} <Icon.arrow width={14} height={14} />
                 </button>
               </div>
@@ -186,10 +211,10 @@ export function ApplicationDetail({ id }) {
   return (
     <div className="container route-fade">
       <div className="adetail">
-        <button className="btn btn-ghost" onClick={() => nav("/app")}><Icon.back /> {t.back_app}</button>
+        <button className="btn btn-ghost" type="button" onClick={() => nav("/app")}><Icon.back /> {t.back_app}</button>
         <h1>{a.title}</h1>
         <div className="adetail-tagline">{L(a.tagline, lang)}</div>
-        <Ph className="adetail-hero" label="IMAGE" />
+        <Ph className="adetail-hero" />
         <div className="prose">
           {a.detail[lang].map((para, i) => <p key={i}>{para}</p>)}
         </div>
@@ -214,10 +239,11 @@ export function ReadingPage() {
 
   return (
     <div className="container route-fade">
-      <PageHead title={t.page_reading.title} sub={t.page_reading.sub} />
-      <div className="seg-filter">
+      <PageHead title={t.page_reading.title} />
+      <div className="seg-filter" role="group" aria-label={t.filter}>
         {["all", "todo", "done"].map((f) => (
           <button key={f} className={filter === (f === "todo" ? "todo" : f) ? "on" : ""}
+                  type="button" aria-pressed={filter === (f === "todo" ? "todo" : f)}
                   onClick={() => setFilter(f === "todo" ? "todo" : f)}>
             {f === "all" ? t.reading_all : f === "todo" ? t.reading_todo : t.reading_done}
           </button>
@@ -226,21 +252,20 @@ export function ReadingPage() {
       <div className="reading-list">
         {shown.map((r) => (
           <div className="ritem" key={r.title.ja + r.date}>
-            <div className={"rcheck" + (r.done ? " done" : "")} role="checkbox" aria-checked={r.done}
-                 tabIndex={0} onClick={() => toggle(idxOf(r))}
-                 onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(idxOf(r)); } }}>
+            <button className={"rcheck" + (r.done ? " done" : "")} type="button"
+                    aria-pressed={r.done} aria-label={`${L(r.title, lang)}: ${r.done ? t.reading_done : t.reading_todo}`}
+                    onClick={() => toggle(idxOf(r))}>
               {r.done && <Icon.check width={14} height={14} />}
-            </div>
+            </button>
             <div className="ritem-main">
               <div className={"ritem-title" + (r.done ? " done" : "")}>{L(r.title, lang)}</div>
               <div className="ritem-sub">
-                <span>{r.source}</span><span>{t.added} {fmtDate(r.date, lang)}</span>
-                {r.tags.map((tg) => <span key={tg}>#{tg}</span>)}
+                <span>{fmtDate(r.date, lang)}</span>
+                <span>{r.source}</span>
               </div>
-              {r.note && <div className="ritem-note">“{L(r.note, lang)}”</div>}
             </div>
             <div className="ritem-side">
-              <a className="btn btn-ghost" href="#" onClick={(e) => e.preventDefault()}><Icon.ext /></a>
+              <span className="btn btn-ghost btn-disabled" aria-disabled="true" title={t.no_link}><Icon.ext /></span>
             </div>
           </div>
         ))}
@@ -263,10 +288,11 @@ export function RssPage() {
         <p className="muted" style={{ marginTop: 10 }}>{t.rss_desc}</p>
         <div className="rss-url">
           <span>{url}</span>
-          <button className="btn btn-ghost" onClick={copy}>{copied ? <Icon.check /> : <Icon.copy />}</button>
+          <button className="btn btn-ghost" type="button" onClick={copy} aria-label={t.copy_rss_url}>{copied ? <Icon.check /> : <Icon.copy />}</button>
         </div>
+        <div className="sr-only" role="status" aria-live="polite">{copied ? t.copied : ""}</div>
         <div style={{ marginTop: 26 }}>
-          <button className="btn" onClick={() => nav("/blog")}><Icon.back /> {t.back_blog}</button>
+          <button className="btn" type="button" onClick={() => nav("/blog")}><Icon.back /> {t.back_blog}</button>
         </div>
       </div>
     </div>

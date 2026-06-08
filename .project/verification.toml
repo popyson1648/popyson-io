@@ -44,12 +44,16 @@ enabled = false
 command = ""
 
 [phases.accessibility]
-enabled = false
-command = ""
+enabled = true
+command = "python3 scripts/check_accessibility_static.py"
+run_on_edit = true
+run_pre_commit = true
+run_in_ci = true
 
 [phases.performance]
 enabled = true
 command = "npm run build && npm run lighthouse"
+run_on_edit = false
 run_pre_commit = false
 run_pre_push = true
 run_in_ci = true

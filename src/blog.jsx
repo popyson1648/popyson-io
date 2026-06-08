@@ -3,20 +3,28 @@
    ============================================================ */
 import { useContext, useEffect, useMemo, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import { createHighlighterCore } from "shiki/core";
-import { createOnigurumaEngine } from "shiki/engine/oniguruma";
-import wasm from "shiki/wasm";
-import rust from "shiki/langs/rust.mjs";
-import typescript from "shiki/langs/typescript.mjs";
-import githubLight from "shiki/themes/github-light.mjs";
-import githubDark from "shiki/themes/github-dark.mjs";
 import { AppCtx, Dropdown, Icon, L, PageHead, Ph, bodyText, fmtDate } from "./components.jsx";
 
-const highlighterPromise = createHighlighterCore({
-  themes: [githubLight, githubDark],
-  langs: [rust, typescript],
-  engine: createOnigurumaEngine(wasm),
-});
+let highlighterPromise;
+
+function getHighlighter() {
+  if (!highlighterPromise) {
+    highlighterPromise = Promise.all([
+      import("shiki/core"),
+      import("shiki/engine/oniguruma"),
+      import("shiki/wasm"),
+      import("shiki/langs/rust.mjs"),
+      import("shiki/langs/typescript.mjs"),
+      import("shiki/themes/github-light.mjs"),
+      import("shiki/themes/github-dark.mjs"),
+    ]).then(([core, engine, wasm, rust, typescript, githubLight, githubDark]) => core.createHighlighterCore({
+      themes: [githubLight.default, githubDark.default],
+      langs: [rust.default, typescript.default],
+      engine: engine.createOnigurumaEngine(wasm.default),
+    }));
+  }
+  return highlighterPromise;
+}
 
 /* ===================== BLOG LIST (Notion-style filter/sort) ===================== */
 /* bodyText lives in components.jsx (shared with the search modal) */
@@ -37,7 +45,7 @@ function FilterEditor({ prop, filters, setFilters, close, t }) {
           {shown.map((tg) => {
             const on = filters.tags.includes(tg);
             return (
-              <button key={tg} className="menu-item" onClick={() => toggle(tg)}>
+              <button key={tg} className="menu-item" type="button" role="menuitemcheckbox" aria-checked={on} onClick={() => toggle(tg)}>
                 <span className={"checkbox" + (on ? " on" : "")}>{on && <Icon.check width={11} height={11} />}</span>
                 <span className="mi-grow">#{tg}</span>
               </button>
@@ -67,7 +75,7 @@ function AddFilterMenu({ filters, setFilters, close, t }) {
       <>
         <div className="menu-head">{t.filter_add_title}</div>
         {props.map(([key, label, Ic]) => (
-          <button key={key} className="menu-item" onClick={() => setProp(key)}>
+          <button key={key} className="menu-item" type="button" role="menuitem" onClick={() => setProp(key)}>
             <Ic width={15} height={15} style={{ color: "var(--text-faint)" }} />
             <span className="mi-grow">{label}</span>
             <Icon.chevron width={14} height={14} style={{ color: "var(--text-faint)" }} />
@@ -78,7 +86,7 @@ function AddFilterMenu({ filters, setFilters, close, t }) {
   }
   return (
     <>
-      <div className="menu-back" onClick={() => setProp(null)}><Icon.back width={13} height={13} /> {t.filter_add_title}</div>
+      <button className="menu-back" type="button" onClick={() => setProp(null)}><Icon.back width={13} height={13} /> {t.filter_add_title}</button>
       <FilterEditor prop={prop} filters={filters} setFilters={setFilters} close={close} t={t} />
     </>
   );
@@ -91,10 +99,10 @@ function FilterPill({ prop, filters, setFilters, t }) {
   const key = prop === "tags" ? t.f_tag : prop === "title" ? t.f_title : t.f_body;
   const remove = () => setFilters((f) => ({ ...f, [prop]: prop === "tags" ? [] : "" }));
   return (
-    <Dropdown width={250} button={({ toggle }) => (
+    <Dropdown width={250} button={({ open, menuId, toggle }) => (
       <span className="fpill">
-        <span className="fpill-label" onClick={toggle}><span className="fpill-key">{key}</span><span>{label}</span></span>
-        <button className="fpill-x" onClick={(e) => { e.stopPropagation(); remove(); }} aria-label="remove">
+        <button className="fpill-label" type="button" onClick={toggle} aria-expanded={open} aria-controls={menuId}><span className="fpill-key">{key}</span><span>{label}</span></button>
+        <button className="fpill-x" type="button" onClick={(e) => { e.stopPropagation(); remove(); }} aria-label={`${t.clear}: ${key}`}>
           <Icon.x width={13} height={13} />
         </button>
       </span>
@@ -105,7 +113,7 @@ function FilterPill({ prop, filters, setFilters, t }) {
 }
 
 export function BlogList() {
-  const { t, lang, nav, tw } = useContext(AppCtx);
+  const { t, lang, nav, openSearch } = useContext(AppCtx);
   const { POSTS } = window.BlogData;
   const [filters, setFilters] = useState({ tags: [], title: "", body: "" });
   const [sortKey, setSortKey] = useState("date"); // date | kana
@@ -169,67 +177,76 @@ export function BlogList() {
   if (filters.title) activeProps.push("title");
   if (filters.body) activeProps.push("body");
   const clearAll = () => setFilters({ tags: [], title: "", body: "" });
+  const sortLabel = sortKey === "date" ? t.s_date : t.s_kana;
+  const orderLabel = sortDir === "asc" ? t.order_asc : t.order_desc;
+  const hasActiveFilters = activeProps.length > 0;
 
   return (
     <div className="container route-fade">
-      <PageHead title={t.page_blog.title} sub={t.page_blog.sub} />
+      <PageHead title={t.page_blog.title} />
 
-      <div className="fbar">
-        <span className="fbar-label">View</span>
-        <Dropdown width={250} button={({ open, toggle }) => (
-          <button className={"fbtn" + (open ? " on" : "")} onClick={toggle}>
-            <Icon.plus width={14} height={14} /> {t.filter_add}
+      <div className="fbar" aria-label={t.filters_label}>
+        <div className="fbar-controls" role="toolbar" aria-label={t.tools}>
+          <button className="fbtn ficon" type="button" onClick={openSearch} aria-label={t.search} title={t.search}>
+            <Icon.search width={16} height={16} />
           </button>
-        )}>
-          {({ close }) => <AddFilterMenu filters={filters} setFilters={setFilters} close={close} t={t} />}
-        </Dropdown>
+          <Dropdown width={250} button={({ open, menuId, toggle }) => (
+            <button className={"fbtn ficon filter-add-btn" + (open ? " on" : "") + (hasActiveFilters ? " active" : "")} type="button" onClick={toggle}
+                    aria-expanded={open} aria-controls={menuId} aria-label={t.filter_add_title} title={t.filter_add_title}>
+              <Icon.filter width={16} height={16} />
+            </button>
+          )}>
+            {({ close }) => <AddFilterMenu filters={filters} setFilters={setFilters} close={close} t={t} />}
+          </Dropdown>
 
-        {activeProps.map((prop) => (
-          <FilterPill key={prop} prop={prop} filters={filters} setFilters={setFilters} t={t} />
-        ))}
-        {activeProps.length > 0 && (
-          <button className="btn btn-ghost" onClick={clearAll} style={{ fontSize: 12.5 }}>{t.clear_all}</button>
+          <Dropdown width={300} button={({ open, menuId, toggle }) => (
+            <button className={"fbtn ficon sort-btn" + (open ? " on" : "")} type="button" onClick={toggle}
+                    aria-expanded={open} aria-controls={menuId}
+                    aria-label={`${t.sort}: ${sortLabel}, ${orderLabel}`}
+                    title={`${t.sort}: ${sortLabel}, ${orderLabel}`}>
+              <Icon.sort width={16} height={16} />
+            </button>
+          )}>
+            {() => (
+              <>
+                <div className="menu-row">
+                  <span className="mr-label">{t.sort_basis}</span>
+                  <div className="seg-mini" role="group" aria-label={t.sort_basis}>
+                    <button type="button" className={sortKey === "date" ? "on" : ""} aria-pressed={sortKey === "date"} onClick={() => setSortKey("date")}>{t.s_date}</button>
+                    <button type="button" className={sortKey === "kana" ? "on" : ""} aria-pressed={sortKey === "kana"} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
+                  </div>
+                </div>
+                <div className="menu-sep" />
+                <div className="menu-row">
+                  <span className="mr-label">{t.sort_order}</span>
+                  <div className="seg-mini" role="group" aria-label={t.sort_order}>
+                    <button type="button" className={sortDir === "asc" ? "on" : ""} aria-pressed={sortDir === "asc"} onClick={() => setSortDir("asc")}>{t.order_asc}</button>
+                    <button type="button" className={sortDir === "desc" ? "on" : ""} aria-pressed={sortDir === "desc"} onClick={() => setSortDir("desc")}>{t.order_desc}</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </Dropdown>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="fbar-state">
+            <div className="active-filters" aria-live="polite">
+              {activeProps.map((prop) => (
+                <FilterPill key={prop} prop={prop} filters={filters} setFilters={setFilters} t={t} />
+              ))}
+              <button className="btn btn-ghost clear-filters" type="button" onClick={clearAll}>{t.clear_all}</button>
+            </div>
+          </div>
         )}
-
-        <div className="fbar-spacer" />
-
-        <Dropdown width={230} align="right" button={({ open, toggle }) => (
-          <button className={"fbtn" + (open ? " on" : "")} onClick={toggle}>
-            <Icon.sort width={14} height={14} /> {t.sort}
-            <span className="faint">{sortKey === "date" ? t.s_date : t.s_kana}</span>
-            <span className="faint">{sortDir === "asc" ? "↑" : "↓"}</span>
-          </button>
-        )}>
-          {() => (
-            <>
-              <div className="menu-row">
-                <span className="mr-label">{t.sort_basis}</span>
-                <div className="seg-mini">
-                  <button className={sortKey === "date" ? "on" : ""} onClick={() => setSortKey("date")}>{t.s_date}</button>
-                  <button className={sortKey === "kana" ? "on" : ""} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
-                </div>
-              </div>
-              <div className="menu-sep" />
-              <div className="menu-row">
-                <span className="mr-label">{t.sort_order}</span>
-                <div className="seg-mini">
-                  <button className={sortDir === "asc" ? "on" : ""} onClick={() => setSortDir("asc")}>{t.order_asc}</button>
-                  <button className={sortDir === "desc" ? "on" : ""} onClick={() => setSortDir("desc")}>{t.order_desc}</button>
-                </div>
-              </div>
-            </>
-          )}
-        </Dropdown>
-
-        <span className="result-count">{t.results(list.length)}</span>
       </div>
 
       {list.length === 0 ? (
         <div className="empty">{t.no_results}</div>
       ) : (
-        <div className={tw.blogLayout === "grid" ? "post-index post-index-grid" : "post-index"}>
+        <div className="post-index">
           {list.map((p, i) => (
-            <button className="post-index-card" key={p.id} onClick={() => nav("/blog/" + p.id)}>
+            <button className="post-index-card" type="button" key={p.id} onClick={() => nav("/blog/" + p.id)}>
               <span className="post-index-no">{String(i + 1).padStart(2, "0")}</span>
               <span className="post-index-main">
                 <span className="post-index-meta">{fmtDate(p.date, lang)} · {p.reading} {t.min_read}</span>
@@ -289,18 +306,18 @@ export function Article({ id }) {
 
       <article className="article">
         <div className="article-mobile-nav">
-          <button className="article-mobile-author" onClick={() => nav("/blog")}><Icon.back width={13} height={13} /> {t.back_blog}</button>
-          <button className="article-mobile-toc-btn" onClick={() => setTocOpen((v) => !v)} aria-expanded={tocOpen}>
+          <button className="article-mobile-author" type="button" onClick={() => nav("/blog")}><Icon.back width={13} height={13} /> {t.back_blog}</button>
+          <button className="article-mobile-toc-btn" type="button" onClick={() => setTocOpen((v) => !v)} aria-expanded={tocOpen} aria-controls="article-mobile-toc">
             {t.toc}
           </button>
         </div>
         {tocOpen && (
-          <div className="article-mobile-toc" aria-label={t.toc}>
+          <div className="article-mobile-toc" id="article-mobile-toc" aria-label={t.toc}>
             {toc}
           </div>
         )}
 
-        <button className="article-back" onClick={() => nav("/blog")}><Icon.back width={13} height={13} /> {t.back_blog}</button>
+        <button className="article-back" type="button" onClick={() => nav("/blog")}><Icon.back width={13} height={13} /> {t.back_blog}</button>
         <div className="article-head">
           <h1>{L(post.title, lang)}</h1>
           <div className="article-meta">
@@ -319,8 +336,8 @@ export function Article({ id }) {
           <div className="sec-label">{t.related}</div>
           <div className="related-list" data-cf-change="ch-related-thumbs">
             {related.map((p) => (
-              <button className="rel-card" key={p.id} onClick={() => nav("/blog/" + p.id)}>
-                <Ph className="rel-thumb" label="THUMB" />
+              <button className="rel-card" type="button" key={p.id} onClick={() => nav("/blog/" + p.id)}>
+                <Ph className="rel-thumb" />
                 <span className="rel-body">
                   <span className="rel-title">{L(p.title, lang)}</span>
                   <span className="rel-date">{fmtDate(p.date, lang)} · {p.tags.map((tg) => "#" + tg).join(" ")}</span>
@@ -348,10 +365,11 @@ export function Block({ b, lang }) {
     case "code":
       return <CodeBlock lang={b.lang} code={b.code} />;
     case "msg": {
+      const message = L({ ja: b.ja, en: b.en }, lang).trim();
       return (
         <div className={"msg msg-" + b.variant} data-cf-change="ch-message-boxes">
           <div className="msg-body">
-            <p>{L({ ja: b.ja, en: b.en }, lang)}</p>
+            <p>{message}</p>
           </div>
         </div>
       );
@@ -361,11 +379,12 @@ export function Block({ b, lang }) {
 }
 
 export function CodeBlock({ lang, code }) {
+  const { t } = useContext(AppCtx);
   const [copied, setCopied] = useState(false);
   const [html, setHtml] = useState("");
   useEffect(() => {
     let live = true;
-    highlighterPromise.then((highlighter) => highlighter.codeToHtml(code, {
+    getHighlighter().then((highlighter) => highlighter.codeToHtml(code, {
       lang: lang || "text",
       themes: {
         light: "github-light",
@@ -383,7 +402,7 @@ export function CodeBlock({ lang, code }) {
     <div className="code" data-cf-change="ch-code-block">
       <div className="code-bar">
         <span className="code-lang">{lang}</span>
-        <button className="btn btn-ghost" style={{ padding: "2px 6px" }} onClick={copy}>
+        <button className="btn btn-ghost" type="button" style={{ padding: "2px 6px" }} onClick={copy} aria-label={copied ? t.copied_code : t.copy_code}>
           {copied ? <Icon.check width={13} height={13} /> : <Icon.copy width={13} height={13} />}
         </button>
       </div>

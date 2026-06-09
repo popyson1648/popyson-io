@@ -1,9 +1,9 @@
 /* ============================================================
    Blog: list (filter + sort) and article (TOC + components)
    ============================================================ */
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import { AppCtx, Dropdown, Icon, L, PageHead, Ph, bodyText, fmtDate } from "./components.jsx";
+import { AppCtx, Icon, L, PageHead, Ph, bodyText, fmtDate } from "./components.jsx";
 
 let highlighterPromise;
 
@@ -74,13 +74,14 @@ function AddFilterMenu({ filters, setFilters, close, t }) {
     return (
       <>
         <div className="menu-head">{t.filter_add_title}</div>
-        {props.map(([key, label, Ic]) => (
-          <button key={key} className="menu-item" type="button" role="menuitem" onClick={() => setProp(key)}>
-            <Ic width={15} height={15} style={{ color: "var(--text-faint)" }} />
-            <span className="mi-grow">{label}</span>
-            <Icon.chevron width={14} height={14} style={{ color: "var(--text-faint)" }} />
-          </button>
-        ))}
+        <div className="prop-grid">
+          {props.map(([key, label, Ic]) => (
+            <button key={key} className="menu-item prop-item" type="button" role="menuitem" onClick={() => setProp(key)}>
+              <Ic width={15} height={15} style={{ color: "var(--text-faint)" }} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </>
     );
   }
@@ -99,16 +100,12 @@ function FilterPill({ prop, filters, setFilters, t }) {
   const key = prop === "tags" ? t.f_tag : prop === "title" ? t.f_title : t.f_body;
   const remove = () => setFilters((f) => ({ ...f, [prop]: prop === "tags" ? [] : "" }));
   return (
-    <Dropdown width={250} button={({ open, menuId, toggle }) => (
-      <span className="fpill">
-        <button className="fpill-label" type="button" onClick={toggle} aria-expanded={open} aria-controls={menuId}><span className="fpill-key">{key}</span><span>{label}</span></button>
-        <button className="fpill-x" type="button" onClick={(e) => { e.stopPropagation(); remove(); }} aria-label={`${t.clear}: ${key}`}>
-          <Icon.x width={13} height={13} />
-        </button>
-      </span>
-    )}>
-      {({ close }) => <FilterEditor prop={prop} filters={filters} setFilters={setFilters} close={close} t={t} />}
-    </Dropdown>
+    <span className="fpill">
+      <span className="fpill-label"><span className="fpill-key">{key}</span><span>{label}</span></span>
+      <button className="fpill-x" type="button" onClick={remove} aria-label={`${t.clear}: ${key}`}>
+        <Icon.x width={13} height={13} />
+      </button>
+    </span>
   );
 }
 
@@ -118,6 +115,17 @@ export function BlogList() {
   const [filters, setFilters] = useState({ tags: [], title: "", body: "" });
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc");  // asc | desc
+  const [openPanel, setOpenPanel] = useState(null); // null | "filter" | "sort"
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (!openPanel) return;
+    const onDoc = (e) => { if (panelRef.current && !panelRef.current.contains(e.target)) setOpenPanel(null); };
+    const onKey = (e) => { if (e.key === "Escape") setOpenPanel(null); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [openPanel]);
 
   const rows = useMemo(() => POSTS.map((p) => ({
     raw: p,
@@ -185,57 +193,59 @@ export function BlogList() {
     <div className="container route-fade">
       <PageHead title={t.page_blog.title} />
 
-      <div className="fbar" aria-label={t.filters_label}>
-        <div className="fbar-controls" role="toolbar" aria-label={t.tools}>
-          <button className="fbtn ficon" type="button" onClick={openSearch} aria-label={t.search} title={t.search}>
-            <Icon.search width={16} height={16} />
-          </button>
-          <Dropdown width={250} button={({ open, menuId, toggle }) => (
-            <button className={"fbtn ficon filter-add-btn" + (open ? " on" : "") + (hasActiveFilters ? " active" : "")} type="button" onClick={toggle}
-                    aria-expanded={open} aria-controls={menuId} aria-label={t.filter_add_title} title={t.filter_add_title}>
+      <div className="fbar-wrap" ref={panelRef}>
+        <div className="fbar" aria-label={t.filters_label}>
+          <div className="fbar-controls" role="toolbar" aria-label={t.tools}>
+            <button className="fbtn ficon" type="button" onClick={openSearch} aria-label={t.search} title={t.search}>
+              <Icon.search width={16} height={16} />
+            </button>
+            <button className={"fbtn ficon filter-add-btn" + (openPanel === "filter" ? " on" : "") + (hasActiveFilters ? " active" : "")}
+                    type="button" onClick={() => setOpenPanel((p) => (p === "filter" ? null : "filter"))}
+                    aria-expanded={openPanel === "filter"} aria-controls="filter-panel"
+                    aria-label={t.filter_add_title} title={t.filter_add_title}>
               <Icon.filter width={16} height={16} />
             </button>
-          )}>
-            {({ close }) => <AddFilterMenu filters={filters} setFilters={setFilters} close={close} t={t} />}
-          </Dropdown>
-
-          <Dropdown width={300} button={({ open, menuId, toggle }) => (
-            <button className={"fbtn ficon sort-btn" + (open ? " on" : "")} type="button" onClick={toggle}
-                    aria-expanded={open} aria-controls={menuId}
-                    aria-label={`${t.sort}: ${sortLabel}, ${orderLabel}`}
-                    title={`${t.sort}: ${sortLabel}, ${orderLabel}`}>
+            <button className={"fbtn ficon sort-btn" + (openPanel === "sort" ? " on" : "")}
+                    type="button" onClick={() => setOpenPanel((p) => (p === "sort" ? null : "sort"))}
+                    aria-expanded={openPanel === "sort"} aria-controls="sort-panel"
+                    aria-label={`${t.sort}: ${sortLabel}, ${orderLabel}`} title={`${t.sort}: ${sortLabel}, ${orderLabel}`}>
               <Icon.sort width={16} height={16} />
             </button>
-          )}>
-            {() => (
-              <>
-                <div className="menu-row">
-                  <span className="mr-label">{t.sort_basis}</span>
-                  <div className="seg-mini" role="group" aria-label={t.sort_basis}>
-                    <button type="button" className={sortKey === "date" ? "on" : ""} aria-pressed={sortKey === "date"} onClick={() => setSortKey("date")}>{t.s_date}</button>
-                    <button type="button" className={sortKey === "kana" ? "on" : ""} aria-pressed={sortKey === "kana"} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
-                  </div>
-                </div>
-                <div className="menu-sep" />
-                <div className="menu-row">
-                  <span className="mr-label">{t.sort_order}</span>
-                  <div className="seg-mini" role="group" aria-label={t.sort_order}>
-                    <button type="button" className={sortDir === "asc" ? "on" : ""} aria-pressed={sortDir === "asc"} onClick={() => setSortDir("asc")}>{t.order_asc}</button>
-                    <button type="button" className={sortDir === "desc" ? "on" : ""} aria-pressed={sortDir === "desc"} onClick={() => setSortDir("desc")}>{t.order_desc}</button>
-                  </div>
-                </div>
-              </>
-            )}
-          </Dropdown>
+          </div>
+
+          {hasActiveFilters && (
+            <div className="fbar-state">
+              <div className="active-filters" aria-live="polite">
+                {activeProps.map((prop) => (
+                  <FilterPill key={prop} prop={prop} filters={filters} setFilters={setFilters} t={t} />
+                ))}
+                <button className="btn btn-ghost clear-filters" type="button" onClick={clearAll}>{t.clear_all}</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {hasActiveFilters && (
-          <div className="fbar-state">
-            <div className="active-filters" aria-live="polite">
-              {activeProps.map((prop) => (
-                <FilterPill key={prop} prop={prop} filters={filters} setFilters={setFilters} t={t} />
-              ))}
-              <button className="btn btn-ghost clear-filters" type="button" onClick={clearAll}>{t.clear_all}</button>
+        {openPanel === "filter" && (
+          <div className="fpanel" id="filter-panel" role="region" aria-label={t.filter_add_title}>
+            <AddFilterMenu filters={filters} setFilters={setFilters} close={() => setOpenPanel(null)} t={t} />
+          </div>
+        )}
+        {openPanel === "sort" && (
+          <div className="fpanel" id="sort-panel" role="region" aria-label={t.sort}>
+            <div className="menu-row">
+              <span className="mr-label">{t.sort_basis}</span>
+              <div className="seg-mini" role="group" aria-label={t.sort_basis}>
+                <button type="button" className={sortKey === "date" ? "on" : ""} aria-pressed={sortKey === "date"} onClick={() => setSortKey("date")}>{t.s_date}</button>
+                <button type="button" className={sortKey === "kana" ? "on" : ""} aria-pressed={sortKey === "kana"} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
+              </div>
+            </div>
+            <div className="menu-sep" />
+            <div className="menu-row">
+              <span className="mr-label">{t.sort_order}</span>
+              <div className="seg-mini" role="group" aria-label={t.sort_order}>
+                <button type="button" className={sortDir === "asc" ? "on" : ""} aria-pressed={sortDir === "asc"} onClick={() => setSortDir("asc")}>{t.order_asc}</button>
+                <button type="button" className={sortDir === "desc" ? "on" : ""} aria-pressed={sortDir === "desc"} onClick={() => setSortDir("desc")}>{t.order_desc}</button>
+              </div>
             </div>
           </div>
         )}

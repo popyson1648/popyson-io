@@ -242,10 +242,11 @@
   max-height: calc(var(--search-viewport-height, 100dvh) - clamp(132px, 18dvh, 156px)); overflow: hidden;
   display: flex; flex-direction: column; animation: md 160ms ease both; }
 @keyframes md { from { transform: translateY(-8px); } to { transform: none; } }
-.modal > .esc { position: absolute; top: 10px; right: 10px; z-index: 1; width: 36px; height: 36px; display: grid; place-items: center;
-  appearance: none; cursor: pointer; color: var(--text-muted); background: transparent; border: none; border-radius: var(--r-sm); }
+.modal > .esc { position: absolute; top: 12px; right: 12px; z-index: 1; min-width: 40px; height: 26px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center;
+  appearance: none; cursor: pointer; font-family: var(--mono); font-size: 12px; line-height: 1; letter-spacing: 0.04em;
+  color: var(--text-muted); background: var(--bg); border: var(--line-w) solid var(--line-strong); border-radius: var(--r-sm); }
 .modal > .esc:hover { color: var(--text); background: var(--bg-subtle); }
-.modal-search { display: flex; align-items: center; gap: 12px; flex: none; padding: 16px 54px 16px 18px; border-bottom: var(--line-w) solid var(--line); }
+.modal-search { display: flex; align-items: center; gap: 12px; flex: none; padding: 16px 64px 16px 18px; border-bottom: var(--line-w) solid var(--line); }
 .modal-search input { flex: 1 1 auto; font: inherit; font-size: 17px; color: var(--text); background: transparent; border: none; outline: none; }
 .modal-search input::placeholder { color: var(--text-faint); }
 .modal-search .esc { appearance: none; cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--text-faint); border: var(--line-w) solid var(--line); border-radius: var(--r-sm); padding: 3px 7px; }
@@ -276,7 +277,7 @@
   }
   .modal-search {
     gap: 10px;
-    padding: 12px 50px 12px 12px;
+    padding: 12px 60px 12px 12px;
   }
   .modal-search input {
     min-width: 0;
@@ -931,8 +932,8 @@
 
 /* Requested UI adjustments */
 .topbar {
-  left: 50% !important;
-  right: auto !important;
+  left: 50%;
+  right: auto;
   top: 18px;
   width: max-content;
   max-width: calc(100vw - 28px);
@@ -1017,7 +1018,7 @@
 .post-index.post-index-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 34px;
   max-width: 860px;
   margin: 0 auto;
 }
@@ -1026,8 +1027,7 @@
   grid-template-columns: 56px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
-  padding: 18px 0;
-  border-top: var(--line-w) solid var(--line);
+  padding: 0;
 }
 
 .post-index-card:first-child {
@@ -1120,8 +1120,8 @@
 
 @media (max-width: 860px) {
   .topbar {
-    left: 50% !important;
-    right: auto !important;
+    left: 50%;
+    right: auto;
     width: max-content;
     max-width: calc(100vw - 20px);
   }
@@ -1138,13 +1138,13 @@
 
   .post-index,
   .post-index.post-index-grid {
-    gap: 18px;
+    gap: 28px;
   }
 
   .post-index-card {
     grid-template-columns: 42px minmax(0, 1fr);
     gap: 14px;
-    padding: 16px 0;
+    padding: 0;
   }
 
   .post-index-title {
@@ -1229,19 +1229,24 @@
 
 /* ---------------- search modal backdrop ---------------- */
 .modal-overlay {
-  background: color-mix(in srgb, var(--bg) 56%, transparent) !important;
-  background-color: color-mix(in srgb, var(--bg) 56%, transparent) !important;
-  backdrop-filter: blur(14px) saturate(135%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(135%) !important;
+  background: var(--search-backdrop-bg) !important;
+  background-color: var(--search-backdrop-bg) !important;
+  background-image: var(--search-backdrop-image) !important;
+  backdrop-filter: var(--search-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
 }
 
 /* ---------------- blurred top controls ---------------- */
 :where(.topbar, .fbar, .seg-filter) {
-  background: color-mix(in srgb, var(--bg) 72%, transparent) !important;
-  background-color: color-mix(in srgb, var(--bg) 72%, transparent) !important;
-  background-image: none !important;
-  backdrop-filter: blur(14px) saturate(145%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(145%) !important;
+  background: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-color: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, white 24%, transparent),
+      color-mix(in srgb, white 10%, transparent)
+    ) !important;
+  backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
+  -webkit-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
 }
 
 /* ---------------- mobile top bar fit ---------------- */
@@ -1438,10 +1443,15 @@
   top: calc(100% + 8px);
   border-radius: 14px;
   padding: 8px;
-  background: color-mix(in srgb, var(--bg) 82%, transparent) !important;
-  background-color: color-mix(in srgb, var(--bg) 82%, transparent) !important;
-  backdrop-filter: blur(16px) saturate(145%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+  background: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-color: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, white 24%, transparent),
+      color-mix(in srgb, white 10%, transparent)
+    ) !important;
+  backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
+  -webkit-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
 }
 
 .topbar .menu-item {
@@ -2082,9 +2092,14 @@
   padding: 3px;
   border: var(--line-w) solid var(--line);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  backdrop-filter: blur(12px) saturate(135%);
-  -webkit-backdrop-filter: blur(12px) saturate(135%);
+  background: color-mix(in srgb, var(--bg) 44%, transparent);
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, white 24%, transparent),
+      color-mix(in srgb, white 10%, transparent)
+    );
+  backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92);
+  -webkit-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92);
 }
 
 .fbtn.ficon {
@@ -2579,10 +2594,8 @@
 
 .topbar .menu,
 .fbar .menu {
-  border-radius: 0;
-  background: var(--bg) !important;
-  background-color: var(--bg) !important;
-  border-color: var(--line-strong);
+  border-radius: 14px;
+  border-color: var(--line);
   box-shadow: none;
 }
 
@@ -2844,16 +2857,17 @@
   }
 }
 
-/* ---------------- unboxed correction for requested controls ---------------- */
+/* ---------------- rounded-rectangle top bar (left-to-right contents) ---------------- */
 .topbar {
   top: 18px;
-  right: 28px;
-  left: auto;
+  right: auto;
+  left: 50%;
   width: auto;
   max-width: calc(100vw - 56px);
-  transform: none;
-  border: 0;
-  background: transparent !important;
+  transform: translateX(-50%);
+  border: var(--line-w) solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--bg) !important;
 }
 
 .topbar::after {
@@ -2862,15 +2876,16 @@
 
 .topbar-inner {
   display: flex;
-  height: 38px;
-  min-height: 38px;
-  gap: 14px;
-  padding: 0;
+  align-items: center;
+  height: 40px;
+  min-height: 40px;
+  gap: 12px;
+  padding: 0 8px 0 12px;
 }
 
 .nav {
   width: auto;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px;
   overflow: visible;
 }
@@ -2895,14 +2910,15 @@
 
 .tool-group-actions {
   min-height: 32px;
-  padding: 0;
+  padding: 0 0 0 12px;
   border: 0;
+  border-left: var(--line-w) solid var(--line);
 }
 
 .topbar .lang-btn,
 .topbar .theme-trigger {
   border: 0;
-  border-radius: 0;
+  border-radius: 8px;
   background: transparent;
 }
 
@@ -3004,12 +3020,14 @@
     left: 10px;
     width: auto;
     max-width: none;
+    transform: none;
   }
 
   .topbar-inner {
     height: 40px;
     min-height: 40px;
     gap: 8px;
+    padding: 0 8px 0 10px;
   }
 
   .nav {
@@ -3020,6 +3038,10 @@
 
   .nav a {
     padding-inline: 6px;
+  }
+
+  .tool-group-actions {
+    padding-left: 8px;
   }
 
   .fbar-controls {
@@ -3036,4 +3058,352 @@
     flex: 0 0 auto;
     padding-inline: 10px;
   }
+}
+
+/* ---------------- blog toolbar: aligned header + inline filter/sort panels ---------------- */
+.fbar-wrap {
+  max-width: 860px;
+  margin: 0 auto 22px;
+}
+
+.fbar {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.fpanel .menu-head {
+  padding-top: 2px;
+}
+
+.fpanel .menu-row {
+  padding-inline: 4px;
+}
+
+.fpanel .menu-sep {
+  display: none;
+}
+
+.fpanel .menu-input,
+.fpanel .menu-scroll {
+  margin-inline: 0;
+}
+
+.fpanel .menu-scroll {
+  max-height: 280px;
+}
+
+@media (max-width: 720px) {
+  .fbar-wrap {
+    max-width: none;
+  }
+
+  .fpanel .menu-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .fpanel .seg-mini {
+    width: 100%;
+  }
+
+  .fpanel .seg-mini button {
+    flex: 1 1 0;
+  }
+}
+
+/* ---------------- iteration 2: glass regions, vertical divider, bigger numerals, fewer rules ---------------- */
+
+/* frosted-glass surfaces (override the earlier no-blur !important) */
+.topbar,
+.fbar-controls,
+.fpanel,
+.topbar .menu {
+  background: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-color: color-mix(in srgb, var(--bg) 44%, transparent) !important;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, white 24%, transparent),
+      color-mix(in srgb, white 10%, transparent)
+    ) !important;
+  backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
+  -webkit-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 54%, transparent),
+    0 14px 34px rgba(73, 96, 255, 0.08);
+}
+
+/* blog filter/sort: a clear bounded region like the top bar */
+.fbar-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 4px;
+  border: var(--line-w) solid var(--line);
+  border-radius: 14px;
+}
+
+.fbtn.ficon {
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 10px;
+}
+
+/* the expanded panel is its own rounded region, not a stack of separator lines */
+.fpanel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: var(--line-w) solid var(--line);
+  border-radius: 14px;
+  animation: rf 160ms ease both;
+}
+
+.fpanel .menu-item {
+  border-radius: 10px;
+}
+
+/* sort rows: group by spacing instead of a divider line */
+.fpanel #sort-panel,
+#sort-panel.fpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* top bar: short vertical divider with breathing room above/below */
+.tool-group-actions {
+  padding-left: 0;
+  border-left: 0;
+  gap: 6px;
+}
+
+.tool-group-actions::before {
+  content: "";
+  align-self: center;
+  flex: 0 0 auto;
+  width: var(--line-w);
+  height: 18px;
+  margin-right: 4px;
+  background: var(--line);
+}
+
+/* larger numerals / meta across the site */
+.post-index-no {
+  font-size: 14px;
+}
+
+.post-index-meta,
+.article-meta,
+.pcard-meta,
+.ritem-sub,
+.tl-period,
+.rel-date,
+.code-lang {
+  font-size: 13.5px;
+}
+
+.article-tags,
+.post-index-tags {
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .fpanel {
+    padding: 10px;
+  }
+}
+
+/* ---------------- iteration 3: tighten the filter/sort panel (remove wasted padding) ---------------- */
+
+/* the panel already supplies the edge inset, so inner rows/items only need a
+   small click-target pad — drop the doubled-up horizontal/vertical padding */
+.fpanel {
+  padding: 6px;
+  margin-top: 8px;
+}
+
+.fpanel .menu-head {
+  padding: 3px 6px 5px;
+}
+
+.fpanel .menu-item {
+  padding: 6px 6px;
+}
+
+.fpanel .menu-back {
+  padding: 2px 6px 5px;
+}
+
+.fpanel .menu-input {
+  margin-top: 0;
+  margin-bottom: 2px;
+}
+
+.fpanel .menu-row {
+  padding: 4px 6px;
+}
+
+/* sort: the two groups read as one tight cluster, separated by spacing only */
+.fpanel #sort-panel,
+#sort-panel.fpanel {
+  gap: 2px;
+}
+
+@media (max-width: 720px) {
+  .fpanel {
+    padding: 6px;
+  }
+}
+
+/* ---------------- iteration 4: compact filter/sort panel on PC + balanced mobile topbar ---------------- */
+
+/* On PC the panel stretched the full 860px wrap, marooning each label and its
+   control at opposite edges (an empty, "間延び" gap). Make it a compact dropdown
+   that hugs its content and sits under the toolbar (its natural left edge), so
+   every row reads as a tight label/control pair on both PC and mobile. */
+.fpanel {
+  width: fit-content;
+  min-width: 250px;
+  max-width: 340px;
+}
+
+.fpanel .menu-row {
+  gap: 24px;
+}
+
+@media (max-width: 720px) {
+  /* phone: let the panel span the bar and stack its rows (already columnar) */
+  .fpanel {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+/* Mobile top bar: it was forced full-width, so the nav grew and stranded the
+   page links on the left with a dead gap before EN/theme. Center it as a
+   content-hugging pill like the desktop bar — balanced on both. */
+@media (max-width: 720px) {
+  .topbar {
+    left: 50%;
+    right: auto;
+    width: auto;
+    max-width: calc(100vw - 20px);
+    transform: translateX(-50%);
+  }
+
+  .nav {
+    flex: 0 1 auto;
+  }
+}
+
+/* ---------------- iteration 5: floating panel, horizontal groups, no mobile input zoom ---------------- */
+
+/* Float the filter/sort panel above the list, so opening it no longer pushes
+   the page content down — it overlays instead of reflowing. */
+.fbar-wrap {
+  position: relative;
+}
+
+.fpanel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: auto;
+  z-index: 50;
+  width: fit-content;
+  min-width: 300px;
+  max-width: min(460px, calc(100vw - 20px));
+  margin-top: 8px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+/* Filter: tags / title / body side by side instead of a vertical list. */
+.prop-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.prop-grid .prop-item {
+  flex: 1 1 0;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+/* Sort: basis / order as two side-by-side groups (label stacked over control).
+   Compound selector to beat the earlier `#sort-panel.fpanel { flex-direction: column }`. */
+#sort-panel.fpanel {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+#sort-panel .menu-row {
+  flex: 1 1 130px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0;
+}
+
+#sort-panel .seg-mini {
+  width: auto;
+}
+
+#sort-panel .seg-mini button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .fpanel {
+    max-width: calc(100vw - 20px);
+  }
+
+  /* keep the same two-column sort layout on mobile (still legible) */
+  #sort-panel .menu-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #sort-panel .seg-mini {
+    width: auto;
+  }
+
+  /* >= 16px stops iOS Safari from auto-zooming into the filter fields on focus */
+  .menu-input,
+  .fbar .menu-input {
+    font-size: 16px;
+  }
+}
+
+/* Ensure the blog filter/sort toolbar and floating panels render the same
+   frosted backdrop as the search window, even after later layout overrides. */
+.fbar-controls,
+.fpanel {
+  background: var(--search-backdrop-bg) !important;
+  background-color: var(--search-backdrop-bg) !important;
+  background-image: var(--search-backdrop-image) !important;
+  backdrop-filter: var(--search-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
+}
+
+.fbar-controls {
+  position: relative;
+  z-index: 90;
+}
+
+.fpanel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: auto;
+  z-index: 90;
 }

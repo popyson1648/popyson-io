@@ -939,6 +939,7 @@
   max-width: calc(100vw - 28px);
   transform: translateX(-50%);
   border: var(--line-w) solid var(--line);
+  border-radius: 999px;
 }
 
 .topbar-inner {
@@ -2866,7 +2867,7 @@
   max-width: calc(100vw - 56px);
   transform: translateX(-50%);
   border: var(--line-w) solid var(--line-strong);
-  border-radius: 14px;
+  border-radius: 999px;
   background: var(--bg) !important;
 }
 
@@ -3143,7 +3144,7 @@
   min-height: 40px;
   padding: 4px;
   border: var(--line-w) solid var(--line);
-  border-radius: 14px;
+  border-radius: 999px;
 }
 
 .fbtn.ficon {
@@ -3151,20 +3152,22 @@
   min-width: 34px;
   height: 32px;
   min-height: 32px;
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 /* the expanded panel is its own rounded region, not a stack of separator lines */
 .fpanel {
   margin-top: 10px;
-  padding: 10px 12px;
+  padding: 12px 28px;
   border: var(--line-w) solid var(--line);
-  border-radius: 14px;
+  border-radius: 999px;
   animation: rf 160ms ease both;
 }
 
-.fpanel .menu-item {
-  border-radius: 10px;
+.fpanel .menu-item,
+.fpanel .seg-mini,
+.fpanel .menu-input {
+  border-radius: 999px;
 }
 
 /* sort rows: group by spacing instead of a divider line */
@@ -3311,15 +3314,11 @@
 }
 
 .fpanel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: auto;
-  z-index: 50;
+  position: fixed;
+  z-index: 120;
   width: fit-content;
   min-width: 300px;
   max-width: min(460px, calc(100vw - 20px));
-  margin-top: 8px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
 }
 
@@ -3341,7 +3340,17 @@
 #sort-panel.fpanel {
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 10px;
+}
+
+#sort-panel .menu-sep {
+  display: block;
+  align-self: center;
+  flex: 0 0 auto;
+  width: var(--line-w);
+  height: 18px;
+  background: var(--line) !important;
+  margin: 0;
 }
 
 #sort-panel .menu-row {
@@ -3351,6 +3360,10 @@
   justify-content: flex-start;
   gap: 6px;
   padding: 0;
+}
+
+#sort-panel .menu-row:last-of-type {
+  align-items: flex-end;
 }
 
 #sort-panel .seg-mini {
@@ -3372,6 +3385,10 @@
     align-items: flex-start;
   }
 
+  #sort-panel .menu-sep {
+    display: none;
+  }
+
   #sort-panel .seg-mini {
     width: auto;
   }
@@ -3385,6 +3402,16 @@
 
 /* Ensure the blog filter/sort toolbar and floating panels render the same
    frosted backdrop as the search window, even after later layout overrides. */
+.fbar .menu,
+.topbar .menu {
+  background: color-mix(in srgb, var(--bg) 20%, transparent) !important;
+  background-color: color-mix(in srgb, var(--bg) 20%, transparent) !important;
+  background-image: none !important;
+  backdrop-filter: var(--search-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
+}
+
 .fbar-controls,
 .fpanel {
   background: var(--search-backdrop-bg) !important;
@@ -3392,18 +3419,14 @@
   background-image: var(--search-backdrop-image) !important;
   backdrop-filter: var(--search-backdrop-filter) !important;
   -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
 }
 
 .fbar-controls {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
   position: relative;
   z-index: 90;
 }
 
 .fpanel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: auto;
-  z-index: 90;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16), inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
 }

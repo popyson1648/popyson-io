@@ -2,7 +2,6 @@
    Shared components, icons, helpers.  Exports to window.
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useContext, createContext, useId } from "react";
-import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 export const AppCtx = createContext(null);
 
@@ -51,6 +50,8 @@ export const Icon = {
   sort: (p) => <svg {...sIcon} {...p}><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>,
   filter: (p) => <svg {...sIcon} {...p}><path d="M3 5h18M6 12h12M10 19h4" /></svg>,
   tagi: (p) => <svg {...sIcon} {...p}><path d="M4 4h7l9 9-7 7-9-9V4z" /><circle cx="8.5" cy="8.5" r="1.3" /></svg>,
+  caretUp: (p) => <svg {...sIcon} {...p}><path d="M12 19V5M6 11l6-6 6 6" /></svg>,
+  caretDown: (p) => <svg {...sIcon} {...p}><path d="M12 5v14M6 13l6 6 6-6" /></svg>,
 };
 
 /* ---------- placeholder thumbnail (× box) ---------- */
@@ -240,7 +241,7 @@ function searchSnippet(text, q, max = 112) {
   return `${prefix}${value.slice(start, end).trim()}${suffix}`;
 }
 
-function bestSnippet(fields, where, q) {
+export function bestSnippet(fields, where, q) {
   const order = where === "tag"
     ? ["tags", "title", "body"]
     : where === "body"
@@ -250,148 +251,3 @@ function bestSnippet(fields, where, q) {
   return searchSnippet(fields[exactField || order[0]], q);
 }
 
-export function SearchModal({ onClose }) {
-  const { t, lang, nav } = useContext(AppCtx);
-  const { POSTS } = window.BlogData;
-  const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
-  const inputRef = useRef(null);
-  const modalRef = useRef(null);
-  useEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-    const visualViewport = window.visualViewport;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    const rootOverflow = root.style.overflow;
-    const bodyOverflow = body.style.overflow;
-    const bodyPosition = body.style.position;
-    const bodyTop = body.style.top;
-    const bodyLeft = body.style.left;
-    const bodyRight = body.style.right;
-    const bodyWidth = body.style.width;
-
-    const setViewportVars = () => {
-      root.style.setProperty("--search-viewport-height", `${Math.round(visualViewport?.height ?? window.innerHeight)}px`);
-      root.style.setProperty("--search-viewport-top", `${Math.round(visualViewport?.offsetTop ?? 0)}px`);
-    };
-
-    setViewportVars();
-    root.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = `-${scrollX}px`;
-    body.style.right = "0";
-    body.style.width = "100%";
-    inputRef.current?.focus({ preventScroll: true });
-
-    visualViewport?.addEventListener("resize", setViewportVars);
-    visualViewport?.addEventListener("scroll", setViewportVars);
-    window.addEventListener("resize", setViewportVars);
-
-    return () => {
-      visualViewport?.removeEventListener("resize", setViewportVars);
-      visualViewport?.removeEventListener("scroll", setViewportVars);
-      window.removeEventListener("resize", setViewportVars);
-      root.style.removeProperty("--search-viewport-height");
-      root.style.removeProperty("--search-viewport-top");
-      root.style.overflow = rootOverflow;
-      body.style.overflow = bodyOverflow;
-      body.style.position = bodyPosition;
-      body.style.top = bodyTop;
-      body.style.left = bodyLeft;
-      body.style.right = bodyRight;
-      body.style.width = bodyWidth;
-      window.scrollTo(scrollX, scrollY);
-      opener?.focus({ preventScroll: true });
-    };
-  }, []);
-
-  const searchDocs = useMemo(() => POSTS.map((p) => ({
-    p,
-    title: L(p.title, lang),
-    tags: p.tags.map((tag) => `#${tag}`).join(" "),
-    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
-  })), [POSTS, lang]);
-  const searchDocById = useMemo(() => new Map(searchDocs.map((doc) => [doc.p.id, doc])), [searchDocs]);
-  const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(searchDocs), [searchDocs]);
-  const results = useMemo(() => {
-    return searchIndex.search(q.trim(), { limit: q.trim() ? 20 : 5 });
-  }, [q, searchIndex]);
-
-  useEffect(() => { setActive(0); }, [q]);
-  const go = (p) => { nav("/blog/" + p.id); onClose(); };
-  const onKey = (e) => {
-    if (e.key === "Tab") {
-      const nodes = modalRef.current?.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])");
-      const focusable = Array.from(nodes || []).filter((node) => node instanceof HTMLElement && node.offsetParent !== null);
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    else if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, results.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
-    else if (e.key === "Enter" && results[active]) { go(results[active].p); }
-    else if (e.key === "Escape") { onClose(); }
-  };
-
-  return (
-    <div className="modal-overlay" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={t.search} ref={modalRef} onKeyDown={onKey}>
-        <button className="esc" type="button" onClick={onClose} aria-label={t.close_search} title={t.close_search}>
-          <Icon.x width={16} height={16} />
-        </button>
-        <div className="modal-search">
-          <Icon.search width={20} height={20} style={{ color: "var(--text-muted)" }} />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
-                 placeholder={t.search_ph} aria-label={t.search}
-                 aria-controls="search-results" aria-activedescendant={results[active] ? `search-result-${results[active].p.id}` : undefined} />
-          {q && (
-            <button className="search-clear" type="button" onClick={() => setQ("")} aria-label={t.clear_search} title={t.clear_search}>
-              <Icon.x width={14} height={14} />
-            </button>
-          )}
-        </div>
-        <div className="modal-list" id="search-results" role="listbox" aria-label={q.trim() ? t.results(results.length) : t.search_recent}>
-          {results.length === 0 ? (
-            <div className="modal-empty">{t.search_no}</div>
-          ) : (
-            <>
-              <div className="modal-section">{q.trim() ? t.results(results.length) : t.search_recent}</div>
-              {results.map(({ p, where }, i) => {
-                const query = q.trim();
-                const doc = searchDocById.get(p.id);
-                const snippet = query && doc ? bestSnippet(doc, where, query) : "";
-                return (
-                  <button key={p.id} id={`search-result-${p.id}`} className={"sug" + (i === active ? " active" : "")}
-                          type="button" role="option" aria-selected={i === active}
-                          onMouseEnter={() => setActive(i)} onClick={() => go(p)}>
-                    <Ph className="sug-thumb" />
-                    <div className="sug-main">
-                      <div className="sug-title">{highlight(L(p.title, lang), query)}</div>
-                      {snippet && <div className="sug-snippet">{highlight(snippet, query)}</div>}
-                      <div className="sug-meta">
-                        <span className="sug-date">{fmtDate(p.date, lang)}</span>
-                        <span className="sug-tags" title={p.tags.map((tg) => `#${tg}`).join(" ")}>{p.tags.map((tg) => `#${tg}`).join(" ")}</span>
-                        {where && where !== "title" && <span className="sug-match">{where === "tag" ? t.in_tag : t.in_title}{lang === "ja" ? "に一致" : " match"}</span>}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -3426,3 +3426,264 @@
 .fpanel {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16), inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
 }
+
+/* ============================================================
+   Morphing filter/sort toolbar
+   The controls pill grows to the right and reveals the active
+   tool inline, with a left-pointing "back" arrow that steps the
+   bar back toward its collapsed (search / filter / sort) state.
+   Replaces the old floating .fpanel dropdown (kept above but
+   no longer rendered from blog.jsx).
+   ============================================================ */
+
+/* anchors the tags checklist directly under the pill */
+.fbar-ctrl-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* the pill clips its content and animates its width as it morphs.
+   Height is locked so collapsing/expanding never nudges the row vertically.
+   The duration is set per-direction in JS (enter longer, exit shorter); the
+   easing here is Material's "emphasized" curve (quick start, gentle settle). */
+.fbar-controls {
+  height: 42px;
+  overflow: hidden;
+  will-change: width;
+  transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* single inner row; scrolls horizontally only if a narrow phone can't fit it.
+   Its content is faded/slid in via WAAPI from blog.jsx on each state change
+   (kept off the measured node's identity so width reads stay correct). */
+.fbar-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fbar-inline::-webkit-scrollbar { display: none; }
+
+/* Pin every direct control in the row to its intrinsic size, and center its glyph.
+   This defeats a legacy `@media (max-width:720px) .sort-btn { flex:1 1 auto;
+   justify-content:flex-start }` rule that would otherwise (a) stretch the collapsed
+   sort icon to fill the bar — making the children-span width measurement read the
+   full container so it never shrank back — and (b) left-align the sort glyph inside
+   its 44px circle while the search/filter glyphs stayed centered. */
+.fbar-inline > .fbtn { flex: 0 0 auto; justify-content: center; }
+
+/* the expanded tool cluster (sort segments / filter props / filter field) */
+.fbar-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 4px;
+  white-space: nowrap;
+}
+
+/* short vertical divider between the two sort groups */
+.fbar-sep {
+  flex: 0 0 auto;
+  align-self: center;
+  width: var(--line-w);
+  height: 18px;
+  background: var(--line);
+}
+
+/* keep the segmented controls inline and compact inside the pill
+   (override the panel-era full-width grid layout). Fully-rounded ends echo the
+   pill so the nested corners read as one consistent shape language. */
+.fbar-fields .seg-mini {
+  display: inline-flex;
+  width: auto;
+  min-height: 32px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+.fbar-fields .seg-mini button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  min-width: 0;
+}
+/* direction caret sits a touch quieter than the label */
+.fbar-fields .seg-mini button.seg-ico svg {
+  opacity: 0.8;
+}
+
+/* tag toggles live in the filter popup below the bar and wrap onto as many rows
+   as needed, so the set scales to any number of tags without breaking the bar. */
+.fbar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.fbar-chip {
+  flex: 0 0 auto;
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: var(--line-w) solid var(--line);
+  border-radius: 999px;
+  padding: 5px 11px;
+  transition: background-color var(--t), color var(--t), border-color var(--t);
+}
+.fbar-chip:hover { color: var(--text); border-color: var(--line-strong); }
+.fbar-chip.on {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .fbar-controls { max-width: calc(100vw - 20px); }
+}
+
+/* Touch devices keep the *exact* desktop bar geometry so the pill is the same
+   length on mobile and desktop (the previous build enlarged every glyph/segment
+   to ~44px, which made the collapsed pill ~30px wider than desktop and spaced the
+   three icons further apart). Only the bar height stays a touch taller for a
+   comfier vertical tap zone — height does not affect the horizontal length being
+   matched. Icon/segment hit areas are 32–34px, which still meets WCAG 2.5.8 (AA,
+   24px min); text inputs keep their 16px iOS no-zoom size in the block below. */
+@media (pointer: coarse) {
+  .fbar-controls { height: 46px; }
+}
+
+/* ============================================================
+   Inline search (combobox) — magnifier expands the bar into a
+   search field with a results listbox popup, instead of a modal.
+   Mirrors the other fbar functions; reuses the .sug result rows.
+   ============================================================ */
+
+/* the search field blends into the bar itself — no nested pill. The bar's own
+   frosted surface is the field background; only the magnifier, the transparent
+   input and the clear button sit inside it (the bar "becomes" a search field). */
+.fbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: min(280px, 60vw);
+  padding: 0 4px;
+  color: var(--text-muted);
+}
+.fbar-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.fbar-search-input:focus { outline: none; }
+.fbar-search-input::placeholder { color: var(--text-faint); }
+.fbar-search .search-clear { width: 26px; height: 26px; }
+
+/* results listbox popup hangs under the bar (WAI-ARIA combobox popup) */
+.fbar-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 120;
+  width: min(440px, calc(100vw - 20px));
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: var(--line-w) solid var(--line);
+  border-radius: 18px;
+  background: var(--search-backdrop-bg) !important;
+  background-color: var(--search-backdrop-bg) !important;
+  background-image: var(--search-backdrop-image) !important;
+  backdrop-filter: var(--search-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16), inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
+  animation: rf 160ms ease both;
+}
+.fbar-results .sug { border-radius: 12px; }
+.fbar-results-head {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 6px 10px;
+}
+.fbar-results-empty {
+  padding: 24px 10px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* filter editor popup — same frosted surface and entrance as the search results,
+   so "bar = control, popup = content" reads consistently across search & filter.
+   The tag chips inside wrap (.fbar-chips), so any number of tags fits gracefully. */
+.fbar-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 120;
+  width: min(440px, calc(100vw - 20px));
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  border: var(--line-w) solid var(--line);
+  border-radius: 18px;
+  background: var(--search-backdrop-bg) !important;
+  background-color: var(--search-backdrop-bg) !important;
+  background-image: var(--search-backdrop-image) !important;
+  backdrop-filter: var(--search-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16), inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
+  animation: rf 160ms ease both;
+}
+
+/* title / body text filter, shown in the popup */
+.fbar-pop-input {
+  width: 100%;
+  appearance: none;
+  border: var(--line-w) solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  padding: 10px 12px;
+}
+.fbar-pop-input:focus { outline: none; border-color: var(--line-strong); }
+.fbar-pop-input::placeholder { color: var(--text-faint); }
+
+@media (max-width: 720px) {
+  .fbar-search { width: min(260px, 64vw); }
+  .fbar-results,
+  .fbar-pop { width: calc(100vw - 20px); }
+}
+
+@media (pointer: coarse) {
+  .fbar-search { min-height: 44px; }
+  /* >= 16px stops iOS Safari from auto-zooming the field on focus */
+  .fbar-search-input,
+  .fbar-pop-input { font-size: 16px; }
+  .fbar-pop .fbar-chip { padding: 9px 13px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fbar-results,
+  .fbar-pop { animation: none !important; }
+}

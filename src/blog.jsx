@@ -1,9 +1,10 @@
 /* ============================================================
    Blog: list (filter + sort) and article (TOC + components)
    ============================================================ */
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import { AppCtx, Icon, L, PageHead, Ph, bodyText, fmtDate } from "./components.jsx";
+import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, fmtDate, highlight } from "./components.jsx";
+import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 let highlighterPromise;
 
@@ -29,70 +30,6 @@ function getHighlighter() {
 /* ===================== BLOG LIST (Notion-style filter/sort) ===================== */
 /* bodyText lives in components.jsx (shared with the search modal) */
 
-/* one filter editor — reused by the add-menu and by each active pill */
-function FilterEditor({ prop, filters, setFilters, close, t }) {
-  const { TAGS } = window.BlogData;
-  const [q, setQ] = useState("");
-  if (prop === "tags") {
-    const shown = TAGS.filter((tg) => tg.toLowerCase().includes(q.toLowerCase()));
-    const toggle = (tg) => setFilters((f) => ({ ...f, tags: f.tags.includes(tg) ? f.tags.filter((x) => x !== tg) : [...f.tags, tg] }));
-    return (
-      <>
-        <div className="menu-head">{t.f_tag} · {t.tag_contains}</div>
-        <input className="menu-input" placeholder={t.tag_filter_ph} value={q} autoFocus
-               onChange={(e) => setQ(e.target.value)} />
-        <div className="menu-scroll">
-          {shown.map((tg) => {
-            const on = filters.tags.includes(tg);
-            return (
-              <button key={tg} className="menu-item" type="button" role="menuitemcheckbox" aria-checked={on} onClick={() => toggle(tg)}>
-                <span className={"checkbox" + (on ? " on" : "")}>{on && <Icon.check width={11} height={11} />}</span>
-                <span className="mi-grow">#{tg}</span>
-              </button>
-            );
-          })}
-          {shown.length === 0 && <div className="menu-row"><span className="mr-label">—</span></div>}
-        </div>
-      </>
-    );
-  }
-  return (
-    <>
-      <div className="menu-head">{prop === "title" ? t.f_title : t.f_body}</div>
-      <input className="menu-input" autoFocus
-             placeholder={prop === "title" ? t.title_contains : t.body_contains}
-             value={filters[prop]} onChange={(e) => setFilters((f) => ({ ...f, [prop]: e.target.value }))}
-             onKeyDown={(e) => { if (e.key === "Enter") close(); }} />
-    </>
-  );
-}
-
-function AddFilterMenu({ filters, setFilters, close, t }) {
-  const [prop, setProp] = useState(null);
-  if (!prop) {
-    const props = [["tags", t.f_tag, Icon.tagi], ["title", t.f_title, Icon.filter], ["body", t.f_body, Icon.search]];
-    return (
-      <>
-        <div className="menu-head">{t.filter_add_title}</div>
-        <div className="prop-grid">
-          {props.map(([key, label, Ic]) => (
-            <button key={key} className="menu-item prop-item" type="button" role="menuitem" onClick={() => setProp(key)}>
-              <Ic width={15} height={15} style={{ color: "var(--text-faint)" }} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </>
-    );
-  }
-  return (
-    <>
-      <button className="menu-back" type="button" onClick={() => setProp(null)}><Icon.back width={13} height={13} /> {t.filter_add_title}</button>
-      <FilterEditor prop={prop} filters={filters} setFilters={setFilters} close={close} t={t} />
-    </>
-  );
-}
-
 function FilterPill({ prop, filters, setFilters, t }) {
   let label;
   if (prop === "tags") label = filters.tags.map((x) => "#" + x).join(", ");
@@ -110,18 +47,122 @@ function FilterPill({ prop, filters, setFilters, t }) {
 }
 
 export function BlogList() {
-  const { t, lang, nav, openSearch } = useContext(AppCtx);
-  const { POSTS } = window.BlogData;
+  const { t, lang, nav } = useContext(AppCtx);
+  const { POSTS, TAGS } = window.BlogData;
   const [filters, setFilters] = useState({ tags: [], title: "", body: "" });
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc");  // asc | desc
-  const [openPanel, setOpenPanel] = useState(null); // null | "filter" | "sort"
-  const panelRef = useRef(null);
+  const [openPanel, setOpenPanel] = useState(null); // null | "search" | "filter" | "sort"
+  const [filterProp, setFilterProp] = useState("tags"); // active filter tab: tags | title | body
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchActive, setSearchActive] = useState(0); // highlighted result index
+  const deferredQuery = useDeferredValue(searchQuery); // debounce result computation while typing
+  const panelRef = useRef(null);    // .fbar-wrap — outside-click boundary
+  const controlsRef = useRef(null); // .fbar-controls — animated-width target
+  const backRef = useRef(null);     // back arrow shown while expanded
+  const searchBtnRef = useRef(null); // collapsed search trigger
+  const filterBtnRef = useRef(null); // collapsed filter trigger
+  const sortBtnRef = useRef(null);   // collapsed sort trigger
+  const searchInputRef = useRef(null); // inline search field
+  const resultsRef = useRef(null);     // results listbox popup
+  const lastOpenedRef = useRef(null); // which trigger opened the bar
+  const restoreFocusRef = useRef(false); // restore focus to trigger on close (keyboard only)
+  const prevOpenRef = useRef(null); // previous openPanel, to detect open/close edges
 
+  const closePanel = () => { setOpenPanel(null); setSearchQuery(""); setSearchActive(0); };
+  // Back arrow always returns to the collapsed top (search / filter / sort).
+  // Filter keeps its property tabs visible, so there is no nested step to undo.
+  const goBack = () => { restoreFocusRef.current = true; closePanel(); };
+
+  // Grow/shrink the toolbar smoothly as its content changes. `fit-content`/`auto`
+  // can't be transitioned, so pin an explicit px width each time. We size from the
+  // span of the row's children (first-left → last-right), which reflects the true
+  // content width in either direction — unlike `scrollWidth`, which never reports
+  // less than the (still-wide) container while collapsing, and unlike the pill's
+  // `auto` width, which collapses because `.fbar-inline` is a shrinkable flex item.
+  // The span is also invariant under the reveal animation's uniform translate.
+  const measureWidth = (el) => {
+    const inner = el.firstElementChild;
+    const kids = inner && inner.children;
+    if (!kids || !kids.length) return el.getBoundingClientRect().width;
+    const cs = getComputedStyle(el);
+    const extra = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    const span = kids[kids.length - 1].getBoundingClientRect().right - kids[0].getBoundingClientRect().left;
+    return Math.min(span + extra, window.innerWidth - 20);
+  };
+  useLayoutEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+    const inner = el.firstElementChild;
+    const start = el.getBoundingClientRect().width;
+    const target = measureWidth(el);
+    // Asymmetric timing: entering/expanding lingers, collapsing exits quicker
+    // (Material motion: exit transitions are shorter than enter transitions).
+    el.style.transitionDuration = target >= start ? "260ms" : "180ms";
+    el.style.width = start + "px";
+    void el.offsetWidth; // force reflow so the transition runs from `start`
+    el.style.width = target + "px";
+    // Fade/slide the swapped content in (WAAPI re-triggers without remounting,
+    // so width measurement above always reads the live row). Skip if reduced.
+    if (inner && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      inner.animate(
+        [{ opacity: 0, transform: "translateX(7px)" }, { opacity: 1, transform: "translateX(0)" }],
+        { duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+      );
+    }
+  }, [openPanel, filterProp, lang]);
+
+  // Re-pin the width when the viewport changes (no animation needed).
+  useEffect(() => {
+    const onResize = () => {
+      const el = controlsRef.current;
+      if (el) el.style.width = measureWidth(el) + "px";
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Custom fonts can reflow the row after the first measure; re-pin once they load.
+  useEffect(() => {
+    let live = true;
+    document.fonts?.ready.then(() => {
+      const el = controlsRef.current;
+      if (live && el) el.style.width = measureWidth(el) + "px";
+    });
+    return () => { live = false; };
+  }, []);
+
+  // Move focus into the bar when it expands; return it to the trigger when it
+  // collapses via keyboard/back (WAI-ARIA disclosure focus management). Only act
+  // on the open/close edge so switching property tabs doesn't steal focus; text
+  // fields handle their own focus via autoFocus.
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = openPanel;
+    if (openPanel && !wasOpen) {
+      lastOpenedRef.current = openPanel;
+      // search focuses its own input (autoFocus); other panels focus the back arrow
+      if (openPanel !== "search") backRef.current?.focus({ preventScroll: true });
+    } else if (!openPanel && wasOpen && restoreFocusRef.current) {
+      const trigger = { search: searchBtnRef, filter: filterBtnRef, sort: sortBtnRef }[lastOpenedRef.current];
+      trigger?.current?.focus({ preventScroll: true });
+      restoreFocusRef.current = false;
+    }
+  }, [openPanel]);
+
+  // Collapse the toolbar on outside click / Escape.
   useEffect(() => {
     if (!openPanel) return;
-    const onDoc = (e) => { if (panelRef.current && !panelRef.current.contains(e.target)) setOpenPanel(null); };
-    const onKey = (e) => { if (e.key === "Escape") setOpenPanel(null); };
+    const onDoc = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        restoreFocusRef.current = false; // pointer elsewhere — don't yank focus back
+        closePanel();
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { restoreFocusRef.current = true; closePanel(); }
+    };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
@@ -189,28 +230,176 @@ export function BlogList() {
   const orderLabel = sortDir === "asc" ? t.order_asc : t.order_desc;
   const hasActiveFilters = activeProps.length > 0;
 
+  const toggleTag = (tg) => setFilters((f) => ({ ...f, tags: f.tags.includes(tg) ? f.tags.filter((x) => x !== tg) : [...f.tags, tg] }));
+  const propTabs = [["tags", t.f_tag], ["title", t.f_title], ["body", t.f_body]];
+
+  // ---- inline search (same incremental index as the retired modal) ----
+  const searchDocs = useMemo(() => POSTS.map((p) => ({
+    p,
+    title: L(p.title, lang),
+    tags: p.tags.map((tag) => `#${tag}`).join(" "),
+    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
+  })), [POSTS, lang]);
+  const searchDocById = useMemo(() => new Map(searchDocs.map((doc) => [doc.p.id, doc])), [searchDocs]);
+  const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(searchDocs), [searchDocs]);
+  const searchResults = useMemo(() => {
+    const term = deferredQuery.trim();
+    return searchIndex.search(term, { limit: term ? 8 : 5 });
+  }, [deferredQuery, searchIndex]);
+
+  useEffect(() => { setSearchActive(0); }, [deferredQuery]);
+  // aria-activedescendant doesn't auto-scroll; keep the active option in view
+  useEffect(() => {
+    if (openPanel !== "search") return;
+    const hit = searchResults[searchActive];
+    if (hit) document.getElementById(`fbar-result-${hit.p.id}`)?.scrollIntoView({ block: "nearest" });
+  }, [searchActive, openPanel, searchResults]);
+
+  const goSearch = (p) => { closePanel(); nav("/blog/" + p.id); };
+  const onSearchKey = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setSearchActive((a) => Math.min(a + 1, searchResults.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSearchActive((a) => Math.max(a - 1, 0)); }
+    else if (e.key === "Home") { e.preventDefault(); setSearchActive(0); }
+    else if (e.key === "End") { e.preventDefault(); setSearchActive(searchResults.length - 1); }
+    else if (e.key === "Enter" && searchResults[searchActive]) { e.preventDefault(); goSearch(searchResults[searchActive].p); }
+    // Escape is handled by the bar's global handler (collapse + restore focus)
+  };
+
   return (
     <div className="container route-fade">
       <PageHead title={t.page_blog.title} />
 
       <div className="fbar-wrap" ref={panelRef}>
         <div className="fbar" aria-label={t.filters_label}>
-          <div className="fbar-controls" role="toolbar" aria-label={t.tools}>
-            <button className="fbtn ficon" type="button" onClick={openSearch} aria-label={t.search} title={t.search}>
-              <Icon.search width={16} height={16} />
-            </button>
-            <button className={"fbtn ficon filter-add-btn" + (openPanel === "filter" ? " on" : "") + (hasActiveFilters ? " active" : "")}
-                    type="button" onClick={() => setOpenPanel((p) => (p === "filter" ? null : "filter"))}
-                    aria-expanded={openPanel === "filter"} aria-controls="filter-panel"
-                    aria-label={t.filter_add_title} title={t.filter_add_title}>
-              <Icon.filter width={16} height={16} />
-            </button>
-            <button className={"fbtn ficon sort-btn" + (openPanel === "sort" ? " on" : "")}
-                    type="button" onClick={() => setOpenPanel((p) => (p === "sort" ? null : "sort"))}
-                    aria-expanded={openPanel === "sort"} aria-controls="sort-panel"
-                    aria-label={`${t.sort}: ${sortLabel}, ${orderLabel}`} title={`${t.sort}: ${sortLabel}, ${orderLabel}`}>
-              <Icon.sort width={16} height={16} />
-            </button>
+          <div className="fbar-ctrl-wrap">
+            <div className={"fbar-controls" + (openPanel ? " expanded" : "")} ref={controlsRef} role="toolbar" aria-label={t.tools}>
+              <div className="fbar-inline">
+                {!openPanel && (
+                  <>
+                    <button ref={searchBtnRef} className="fbtn ficon search-btn"
+                            type="button" onClick={() => setOpenPanel("search")}
+                            aria-expanded={openPanel === "search"} aria-controls="search-results"
+                            aria-label={t.search} title={t.search}>
+                      <Icon.search width={16} height={16} />
+                    </button>
+                    <button ref={filterBtnRef} className={"fbtn ficon filter-add-btn" + (hasActiveFilters ? " active" : "")}
+                            type="button" onClick={() => setOpenPanel("filter")}
+                            aria-expanded={openPanel === "filter"} aria-controls="filter-panel"
+                            aria-label={t.filter_add} title={t.filter_add}>
+                      <Icon.filter width={16} height={16} />
+                    </button>
+                    <button ref={sortBtnRef} className="fbtn ficon sort-btn"
+                            type="button" onClick={() => setOpenPanel("sort")}
+                            aria-expanded={openPanel === "sort"} aria-controls="sort-panel"
+                            aria-label={`${t.sort}: ${sortLabel}, ${orderLabel}`} title={`${t.sort}: ${sortLabel}, ${orderLabel}`}>
+                      <Icon.sort width={16} height={16} />
+                    </button>
+                  </>
+                )}
+
+                {openPanel && (
+                  <button className="fbtn ficon fbar-back" ref={backRef} type="button" onClick={goBack} aria-label={t.back_tools} title={t.back_tools}>
+                    <Icon.back width={16} height={16} />
+                  </button>
+                )}
+
+                {openPanel === "search" && (
+                  <div className="fbar-search">
+                    <Icon.search width={16} height={16} aria-hidden="true" />
+                    <input ref={searchInputRef} className="fbar-search-input" type="text" autoFocus
+                           role="combobox" aria-expanded={searchResults.length > 0} aria-controls="search-results"
+                           aria-autocomplete="list" aria-label={t.search}
+                           aria-activedescendant={searchResults[searchActive] ? `fbar-result-${searchResults[searchActive].p.id}` : undefined}
+                           placeholder={t.search_ph} value={searchQuery}
+                           onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={onSearchKey} />
+                    {searchQuery && (
+                      <button className="search-clear" type="button" onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }} aria-label={t.clear_search} title={t.clear_search}>
+                        <Icon.x width={14} height={14} />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {openPanel === "sort" && (
+                  <div className="fbar-fields" id="sort-panel" role="region" aria-label={t.sort}>
+                    <div className="seg-mini" role="group" aria-label={`${t.s_date} / ${t.s_kana}`}>
+                      <button type="button" className={sortKey === "date" ? "on" : ""} aria-pressed={sortKey === "date"} onClick={() => setSortKey("date")}>{t.s_date}</button>
+                      <button type="button" className={sortKey === "kana" ? "on" : ""} aria-pressed={sortKey === "kana"} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
+                    </div>
+                    <span className="fbar-sep" aria-hidden="true" />
+                    <div className="seg-mini" role="group" aria-label={`${t.order_asc} / ${t.order_desc}`}>
+                      <button type="button" className={"seg-ico" + (sortDir === "asc" ? " on" : "")} aria-pressed={sortDir === "asc"} onClick={() => setSortDir("asc")}><Icon.caretUp width={12} height={12} />{t.order_asc}</button>
+                      <button type="button" className={"seg-ico" + (sortDir === "desc" ? " on" : "")} aria-pressed={sortDir === "desc"} onClick={() => setSortDir("desc")}><Icon.caretDown width={12} height={12} />{t.order_desc}</button>
+                    </div>
+                  </div>
+                )}
+
+                {openPanel === "filter" && (
+                  <div className="fbar-fields" id="filter-panel" role="region" aria-label={t.filter_add}>
+                    <div className="seg-mini" role="group" aria-label={t.filter_add}>
+                      {propTabs.map(([key, label]) => (
+                        <button key={key} type="button" className={filterProp === key ? "on" : ""} aria-pressed={filterProp === key} onClick={() => setFilterProp(key)}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {openPanel === "search" && (
+              <div className="fbar-results" id="search-results" role="listbox" ref={resultsRef}
+                   aria-label={searchQuery.trim() ? t.results(searchResults.length) : t.search_recent}>
+                {searchResults.length === 0 ? (
+                  <div className="fbar-results-empty">{t.search_no}</div>
+                ) : (
+                  <>
+                    <div className="fbar-results-head">{searchQuery.trim() ? t.results(searchResults.length) : t.search_recent}</div>
+                    {searchResults.map(({ p, where }, i) => {
+                      const query = searchQuery.trim();
+                      const doc = searchDocById.get(p.id);
+                      const snippet = query && doc ? bestSnippet(doc, where, query) : "";
+                      return (
+                        <button key={p.id} id={`fbar-result-${p.id}`} className={"sug" + (i === searchActive ? " active" : "")}
+                                type="button" role="option" aria-selected={i === searchActive}
+                                onMouseEnter={() => setSearchActive(i)} onClick={() => goSearch(p)}>
+                          <Ph className="sug-thumb" />
+                          <div className="sug-main">
+                            <div className="sug-title">{highlight(L(p.title, lang), query)}</div>
+                            {snippet && <div className="sug-snippet">{highlight(snippet, query)}</div>}
+                            <div className="sug-meta">
+                              <span className="sug-date">{fmtDate(p.date, lang)}</span>
+                              <span className="sug-tags" title={p.tags.map((tg) => `#${tg}`).join(" ")}>{p.tags.map((tg) => `#${tg}`).join(" ")}</span>
+                              {where && where !== "title" && <span className="sug-match">{where === "tag" ? t.in_tag : t.in_title}{lang === "ja" ? "に一致" : " match"}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            )}
+
+            {openPanel === "filter" && (
+              <div className="fbar-pop" role="region" aria-label={t.filter_add}>
+                {filterProp === "tags" ? (
+                  <div className="fbar-chips" role="group" aria-label={t.f_tag}>
+                    {TAGS.map((tg) => {
+                      const on = filters.tags.includes(tg);
+                      return (
+                        <button key={tg} type="button" className={"fbar-chip" + (on ? " on" : "")} aria-pressed={on} onClick={() => toggleTag(tg)}>#{tg}</button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <input className="fbar-pop-input" autoFocus
+                         placeholder={filterProp === "title" ? t.title_contains : t.body_contains}
+                         value={filters[filterProp]}
+                         onChange={(e) => setFilters((f) => ({ ...f, [filterProp]: e.target.value }))}
+                         onKeyDown={(e) => { if (e.key === "Enter") closePanel(); }} />
+                )}
+              </div>
+            )}
           </div>
 
           {hasActiveFilters && (
@@ -224,31 +413,6 @@ export function BlogList() {
             </div>
           )}
         </div>
-
-        {openPanel === "filter" && (
-          <div className="fpanel" id="filter-panel" role="region" aria-label={t.filter_add_title}>
-            <AddFilterMenu filters={filters} setFilters={setFilters} close={() => setOpenPanel(null)} t={t} />
-          </div>
-        )}
-        {openPanel === "sort" && (
-          <div className="fpanel" id="sort-panel" role="region" aria-label={t.sort}>
-            <div className="menu-row">
-              <span className="mr-label">{t.sort_basis}</span>
-              <div className="seg-mini" role="group" aria-label={t.sort_basis}>
-                <button type="button" className={sortKey === "date" ? "on" : ""} aria-pressed={sortKey === "date"} onClick={() => setSortKey("date")}>{t.s_date}</button>
-                <button type="button" className={sortKey === "kana" ? "on" : ""} aria-pressed={sortKey === "kana"} onClick={() => setSortKey("kana")}>{t.s_kana}</button>
-              </div>
-            </div>
-            <div className="menu-sep" />
-            <div className="menu-row">
-              <span className="mr-label">{t.sort_order}</span>
-              <div className="seg-mini" role="group" aria-label={t.sort_order}>
-                <button type="button" className={sortDir === "asc" ? "on" : ""} aria-pressed={sortDir === "asc"} onClick={() => setSortDir("asc")}>{t.order_asc}</button>
-                <button type="button" className={sortDir === "desc" ? "on" : ""} aria-pressed={sortDir === "desc"} onClick={() => setSortDir("desc")}>{t.order_desc}</button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {list.length === 0 ? (
@@ -424,3 +588,4 @@ export function CodeBlock({ lang, code }) {
     </div>
   );
 }
+

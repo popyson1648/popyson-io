@@ -2,7 +2,7 @@
    App shell: routing, theme, language, tweaks
    ============================================================ */
 import { useEffect, useMemo, useState } from "react";
-import { AppCtx, Footer, SearchModal, TopBar } from "./components.jsx";
+import { AppCtx, Footer, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage, TopPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
 import { TweakColor, TweakRadio, TweakSection, TweaksPanel, useTweaks } from "./tweaks-panel.jsx";
@@ -82,7 +82,6 @@ export default function App() {
   const [lang, setLang] = useState(() => localStorage.getItem("blog.lang") || "ja");
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
   const riso = RISOGRAPH_DEFAULTS;
-  const [searchOpen, setSearchOpen] = useState(false);
   const sysDark = useSystemDark();
   const bgNoiseUrl = useMemo(() => createNoiseUrl(riso.bgNoiseFrequency), [riso.bgNoiseFrequency]);
   const circleNoiseUrl = useMemo(() => createNoiseUrl(riso.circleNoiseFrequency), [riso.circleNoiseFrequency]);
@@ -142,7 +141,7 @@ export default function App() {
   }, [bgFilterId, bgNoiseUrl, circleFilterId, circleNoiseUrl, riso]);
 
   const t = window.I18N[lang];
-  const ctx = { t, lang, setLang, theme, setTheme, route, nav, tw, openSearch: () => setSearchOpen(true) };
+  const ctx = { t, lang, setLang, theme, setTheme, route, nav, tw };
 
   let page;
   switch (route.name) {
@@ -184,8 +183,6 @@ export default function App() {
         <main id="main" className="app-main" tabIndex={-1}>{page}</main>
         <Footer />
       </div>
-
-      {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
 
       <TweaksPanel title="Tweaks">
         <TweakSection label={lang === "ja" ? "レイアウト" : "Layout"} />

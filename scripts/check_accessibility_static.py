@@ -43,11 +43,18 @@ def main() -> int:
     tweaks = read("src/tweaks-panel.jsx")
 
     checks.append(("<button className=\"made-card\"" in pages, "made-card must be a native button"))
-    checks.append(("<button className=\"menu-back\"" in blog, "filter menu back control must be a native button"))
-    checks.append(("<button className=\"esc\"" in components, "search modal close affordance must be a native button"))
-    checks.append(("aria-modal=\"true\"" in components and "aria-label={t.search}" in components, "search dialog must be modal and labelled"))
+    checks.append(("<button className=\"fbtn ficon fbar-back\"" in blog, "filter/sort toolbar back control must be a native button"))
+    checks.append((
+        "role=\"combobox\"" in blog and "aria-label={t.search}" in blog and "aria-autocomplete=\"list\"" in blog,
+        "inline search must be a labelled combobox with list autocomplete"))
+    checks.append((
+        "aria-controls=\"search-results\"" in blog and "id=\"search-results\"" in blog and "role=\"listbox\"" in blog,
+        "search combobox must control a results listbox"))
     checks.append(("aria-current={here === key ? \"page\" : undefined}" in components, "active navigation links must expose aria-current"))
-    checks.append(("aria-expanded={open}" in blog and "aria-controls={menuId}" in blog, "dropdown triggers must expose expanded state and controls"))
+    checks.append((
+        "aria-expanded={openPanel === \"filter\"}" in blog and "aria-controls=\"filter-panel\"" in blog
+        and "aria-expanded={openPanel === \"sort\"}" in blog and "aria-controls=\"sort-panel\"" in blog,
+        "filter/sort panel triggers must expose expanded state and controls"))
     checks.append(("role=\"status\"" in pages and "aria-live=\"polite\"" in pages, "copy feedback must be announced with a live region"))
     checks.append(("aria-label={t.copy_rss_url}" in pages, "RSS copy button must have an accessible name"))
     checks.append(("aria-label={copied ? t.copied_code : t.copy_code}" in blog, "code copy button must have an accessible name"))

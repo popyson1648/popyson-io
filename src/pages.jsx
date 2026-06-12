@@ -51,7 +51,11 @@ export function AboutPage() {
   const { PERSON, APPS } = window.BlogData;
   const linkIcon = (label) => {
     if (label === "GitHub") return <Icon.github width={15} height={15} />;
+    if (label === "X") return <Icon.xcom width={14} height={14} />;
+    if (label === "LinkedIn") return <Icon.linkedin width={15} height={15} />;
+    if (label === "Wantedly") return <Icon.wantedly width={15} height={15} />;
     if (label === "RSS") return <Icon.rss width={15} height={15} />;
+    if (label.includes("@") || label.includes(" at ")) return <Icon.mail width={15} height={15} />;
     return <Icon.ext width={14} height={14} />;
   };
 

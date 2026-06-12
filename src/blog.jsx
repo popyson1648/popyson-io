@@ -47,9 +47,18 @@ function FilterPill({ prop, filters, setFilters, t }) {
 }
 
 export function BlogList() {
-  const { t, lang, nav } = useContext(AppCtx);
+  const { t, lang, nav, route } = useContext(AppCtx);
   const { POSTS, TAGS } = window.BlogData;
-  const [filters, setFilters] = useState({ tags: [], title: "", body: "" });
+  // A tag can arrive via the hash query (#/blog?tag=foo) when navigating from an
+  // article's tag — seed the tag filter from it (ignoring unknown tags).
+  const initialTag = route?.tag && TAGS.includes(route.tag) ? route.tag : null;
+  const [filters, setFilters] = useState({ tags: initialTag ? [initialTag] : [], title: "", body: "" });
+  // Keep in sync if the route tag changes while this list stays mounted.
+  useEffect(() => {
+    if (route?.tag && TAGS.includes(route.tag)) {
+      setFilters((f) => (f.tags.includes(route.tag) ? f : { ...f, tags: [route.tag] }));
+    }
+  }, [route?.tag]); // eslint-disable-line react-hooks/exhaustive-deps
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc");  // asc | desc
   const [openPanel, setOpenPanel] = useState(null); // null | "search" | "filter" | "sort"
@@ -151,21 +160,21 @@ export function BlogList() {
     }
   }, [openPanel]);
 
-  // Collapse the toolbar on outside click / Escape.
+  // Collapse the toolbar on outside pointer interaction / Escape.
   useEffect(() => {
     if (!openPanel) return;
     const onDoc = (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
-        restoreFocusRef.current = false; // pointer elsewhere — don't yank focus back
+        restoreFocusRef.current = false; // pointer elsewhere: don't yank focus back
         closePanel();
       }
     };
     const onKey = (e) => {
       if (e.key === "Escape") { restoreFocusRef.current = true; closePanel(); }
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    return () => { document.removeEventListener("pointerdown", onDoc, true); document.removeEventListener("keydown", onKey); };
   }, [openPanel]);
 
   const rows = useMemo(() => POSTS.map((p) => ({
@@ -419,9 +428,8 @@ export function BlogList() {
         <div className="empty">{t.no_results}</div>
       ) : (
         <div className="post-index">
-          {list.map((p, i) => (
+          {list.map((p) => (
             <button className="post-index-card" type="button" key={p.id} onClick={() => nav("/blog/" + p.id)}>
-              <span className="post-index-no">{String(i + 1).padStart(2, "0")}</span>
               <span className="post-index-main">
                 <span className="post-index-meta">{fmtDate(p.date, lang)} · {p.reading} {t.min_read}</span>
                 <span className="post-index-title">{L(p.title, lang)}</span>
@@ -498,7 +506,11 @@ export function Article({ id }) {
             <span>{fmtDate(post.date, lang)}</span>
             <span>{post.reading} {t.min_read}</span>
           </div>
-          <div className="article-tags">{post.tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>
+          <div className="article-tags">{post.tags.map((tg) => (
+            <button key={tg} type="button" className="article-tag-link"
+                    onClick={() => nav("/blog?tag=" + encodeURIComponent(tg))}
+                    aria-label={t.tag_to_list(tg)} title={t.tag_to_list(tg)}>#{tg}</button>
+          ))}</div>
         </div>
 
         <div className="prose">
@@ -588,4 +600,3 @@ export function CodeBlock({ lang, code }) {
     </div>
   );
 }
-

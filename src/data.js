@@ -34,8 +34,11 @@
       { ja: "技術書の翻訳レビュー", en: "Technical book translation reviews" }
     ],
     links: [
-      { label: "GitHub",  href: "#" },
-      { label: "RSS",     href: "#/rss" },
+      { label: "GitHub",   href: "#" },
+      { label: "X",        href: "#" },
+      { label: "LinkedIn", href: "#" },
+      { label: "Wantedly", href: "#" },
+      { label: "RSS",      href: "#/rss" },
       { label: "xxx at gmail.com",   href: "mailto:xxx@gmail.com" }
     ]
   };

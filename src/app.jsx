@@ -14,7 +14,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "aboutLayout": "two-col",
   "cornerStyle": "rounded",
   "lightAccent": "#4960ff",
-  "darkAccent": "#4960ff"
+  "darkAccent": "#6f82ff"
 }/*EDITMODE-END*/;
 
 const RISOGRAPH_DEFAULTS = {
@@ -22,7 +22,7 @@ const RISOGRAPH_DEFAULTS = {
   bgNoiseFrequency: 15.5,
   bgDistortion: 0,
   bgRoughness: 0.25,
-  circleOpacity: 100,
+  circleOpacity: 60,
   circleNoiseOpacity: 6,
   circleNoiseFrequency: 33,
   circleDistortion: 8,
@@ -52,12 +52,15 @@ function createFilterId(prefix, distortion, roughness) {
 }
 
 function parseRoute(hash) {
-  const h = (hash || "").replace(/^#/, "");
-  const parts = h.split("/").filter(Boolean); // ["blog","id"]
+  const raw = (hash || "").replace(/^#/, "");
+  const qIdx = raw.indexOf("?");
+  const path = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+  const query = new URLSearchParams(qIdx >= 0 ? raw.slice(qIdx + 1) : "");
+  const parts = path.split("/").filter(Boolean); // ["blog","id"]
   const seg = parts[0] || "";
   if (seg === "" )       return { name: "top" };
   if (seg === "about")   return { name: "about" };
-  if (seg === "blog")    return parts[1] ? { name: "article", id: parts[1] } : { name: "blog" };
+  if (seg === "blog")    return parts[1] ? { name: "article", id: parts[1] } : { name: "blog", tag: query.get("tag") || null };
   if (seg === "app")     return parts[1] ? { name: "appDetail", id: parts[1] } : { name: "app" };
   if (seg === "reading") return { name: "reading" };
   if (seg === "rss")     return { name: "rss" };
@@ -192,7 +195,7 @@ export default function App() {
         <TweakRadio label="Blog" value={tw.blogLayout}
                     options={[{label: "List", value: "list"}, {label: "Grid", value: "grid"}]}
                     onChange={(v) => setTweak("blogLayout", v)} />
-        <TweakRadio label="Application" value={tw.appLayout}
+        <TweakRadio label="Works" value={tw.appLayout}
                     options={[{label: "Cards", value: "cards"}, {label: "Rows", value: "rows"}]}
                     onChange={(v) => setTweak("appLayout", v)} />
         <TweakRadio label="About" value={tw.aboutLayout}

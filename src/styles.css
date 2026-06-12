@@ -10,8 +10,43 @@
   --line-w: 1px;
   --maxw: 1160px;
   --gap: 24px;
-  --font: "M PLUS Rounded 1c", system-ui, sans-serif;
+
+  /* ---- Typography design system ---- */
+  /* Alexandria carries latin + numerals; LINE Seed JP carries japanese. */
+  --font-sans: "Alexandria", "LINE Seed JP", sans-serif;
   --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* type scale */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-md: 1rem;       /* 16px */
+  --text-lg: 1.25rem;    /* 20px */
+  --text-xl: clamp(1.5rem, 4vw, 2rem); /* 24px - 32px */
+
+  /* role-based small band — disciplined steps for meta / captions / body.
+     Replaces the ad-hoc 12.5 / 13.5 / 14.5 / 15 / 17 px values. */
+  --fs-caption: 12px;  /* numbers, years, kv keys, section labels, tags */
+  --fs-meta:    13px;  /* dates / meta rows / small summaries */
+  --fs-small:   14px;  /* secondary text, toc links, list titles */
+  --fs-base:    16px;  /* body copy, list item titles */
+  --fs-lead:    18px;  /* leads, card titles, taglines */
+
+  /* weight — Alexandria has 400/600/700; LINE Seed JP only 400/700,
+     so japanese semibold (600) resolves to the nearest face (700). */
+  --font-regular: 400;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* line height */
+  --leading-ja: 1.75;
+  --leading-en: 1.6;
+  --leading-heading: 1.35;
+  --leading-label: 1.2;
+
+  /* letter spacing */
+  --tracking-ja: 0.02em;
+  --tracking-en: 0;
+  --tracking-label: 0.04em;
+
   --t: 140ms ease;
   --search-backdrop-bg: color-mix(in srgb, var(--bg) 44%, transparent);
   --search-backdrop-image: linear-gradient(
@@ -19,6 +54,10 @@
     color-mix(in srgb, white 10%, transparent)
   );
   --search-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92);
+  --topbar-surface-bg: color-mix(in srgb, var(--bg) 88%, transparent);
+  --topbar-surface-image: var(--search-backdrop-image);
+  --topbar-surface-filter: var(--search-backdrop-filter);
+  --topbar-surface-highlight: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
   --noise-url: url("data:image/svg+xml,%3Csvg%20viewBox%3D'0%200%20200%20200'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cfilter%20id%3D'noiseFilter'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'41'%20numOctaves%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20type%3D'saturate'%20values%3D'0'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23noiseFilter)'%2F%3E%3C%2Fsvg%3E");
   --bg-noise-url: var(--noise-url);
   --circle-noise-url: var(--noise-url);
@@ -35,13 +74,13 @@
   --text:        #4960ff;
   --text-muted:  color-mix(in srgb, #4960ff 72%, #242526);
   --text-meta:   color-mix(in srgb, #4960ff 82%, #242526);
-  --text-faint:  color-mix(in srgb, #4960ff 44%, #fdfff7);
-  --line:        color-mix(in srgb, #4960ff 42%, #fdfff7);
+  --text-faint:  color-mix(in srgb, #4960ff 62%, #fdfff7);
+  --line:        color-mix(in srgb, #4960ff 52%, #fdfff7);
   --line-strong: #4960ff;
   --accent:      #4960ff;
   --accent-alt:  #d4ff0a;
   --accent-soft: transparent;
-  --on-accent:   #4960ff;
+  --on-accent:   #fdfff7; /* cream/white text on the blue accent fill (e.g. selected tag chips) */
 
   /* message boxes — calm, distinct */
   --msg-info-b:  #4960ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #4960ff;
@@ -50,26 +89,26 @@
   --msg-note-b:  #4960ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #4960ff;
 }
 
-/* Keep the requested palette stable even when the theme is set to dark. */
+/* Dark theme — deep navy paper + cream ink (riso identity, inverted). */
 [data-theme="dark"] {
-  --bg:          #fdfff7;
-  --bg-subtle:   #fdfff7;
+  --bg:          #12141d;
+  --bg-subtle:   #161927;
   --surface:     transparent;
-  --text:        #4960ff;
-  --text-muted:  color-mix(in srgb, #4960ff 72%, #242526);
-  --text-meta:   color-mix(in srgb, #4960ff 82%, #242526);
-  --text-faint:  color-mix(in srgb, #4960ff 44%, #fdfff7);
-  --line:        color-mix(in srgb, #4960ff 42%, #fdfff7);
-  --line-strong: #4960ff;
-  --accent:      #4960ff;
+  --text:        #e9ecf7;
+  --text-muted:  color-mix(in srgb, #e9ecf7 78%, #12141d);
+  --text-meta:   color-mix(in srgb, #e9ecf7 88%, #12141d);
+  --text-faint:  color-mix(in srgb, #e9ecf7 55%, #12141d);
+  --line:        color-mix(in srgb, #e9ecf7 26%, #12141d);
+  --line-strong: color-mix(in srgb, #e9ecf7 70%, #12141d);
+  --accent:      #6f82ff;
   --accent-alt:  #d4ff0a;
   --accent-soft: transparent;
-  --on-accent:   #4960ff;
+  --on-accent:   #12141d;
 
-  --msg-info-b:  #4960ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #4960ff;
-  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #4960ff;
-  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #4960ff;
-  --msg-note-b:  #4960ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #4960ff;
+  --msg-info-b:  #6f82ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #e9ecf7;
+  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #e9ecf7;
+  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #e9ecf7;
+  --msg-note-b:  #6f82ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #e9ecf7;
 }
 
 * { box-sizing: border-box; }
@@ -79,8 +118,8 @@ html, body {
   padding: 0;
   background-color: var(--bg);
   color: var(--text);
-  font-family: var(--font);
-  font-weight: 400;
+  font-family: var(--font-sans);
+  font-weight: var(--font-regular);
   -webkit-font-smoothing: antialiased;
   line-height: 1.6;
 }

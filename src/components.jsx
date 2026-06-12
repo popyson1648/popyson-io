@@ -50,6 +50,10 @@ export const Icon = {
   sort: (p) => <svg {...sIcon} {...p}><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" /></svg>,
   filter: (p) => <svg {...sIcon} {...p}><path d="M3 5h18M6 12h12M10 19h4" /></svg>,
   tagi: (p) => <svg {...sIcon} {...p}><path d="M4 4h7l9 9-7 7-9-9V4z" /><circle cx="8.5" cy="8.5" r="1.3" /></svg>,
+  mail: (p) => <svg {...sIcon} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 7.5l8.5 6 8.5-6" /></svg>,
+  xcom: (p) => <svg {...sIcon} width={15} height={15} fill="currentColor" stroke="none" {...p}><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.66l7.74-8.84L1.25 2.25H8.1l4.71 6.23zM17.08 19.77h1.83L7.01 4.13H5.05z" /></svg>,
+  linkedin: (p) => <svg {...sIcon} {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 0 1 4 0v4" /></svg>,
+  wantedly: (p) => <svg {...sIcon} {...p}><path d="M3 7l3.5 10L10 9.5 13.5 17 17 7" /></svg>,
   caretUp: (p) => <svg {...sIcon} {...p}><path d="M12 19V5M6 11l6-6 6 6" /></svg>,
   caretDown: (p) => <svg {...sIcon} {...p}><path d="M12 5v14M6 13l6 6 6-6" /></svg>,
 };

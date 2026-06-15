@@ -73,9 +73,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
         run: |
-          echo "== existing pages projects =="
-          npx wrangler pages project list || true
-          echo "== ensure project '$PROJECT' exists =="
-          npx wrangler pages project create "$PROJECT" --production-branch=main || echo "(create failed or already exists)"
-          echo "== deploy =="
-          npx wrangler pages deploy dist --project-name="$PROJECT" --branch=main
+          echo "== token verify =="
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            https://api.cloudflare.com/client/v4/user/tokens/verify \
+            | jq '{success, status: .result.status, errors}'
+          echo "== accounts accessible by this token =="
+          ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            https://api.cloudflare.com/client/v4/accounts)
+          echo "success: $(echo "$ACC" | jq -r '.success')"
+          echo "num accounts: $(echo "$ACC" | jq -r '.result | length')"
+          echo "account names: $(echo "$ACC" | jq -r '.result[].name')"
+          echo "configured ACCOUNT_ID matches an accessible account: $(echo "$ACC" | jq --arg id "$CLOUDFLARE_ACCOUNT_ID" '[.result[].id] | index($id) != null')"
+          echo "== pages projects under configured account (token+account check) =="
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
+            | jq '{success, errors, num: (.result | length?)}'

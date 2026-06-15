@@ -232,44 +232,42 @@ export function ApplicationDetail({ id }) {
 }
 
 /* ===================== READING LIST ===================== */
+/* Data comes from Instapaper (see scripts/fetch_instapaper.mjs):
+   unread folder -> done:false (未読), archive folder -> done:true (読了).
+   Read-only — the site is not the source of truth, so there is no toggle. */
 export function ReadingPage() {
   const { t, lang } = useContext(AppCtx);
   const { READING } = window.BlogData;
-  const [items, setItems] = useState(() => READING.map((r) => ({ ...r })));
-  const [filter, setFilter] = useState("all");
-  const shown = items.filter((r) => filter === "all" ? true : filter === "done" ? r.done : !r.done);
-  const toggle = (i) => setItems((prev) => prev.map((r, idx) => idx === i ? { ...r, done: !r.done } : r));
-  const idxOf = (r) => items.indexOf(r);
+  const [filter, setFilter] = useState("todo");
+  const shown = READING.filter((r) => filter === "done" ? r.done : !r.done);
 
   return (
     <div className="container route-fade">
       <PageHead title={t.page_reading.title} />
       <div className="seg-filter" role="group" aria-label={t.filter}>
-        {["all", "todo", "done"].map((f) => (
-          <button key={f} className={filter === (f === "todo" ? "todo" : f) ? "on" : ""}
-                  type="button" aria-pressed={filter === (f === "todo" ? "todo" : f)}
-                  onClick={() => setFilter(f === "todo" ? "todo" : f)}>
-            {f === "all" ? t.reading_all : f === "todo" ? t.reading_todo : t.reading_done}
+        {["todo", "done"].map((f) => (
+          <button key={f} className={filter === f ? "on" : ""}
+                  type="button" aria-pressed={filter === f}
+                  onClick={() => setFilter(f)}>
+            {f === "todo" ? t.reading_todo : t.reading_done}
           </button>
         ))}
       </div>
       <div className="reading-list">
         {shown.map((r) => (
-          <div className="ritem" key={r.title.ja + r.date}>
-            <button className={"rcheck" + (r.done ? " done" : "")} type="button"
-                    aria-pressed={r.done} aria-label={`${L(r.title, lang)}: ${r.done ? t.reading_done : t.reading_todo}`}
-                    onClick={() => toggle(idxOf(r))}>
-              {r.done && <Icon.check width={14} height={14} />}
-            </button>
+          <div className="ritem" key={r.id}>
             <div className="ritem-main">
-              <div className={"ritem-title" + (r.done ? " done" : "")}>{L(r.title, lang)}</div>
+              <div className={"ritem-title" + (r.done ? " done" : "")}>{r.title}</div>
               <div className="ritem-sub">
                 <span>{fmtDate(r.date, lang)}</span>
                 <span>{r.source}</span>
               </div>
             </div>
             <div className="ritem-side">
-              <span className="btn btn-ghost btn-disabled" aria-disabled="true" title={t.no_link}><Icon.ext /></span>
+              {r.url
+                ? <a className="btn btn-ghost" href={r.url} target="_blank" rel="noopener noreferrer"
+                     aria-label={`${r.title}: ${t.open_link}`}><Icon.ext /></a>
+                : <span className="btn btn-ghost btn-disabled" aria-disabled="true" title={t.no_link}><Icon.ext /></span>}
             </div>
           </div>
         ))}

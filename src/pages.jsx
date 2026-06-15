@@ -1,49 +1,8 @@
 /* ============================================================
-   Pages: Top, About, Application(+detail), Reading List, RSS
+   Pages: About (default landing), Application(+detail), Reading List, RSS
    ============================================================ */
 import { useContext, useEffect, useState } from "react";
 import { AppCtx, Chip, Icon, L, PageHead, Ph, fmtDate } from "./components.jsx";
-
-/* ===================== TOP ===================== */
-export function TopPage() {
-  const { t, nav } = useContext(AppCtx);
-  const pages = [
-    { to: "/about",   key: "about",   no: "01" },
-    { to: "/blog",    key: "blog",    no: "02" },
-    { to: "/app",     key: "app",     no: "03" },
-    { to: "/reading", key: "reading", no: "04" },
-  ];
-  return (
-    <div className="container route-fade top-simple">
-      <h1>{t.brand}</h1>
-      <nav className="top-link-cloud" aria-label={t.top_pages}>
-        {pages.map((p) => (
-          <a key={p.key} href={"#" + p.to} aria-label={t.nav[p.key]} onClick={(e) => { e.preventDefault(); nav(p.to); }}>
-            <span>{p.no}</span>
-          </a>
-        ))}
-      </nav>
-    </div>
-  );
-}
-
-export function RecentList({ posts }) {
-  const { lang, nav } = useContext(AppCtx);
-  return (
-    <div className="reading-list">
-      {posts.map((p) => (
-        <a key={p.id} className="ritem" href={"#/blog/" + p.id} style={{ cursor: "pointer", color: "inherit" }}
-           onClick={(e) => { e.preventDefault(); nav("/blog/" + p.id); }}>
-          <div className="ritem-main">
-            <div className="ritem-title" style={{ fontWeight: 700 }}>{L(p.title, lang)}</div>
-            <div className="ritem-sub"><span>{fmtDate(p.date, lang)}</span>{p.tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>
-          </div>
-          <Icon.arrow />
-        </a>
-      ))}
-    </div>
-  );
-}
 
 /* ===================== ABOUT ===================== */
 export function AboutPage() {
@@ -135,6 +94,8 @@ export function AboutPage() {
               </span>
             ) : (
               <a key={lk.label} className="profile-link" href={lk.href}
+                 target={lk.href.startsWith("#") ? undefined : "_blank"}
+                 rel={lk.href.startsWith("#") ? undefined : "noopener noreferrer"}
                  onClick={lk.href.startsWith("#") ? (e) => { e.preventDefault(); nav(lk.href.slice(1)); } : undefined}>
                 {linkIcon(lk.label)}
                 {lk.label}
@@ -280,7 +241,7 @@ export function ReadingPage() {
 export function RssPage() {
   const { t, nav } = useContext(AppCtx);
   const [copied, setCopied] = useState(false);
-  const url = "https://sen-no-note.example/feed.xml";
+  const url = "https://popyson.com/feed.xml";
   const copy = () => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); };
   return (
     <div className="container route-fade">

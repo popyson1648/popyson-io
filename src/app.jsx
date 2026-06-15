@@ -3,7 +3,7 @@
    ============================================================ */
 import { useEffect, useMemo, useState } from "react";
 import { AppCtx, Footer, TopBar } from "./components.jsx";
-import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage, TopPage } from "./pages.jsx";
+import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
 import { TweakColor, TweakRadio, TweakSection, TweaksPanel, useTweaks } from "./tweaks-panel.jsx";
 
@@ -58,13 +58,13 @@ function parseRoute(hash) {
   const query = new URLSearchParams(qIdx >= 0 ? raw.slice(qIdx + 1) : "");
   const parts = path.split("/").filter(Boolean); // ["blog","id"]
   const seg = parts[0] || "";
-  if (seg === "" )       return { name: "top" };
+  if (seg === "" )       return { name: "about" };
   if (seg === "about")   return { name: "about" };
   if (seg === "blog")    return parts[1] ? { name: "article", id: parts[1] } : { name: "blog", tag: query.get("tag") || null };
   if (seg === "app")     return parts[1] ? { name: "appDetail", id: parts[1] } : { name: "app" };
   if (seg === "reading") return { name: "reading" };
   if (seg === "rss")     return { name: "rss" };
-  return { name: "top" };
+  return { name: "about" };
 }
 
 function useSystemDark() {
@@ -95,7 +95,7 @@ export default function App() {
   useEffect(() => {
     const fn = () => { setRoute(parseRoute(window.location.hash)); };
     window.addEventListener("hashchange", fn);
-    if (!window.location.hash) window.location.hash = "/";
+    if (!window.location.hash) window.location.hash = "/about";
     return () => window.removeEventListener("hashchange", fn);
   }, []);
   const nav = (to) => { window.location.hash = to; };
@@ -155,7 +155,7 @@ export default function App() {
     case "appDetail": page = <ApplicationDetail id={route.id} />; break;
     case "reading":   page = <ReadingPage />; break;
     case "rss":       page = <RssPage />; break;
-    default:          page = <TopPage />;
+    default:          page = <AboutPage />;
   }
 
   return (

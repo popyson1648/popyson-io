@@ -2,12 +2,8 @@
 (function () {
   window.I18N = {
     ja: {
-      brand: "線のノート",
+      brand: "popyson.com",
       nav: { top: "top", about: "About", blog: "Blog", app: "Works", reading: "Reading list" },
-      top_lead: "分散システムと開発者ツールについて、線で考えた記録。",
-      top_enter: "見る",
-      top_latest: "最近の記事",
-      top_pages: "ページ",
       skip_main: "本文へ移動",
       page_about: { title: "About", sub: "わたしについて" },
       page_blog: { title: "Blog", sub: "書いたもの" },
@@ -83,12 +79,8 @@
       activity_detail: (title) => `${title}について、取り組みの背景と現在の関心を短くまとめています。`
     },
     en: {
-      brand: "Notes in Lines",
+      brand: "popyson.com",
       nav: { top: "top", about: "About", blog: "Blog", app: "Works", reading: "Reading list" },
-      top_lead: "Notes thought through in lines — about distributed systems and developer tools.",
-      top_enter: "View",
-      top_latest: "Recent posts",
-      top_pages: "Pages",
       skip_main: "Skip to main content",
       page_about: { title: "About", sub: "About me" },
       page_blog: { title: "Blog", sub: "Things I've written" },

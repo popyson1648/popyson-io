@@ -3,6 +3,7 @@
    ============================================================ */
 import { useContext, useEffect, useState } from "react";
 import { AppCtx, Chip, Icon, L, PageHead, Ph, fmtDate } from "./components.jsx";
+import { localized } from "./meta.js";
 
 /* ===================== ABOUT ===================== */
 export function AboutPage() {
@@ -87,20 +88,24 @@ export function AboutPage() {
           <div className="about-role">{L(PERSON.role, lang)} · {L(PERSON.location, lang)}</div>
           <p className="about-tag">{L(PERSON.tagline, lang)}</p>
           <div className="links-row" data-cf-change="ch-profile-links">
-            {PERSON.links.map((lk) => lk.href.startsWith("mailto:") ? (
-              <span key={lk.label} className="profile-link profile-link-text">
-                {linkIcon(lk.label)}
-                {lk.label}
-              </span>
-            ) : (
-              <a key={lk.label} className="profile-link" href={lk.href}
-                 target={lk.href.startsWith("#") ? undefined : "_blank"}
-                 rel={lk.href.startsWith("#") ? undefined : "noopener noreferrer"}
-                 onClick={lk.href.startsWith("#") ? (e) => { e.preventDefault(); nav(lk.href.slice(1)); } : undefined}>
-                {linkIcon(lk.label)}
-                {lk.label}
-              </a>
-            ))}
+            {PERSON.links.map((lk) => {
+              const internal = lk.href.startsWith("/"); // in-app route (locale applied via nav)
+              if (lk.href.startsWith("mailto:")) return (
+                <span key={lk.label} className="profile-link profile-link-text">
+                  {linkIcon(lk.label)}
+                  {lk.label}
+                </span>
+              );
+              return (
+                <a key={lk.label} className="profile-link" href={internal ? localized(lk.href, lang) : lk.href}
+                   target={internal ? undefined : "_blank"}
+                   rel={internal ? undefined : "noopener noreferrer"}
+                   onClick={internal ? (e) => { e.preventDefault(); nav(lk.href); } : undefined}>
+                  {linkIcon(lk.label)}
+                  {lk.label}
+                </a>
+              );
+            })}
           </div>
         </div>
       </div>

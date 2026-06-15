@@ -160,8 +160,28 @@ receive the URL fragment after `#`, so a shared link such as
 
 ## Open Issues
 
-- Locale-in-URL scheme adds significant surface; confirm whether per-language
-  crawler OGP is required or a single default locale is acceptable.
-- Whether to also SSR visible HTML (SEO/first paint) or prerender head only.
-- 404 handling for unknown deep links under the new routing.
-- Need a real (non-provisional) 1200x630 OGP image before launch.
+Resolved during implementation (see `.decisions/ogp-path-routing.md`):
+
+- Locale-in-URL: **chosen** — per-locale URLs (`/en` prefix) + bidirectional
+  `hreflang` + per-locale prerendered files, for findability, shareability,
+  and web-native correctness. Language is derived from the URL (no
+  `localStorage`).
+- SSR vs head-only: **head-only** prerendering (no `react-dom/server`);
+  recommended low-risk path for OGP correctness. Body SSR deferred.
+- 404 / unknown deep links: rely on Cloudflare Pages' default SPA fallback
+  (no top-level `404.html`, no `_redirects` catch-all so prerendered files are
+  not shadowed); unknown paths boot the SPA, which routes to About.
+- Provisional image: generated 1200x630 placeholder
+  (`public/provisional_ogp_image.png` via `scripts/make_ogp_placeholder.mjs`).
+
+Still open:
+
+- Replace the provisional image with a real (non-placeholder) 1200x630 OGP
+  image before launch.
+- In-app article/Works/related links remain native `<button>`s (the a11y
+  check enforces native buttons), so they are not crawlable as `<a href>` and
+  lack middle-click open-in-new-tab. Discovery is covered by `sitemap.xml` +
+  `hreflang`; converting cards to anchors is a possible follow-up.
+- Canonical URLs use the no-trailing-slash form (matching the RSS feed); if
+  Cloudflare's served trailing-slash form causes a canonical mismatch in
+  practice, reconcile the two.

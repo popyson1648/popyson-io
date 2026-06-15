@@ -1,6 +1,30 @@
 {
-  "generatedAt": "2026-06-15T06:24:46.396Z",
+  "generatedAt": "2026-06-15T08:00:33.092Z",
   "items": [
+    {
+      "id": 2014464624,
+      "title": "コードレビューを6段階にしたら、AIと人間の分業が見えた",
+      "url": "https://zenn.dev/kenimo49/articles/code-review-6-stages-ai-human-boundary",
+      "source": "zenn.dev",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 2020006752,
+      "title": "実装前に設計を徹底的にインタビューし、要件を明確にするためのスキル `/grill-me`",
+      "url": "https://azukiazusa.dev/blog/before-implementation-interview-design-requirements-grill-me",
+      "source": "azukiazusa.dev",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 2020006650,
+      "title": "機能を作るな。楽して作るな。 （LayerX社内資料） Don’t Build Features. Don’t Take the Easy Way Out.",
+      "url": "https://speakerdeck.com/mosa_siru/don-t-build-features-dot-don-t-take-the-easy-way-out",
+      "source": "speakerdeck.com",
+      "date": "2026-06-15",
+      "done": false
+    },
     {
       "id": 2020002126,
       "title": "How the Open Knowledge Format can improve data sharing | Google Cloud Blog",
@@ -246,14 +270,6 @@
       "title": "人生初の OSS コントリビュートまで - Alstrocrack Tech Blog",
       "url": "https://alstrocrack.hatenablog.jp/entry/2026/05/23/185442",
       "source": "alstrocrack.hatenablog.jp",
-      "date": "2026-05-24",
-      "done": false
-    },
-    {
-      "id": 2014464624,
-      "title": "コードレビューを6段階にしたら、AIと人間の分業が見えた",
-      "url": "https://zenn.dev/kenimo49/articles/code-review-6-stages-ai-human-boundary",
-      "source": "zenn.dev",
       "date": "2026-05-24",
       "done": false
     },

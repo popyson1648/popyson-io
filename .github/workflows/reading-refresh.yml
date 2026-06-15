@@ -88,3 +88,6 @@ jobs:
           curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects" \
             | jq '{success, errors, num: (.result | length?)}'
+          echo "== ensure project & deploy =="
+          npx wrangler pages project create "$PROJECT" --production-branch=main 2>/dev/null || true
+          npx wrangler pages deploy dist --project-name="$PROJECT" --branch=main

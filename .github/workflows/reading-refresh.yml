@@ -1,18 +1,23 @@
-name: Refresh reading list
+name: Reading list refresh & deploy
 
-# Fetches the Instapaper reading list (unread + archive) and commits the JSON
-# snapshot to main when it changes. Deployment is handled by Cloudflare Pages'
-# Git integration, which rebuilds automatically on the resulting commit.
+# Fetches the Instapaper reading list (unread + archive), commits the JSON
+# snapshot when it changes, builds the site, and deploys to Cloudflare Pages
+# via Direct Upload (wrangler). Everything runs in CI.
 #
-# Required GitHub secret:
-#   OP_SERVICE_ACCOUNT_TOKEN  - 1Password service account that can read the
-#                               Development vault (resolves the op:// refs).
+# Required GitHub secrets:
+#   OP_SERVICE_ACCOUNT_TOKEN  - 1Password service account (reads Development vault)
+#   CLOUDFLARE_API_TOKEN      - Cloudflare API token (Account > Cloudflare Pages > Edit)
+#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account id
+# Required GitHub variable:
+#   CLOUDFLARE_PAGES_PROJECT  - Cloudflare Pages project name
 #
 # The op:// references live in .op.env (no secrets there).
 
 on:
   schedule:
     - cron: "0 21 * * *" # daily at 06:00 JST (21:00 UTC prev day)
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -23,7 +28,7 @@ permissions:
   contents: write
 
 jobs:
-  refresh:
+  refresh-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +45,9 @@ jobs:
         uses: 1password/install-cli-action@v1
 
       - name: Fetch reading list from Instapaper
+        # Resilient: if Instapaper/op is unavailable, keep the last committed
+        # snapshot and still build + deploy.
+        continue-on-error: true
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: op run --env-file=.op.env -- npm run reading:fetch
@@ -55,3 +63,16 @@ jobs:
           else
             echo "No changes to src/reading.json"
           fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          # Ensure the Direct Upload project exists (no-op if it already does).
+          npx wrangler pages project create "$PROJECT" --production-branch=main 2>/dev/null || true
+          npx wrangler pages deploy dist --project-name="$PROJECT" --branch=main

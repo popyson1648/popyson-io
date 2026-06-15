@@ -48,9 +48,8 @@ npm run reading:fetch:op
 ```
 
 In CI, `.github/workflows/reading-refresh.yml` refreshes the snapshot on a
-schedule and commits it to `main`. Cloudflare Pages' Git integration then
-rebuilds (`npm run build`, output `dist`) and deploys automatically. See
-`.decisions/instapaper-reading-list.md`.
+schedule, builds, and deploys to Cloudflare Pages via Direct Upload
+(`wrangler pages deploy`). See `.decisions/instapaper-reading-list.md`.
 
 ## Common Failures
 

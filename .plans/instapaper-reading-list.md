@@ -17,8 +17,8 @@ archive -> 読了. Remove the read-only-meaningless checkbox; limit tabs to
 - `src/pages.jsx` ReadingPage: remove checkbox/toggle, 2 tabs, enable ext link.
 - `src/i18n.js`: drop `reading_all`, add `open_link`.
 - `src/app.css`: remove unused `.rcheck` / `.ritem-note` rules.
-- `.github/workflows/reading-refresh.yml`: scheduled fetch -> commit snapshot to
-  main. Cloudflare Pages' Git integration rebuilds/deploys on the commit.
+- `.github/workflows/reading-refresh.yml`: scheduled fetch -> commit snapshot ->
+  build -> deploy to Cloudflare Pages via Direct Upload (wrangler).
 
 ## Non-goals
 
@@ -51,7 +51,8 @@ archive -> 読了. Remove the read-only-meaningless checkbox; limit tabs to
 
 ## Open Issues
 
-- Owner must connect the repo to Cloudflare Pages (Git integration: build
-  `npm run build`, output `dist`), create a 1Password service account with read
-  access to the Development vault, and set the `OP_SERVICE_ACCOUNT_TOKEN` GitHub
-  secret before the scheduled refresh can run.
+- Owner must set GitHub secrets (`OP_SERVICE_ACCOUNT_TOKEN`,
+  `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and variable
+  `CLOUDFLARE_PAGES_PROJECT`. The 1Password service account needs read access to
+  the Development vault. The Cloudflare Pages project is auto-created by the
+  workflow on first deploy if absent.

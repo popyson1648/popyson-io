@@ -2,6 +2,7 @@
    Shared components, icons, helpers.  Exports to window.
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useContext, createContext, useId } from "react";
+import { localized, routeToPath } from "./meta.js";
 
 export const AppCtx = createContext(null);
 
@@ -93,7 +94,7 @@ export function Chip({ children, on, onClick, isStatic }) {
 
 /* ---------- top bar ---------- */
 export function TopBar() {
-  const { t, lang, setLang, theme, setTheme, route, nav } = useContext(AppCtx);
+  const { t, lang, theme, setTheme, route, nav } = useContext(AppCtx);
   const here = route.name;
   const ThemeIcon = theme === "light" ? Icon.sun : theme === "dark" ? Icon.moon : Icon.monitor;
   const themeOptions = [
@@ -102,22 +103,29 @@ export function TopBar() {
     ["system", t.theme_system, Icon.monitor],
   ];
   const link = (to, key) => (
-    <a href={"#" + to} className={here === key ? "active" : ""} data-nav-key={key}
+    <a href={localized(to, lang)} className={here === key ? "active" : ""} data-nav-key={key}
        aria-current={here === key ? "page" : undefined}
        onClick={(e) => { e.preventDefault(); nav(to); }}>{t.nav[key]}</a>
   );
+  // Toggle language by re-navigating to the same route under the other locale,
+  // preserving an active tag filter. URL is the source of truth for language.
+  const toggleLang = () => {
+    const other = lang === "ja" ? "en" : "ja";
+    const path = routeToPath(route) + (route.tag ? `?tag=${encodeURIComponent(route.tag)}` : "");
+    nav(path, other);
+  };
   return (
     <header className="topbar">
       <div className="container topbar-inner">
         <nav className="nav">
-          {link("/about", "about")}
+          {link("/", "about")}
           {link("/blog", "blog")}
           {link("/app", "app")}
           {link("/reading", "reading")}
         </nav>
         <div className="topbar-tools">
           <div className="tool-group tool-group-actions" aria-label={t.tools}>
-            <button className="btn btn-ghost lang-btn" type="button" onClick={() => setLang(lang === "ja" ? "en" : "ja")}
+            <button className="btn btn-ghost lang-btn" type="button" onClick={toggleLang}
                     aria-label={t.lang_toggle}
                     title={t.language}>
               {t.lang}
@@ -153,12 +161,12 @@ export function TopBar() {
 
 /* ---------- footer ---------- */
 export function Footer() {
-  const { t, nav } = useContext(AppCtx);
+  const { t, lang, nav } = useContext(AppCtx);
   return (
     <footer className="foot">
       <div className="container foot-inner">
         <span>© 2026 {t.brand}</span>
-        <a href="#/rss" onClick={(e) => { e.preventDefault(); nav("/rss"); }}>
+        <a href={localized("/rss", lang)} onClick={(e) => { e.preventDefault(); nav("/rss"); }}>
           <Icon.rss width={14} height={14} /> RSS
         </a>
       </div>

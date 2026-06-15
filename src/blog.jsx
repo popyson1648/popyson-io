@@ -49,7 +49,7 @@ function FilterPill({ prop, filters, setFilters, t }) {
 export function BlogList() {
   const { t, lang, nav, route } = useContext(AppCtx);
   const { POSTS, TAGS } = window.BlogData;
-  // A tag can arrive via the hash query (#/blog?tag=foo) when navigating from an
+  // A tag can arrive via the query (/blog?tag=foo) when navigating from an
   // article's tag — seed the tag filter from it (ignoring unknown tags).
   const initialTag = route?.tag && TAGS.includes(route.tag) ? route.tag : null;
   const [filters, setFilters] = useState({ tags: initialTag ? [initialTag] : [], title: "", body: "" });

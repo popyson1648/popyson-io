@@ -6,6 +6,7 @@ import { AppCtx, Footer, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
 import { TweakColor, TweakRadio, TweakSection, TweaksPanel, useTweaks } from "./tweaks-panel.jsx";
+import { headModel, localized } from "./meta.js";
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "topLayout": "hero",
@@ -51,20 +52,59 @@ function createFilterId(prefix, distortion, roughness) {
   return `${prefix}-${distortion}-${safeRoughness}`;
 }
 
-function parseRoute(hash) {
-  const raw = (hash || "").replace(/^#/, "");
-  const qIdx = raw.indexOf("?");
-  const path = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
-  const query = new URLSearchParams(qIdx >= 0 ? raw.slice(qIdx + 1) : "");
+// Path-based routing. Language lives in the URL: Japanese (default) has no
+// prefix, English is served under "/en". The leading locale segment is
+// stripped here and carried on the route as `lang`.
+function parseRoute(pathname, search) {
+  let path = pathname || "/";
+  let lang = "ja";
+  if (/^\/en(\/|$)/.test(path)) { lang = "en"; path = path.slice(3) || "/"; }
+  const query = new URLSearchParams(search || "");
   const parts = path.split("/").filter(Boolean); // ["blog","id"]
   const seg = parts[0] || "";
-  if (seg === "" )       return { name: "about" };
-  if (seg === "about")   return { name: "about" };
-  if (seg === "blog")    return parts[1] ? { name: "article", id: parts[1] } : { name: "blog", tag: query.get("tag") || null };
-  if (seg === "app")     return parts[1] ? { name: "appDetail", id: parts[1] } : { name: "app" };
-  if (seg === "reading") return { name: "reading" };
-  if (seg === "rss")     return { name: "rss" };
-  return { name: "about" };
+  let route;
+  if (seg === "")             route = { name: "about" };
+  else if (seg === "about")   route = { name: "about" };
+  else if (seg === "blog")    route = parts[1] ? { name: "article", id: parts[1] } : { name: "blog", tag: query.get("tag") || null };
+  else if (seg === "app")     route = parts[1] ? { name: "appDetail", id: parts[1] } : { name: "app" };
+  else if (seg === "reading") route = { name: "reading" };
+  else if (seg === "rss")     route = { name: "rss" };
+  else                        route = { name: "about" };
+  return { ...route, lang };
+}
+
+// Upsert <head> tags so the live tab + JS-executing crawlers stay correct
+// after client navigation. Mirrors what scripts/prerender.mjs bakes in.
+function upsertMeta(key, keyAttr, content) {
+  let el = document.head.querySelector(`meta[${keyAttr}="${key}"]`);
+  if (!el) { el = document.createElement("meta"); el.setAttribute(keyAttr, key); document.head.appendChild(el); }
+  el.setAttribute("content", content);
+}
+function upsertLink(rel, href, hreflang) {
+  const sel = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]:not([hreflang]):not([type])`;
+  let el = document.head.querySelector(sel);
+  if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); if (hreflang) el.setAttribute("hreflang", hreflang); document.head.appendChild(el); }
+  el.setAttribute("href", href);
+}
+function applyHead(m) {
+  document.title = m.title;
+  upsertMeta("description", "name", m.description);
+  upsertLink("canonical", m.canonical);
+  for (const a of m.alternates) upsertLink("alternate", a.href, a.hreflang);
+  upsertMeta("og:type", "property", m.og.type);
+  upsertMeta("og:site_name", "property", m.og.site_name);
+  upsertMeta("og:title", "property", m.og.title);
+  upsertMeta("og:description", "property", m.og.description);
+  upsertMeta("og:url", "property", m.og.url);
+  upsertMeta("og:image", "property", m.og.image);
+  upsertMeta("og:locale", "property", m.og.locale);
+  upsertMeta("og:locale:alternate", "property", m.og.localeAlternate);
+  upsertMeta("twitter:card", "name", m.twitter.card);
+  upsertMeta("twitter:site", "name", m.twitter.site);
+  upsertMeta("twitter:creator", "name", m.twitter.creator);
+  upsertMeta("twitter:title", "name", m.twitter.title);
+  upsertMeta("twitter:description", "name", m.twitter.description);
+  upsertMeta("twitter:image", "name", m.twitter.image);
 }
 
 function useSystemDark() {
@@ -81,8 +121,8 @@ function useSystemDark() {
 
 export default function App() {
   const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [route, setRoute] = useState(() => parseRoute(window.location.hash));
-  const [lang, setLang] = useState(() => localStorage.getItem("blog.lang") || "ja");
+  const [route, setRoute] = useState(() => parseRoute(window.location.pathname, window.location.search));
+  const lang = route.lang; // language is derived from the URL (no localStorage)
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
   const riso = RISOGRAPH_DEFAULTS;
   const sysDark = useSystemDark();
@@ -91,14 +131,25 @@ export default function App() {
   const bgFilterId = useMemo(() => createFilterId("bg-rough", riso.bgDistortion, riso.bgRoughness), [riso.bgDistortion, riso.bgRoughness]);
   const circleFilterId = useMemo(() => createFilterId("circle-rough", riso.circleDistortion, riso.circleRoughness), [riso.circleDistortion, riso.circleRoughness]);
 
-  // routing
+  // routing (History API). `to` is a canonical, locale-less path
+  // (e.g. "/blog/x", "/blog?tag=foo"); the active locale prefix is applied
+  // here. Pass `langOverride` to switch language while staying on the route.
   useEffect(() => {
-    const fn = () => { setRoute(parseRoute(window.location.hash)); };
-    window.addEventListener("hashchange", fn);
-    if (!window.location.hash) window.location.hash = "/about";
-    return () => window.removeEventListener("hashchange", fn);
+    const fn = () => setRoute(parseRoute(window.location.pathname, window.location.search));
+    window.addEventListener("popstate", fn);
+    return () => window.removeEventListener("popstate", fn);
   }, []);
-  const nav = (to) => { window.location.hash = to; };
+  const nav = (to, langOverride) => {
+    const url = localized(to, langOverride || route.lang);
+    if (url !== window.location.pathname + window.location.search) {
+      window.history.pushState({}, "", url);
+    }
+    setRoute(parseRoute(window.location.pathname, window.location.search));
+    window.scrollTo(0, 0);
+  };
+
+  // keep document.title + OG/Twitter/hreflang meta in sync with the route
+  useEffect(() => { applyHead(headModel(route, lang)); }, [route, lang]);
 
   // resolve + apply theme
   const resolved = theme === "system" ? (sysDark ? "dark" : "light") : theme;
@@ -107,10 +158,9 @@ export default function App() {
     localStorage.setItem("blog.theme", theme);
   }, [theme, resolved]);
 
-  // lang
+  // lang (authoritative source is the URL)
   useEffect(() => {
     document.documentElement.lang = lang;
-    localStorage.setItem("blog.lang", lang);
   }, [lang]);
 
   // apply tweak-driven CSS vars
@@ -144,7 +194,7 @@ export default function App() {
   }, [bgFilterId, bgNoiseUrl, circleFilterId, circleNoiseUrl, riso]);
 
   const t = window.I18N[lang];
-  const ctx = { t, lang, setLang, theme, setTheme, route, nav, tw };
+  const ctx = { t, lang, theme, setTheme, route, nav, tw };
 
   let page;
   switch (route.name) {

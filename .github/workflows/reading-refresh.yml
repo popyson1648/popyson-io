@@ -1,0 +1,57 @@
+name: Refresh reading list
+
+# Fetches the Instapaper reading list (unread + archive) and commits the JSON
+# snapshot to main when it changes. Deployment is handled by Cloudflare Pages'
+# Git integration, which rebuilds automatically on the resulting commit.
+#
+# Required GitHub secret:
+#   OP_SERVICE_ACCOUNT_TOKEN  - 1Password service account that can read the
+#                               Development vault (resolves the op:// refs).
+#
+# The op:// references live in .op.env (no secrets there).
+
+on:
+  schedule:
+    - cron: "0 21 * * *" # daily at 06:00 JST (21:00 UTC prev day)
+  workflow_dispatch:
+
+concurrency:
+  group: reading-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1
+
+      - name: Fetch reading list from Instapaper
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: op run --env-file=.op.env -- npm run reading:fetch
+
+      - name: Commit snapshot if changed
+        run: |
+          if ! git diff --quiet -- src/reading.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src/reading.json
+            git commit -m "chore(reading): refresh Instapaper snapshot"
+            git push
+          else
+            echo "No changes to src/reading.json"
+          fi

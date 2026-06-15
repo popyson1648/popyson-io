@@ -1,7 +1,12 @@
 /* ============================================================
    Content data — bilingual (ja / en). Software-engineer persona.
    Plain JS: assigns window.BlogData.
+
+   READING is generated from Instapaper (see scripts/fetch_instapaper.mjs)
+   and imported from reading.json. unread -> done:false, archive -> done:true.
    ============================================================ */
+import readingData from "./reading.json";
+
 (function () {
   const PERSON = {
     name:    { ja: "佐藤 玲", en: "Rei Sato" },
@@ -193,14 +198,9 @@
     }
   ];
 
-  const READING = [
-    { title: { ja: "ストリーム処理の基礎", en: "Foundations of Stream Processing" }, source: "queue.acm.org", date: "2026-05-30", note: { ja: "ウォーターマークの章が秀逸", en: "The watermark chapter is excellent" }, tags: ["分散システム"], done: false },
-    { title: { ja: "型システム入門・再訪", en: "Types, Revisited" }, source: "lobste.rs", date: "2026-05-18", note: { ja: "依存型のやさしい導入", en: "A gentle intro to dependent types" }, tags: ["型"], done: true },
-    { title: { ja: "良い CLI の 12 の作法", en: "12 Habits of Good CLIs" }, source: "clig.dev", date: "2026-05-04", note: { ja: "補完と終了コードの節を再読", en: "Re-read the completion & exit-code sections" }, tags: ["CLI", "DX"], done: true },
-    { title: { ja: "観測性は文化である", en: "Observability Is a Culture" }, source: "honeycomb.io", date: "2026-04-22", note: { ja: "ダッシュボード断捨離の参考に", en: "Reference for dashboard decluttering" }, tags: ["観測性"], done: false },
-    { title: { ja: "Rust の所有権、もう一度", en: "Rust Ownership, Once More" }, source: "without.boats", date: "2026-04-01", note: { ja: "借用の心象モデルが更新された", en: "Updated my mental model of borrows" }, tags: ["Rust"], done: true },
-    { title: { ja: "設計レビューの空気のつくり方", en: "The Air of a Design Review" }, source: "newsletter", date: "2026-03-12", note: { ja: "心理的安全性と具体性の両立", en: "Safety and specificity together" }, tags: ["設計", "DX"], done: false }
-  ];
+  /* Generated from Instapaper; see scripts/fetch_instapaper.mjs.
+     Each item: { id, title, url, source, date, done }. */
+  const READING = Array.isArray(readingData.items) ? readingData.items : [];
 
   window.BlogData = { PERSON, TAGS, POSTS, APPS, READING };
 })();

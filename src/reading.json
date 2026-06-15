@@ -1,0 +1,965 @@
+{
+  "generatedAt": "2026-06-15T06:24:46.396Z",
+  "items": [
+    {
+      "id": 2020002126,
+      "title": "How the Open Knowledge Format can improve data sharing | Google Cloud Blog",
+      "url": "https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing",
+      "source": "cloud.google.com",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 2019995244,
+      "title": "Google、AIエージェントのための文書記述仕様「Open Knowledge Format」を発表 | gihyo.jp",
+      "url": "https://gihyo.jp/article/2026/06/open-knowledge-format",
+      "source": "gihyo.jp",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 2019990827,
+      "title": "Sakana AI",
+      "url": "https://sakana.ai/marlin-release/",
+      "source": "sakana.ai",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 2019990407,
+      "title": "Sakana AI",
+      "url": "https://sakana.ai/ab-mcts/",
+      "source": "sakana.ai",
+      "date": "2026-06-15",
+      "done": false
+    },
+    {
+      "id": 1986495003,
+      "title": "教え方を教える: ソフトウェアエンジニアリングと中学受験 - 白のカピバラの逆極限 S.144-3",
+      "url": "https://nuc.hatenadiary.org/entry/2025/11/29/",
+      "source": "nuc.hatenadiary.org",
+      "date": "2026-06-13",
+      "done": false
+    },
+    {
+      "id": 2019466923,
+      "title": "Your code displays Japanese wrong",
+      "url": "https://heistak.github.io/your-code-displays-japanese-wrong/",
+      "source": "heistak.github.io",
+      "date": "2026-06-12",
+      "done": false
+    },
+    {
+      "id": 2019409309,
+      "title": "ざっくり学ぶ 『エンジニアリングリーダー 技術組織を育てるリーダーシップと セルフマネジメント』 / 50 minute Engineering Leader",
+      "url": "https://speakerdeck.com/iwashi86/50-minute-engineering-leader",
+      "source": "speakerdeck.com",
+      "date": "2026-06-12",
+      "done": false
+    },
+    {
+      "id": 2018456099,
+      "title": "How to Build a Custom Agent Harness",
+      "url": "https://www.langchain.com/blog/how-to-build-a-custom-agent-harness",
+      "source": "langchain.com",
+      "date": "2026-06-08",
+      "done": false
+    },
+    {
+      "id": 2018453640,
+      "title": "Give your agent its own computer",
+      "url": "https://www.langchain.com/blog/give-your-ai-agent-its-own-computer",
+      "source": "langchain.com",
+      "date": "2026-06-08",
+      "done": false
+    },
+    {
+      "id": 2018432601,
+      "title": "Porting our Django backend to Rust improved the infra usage by 90% · Blog · Wasmer",
+      "url": "https://wasmer.io/posts/ported-wasmer-backend-django-to-rust",
+      "source": "wasmer.io",
+      "date": "2026-06-08",
+      "done": false
+    },
+    {
+      "id": 2018289454,
+      "title": "`/goal` コマンドの活用例: Vitest の実行時間を 6 倍高速化した話",
+      "url": "https://azukiazusa.dev/blog/goal-command-use-case-vitest",
+      "source": "azukiazusa.dev",
+      "date": "2026-06-07",
+      "done": false
+    },
+    {
+      "id": 2018155540,
+      "title": "When AI builds itself",
+      "url": "https://www.anthropic.com/institute/recursive-self-improvement",
+      "source": "anthropic.com",
+      "date": "2026-06-06",
+      "done": false
+    },
+    {
+      "id": 2018155205,
+      "title": "Hooks リファレンス - Claude Code Docs",
+      "url": "https://code.claude.com/docs/ja/hooks",
+      "source": "code.claude.com",
+      "date": "2026-06-06",
+      "done": false
+    },
+    {
+      "id": 2018150886,
+      "title": "Lessons from building Claude Code: How we use skills | Claude",
+      "url": "https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills",
+      "source": "claude.com",
+      "date": "2026-06-06",
+      "done": false
+    },
+    {
+      "id": 2017374606,
+      "title": "AI時代に技術書はすぐ腐る。だからエンジニアは「エンタメの夜明け」を読んで、世界を動かすホストになれ - エンジニアtype | 転職type",
+      "url": "https://type.jp/et/feature/31124/",
+      "source": "type.jp",
+      "date": "2026-06-03",
+      "done": false
+    },
+    {
+      "id": 2016575496,
+      "title": "Claude Code チャンピオン キット | Anthropicヘルプセンター",
+      "url": "https://support.claude.com/ja/articles/14555399-claude-code-チャンピオン-キット",
+      "source": "support.claude.com",
+      "date": "2026-06-01",
+      "done": false
+    },
+    {
+      "id": 2016571606,
+      "title": "ソフトウェア関係の勉強会のプレゼンテーションで気を付けていること、私の場合 - 記録用ブログ",
+      "url": "https://mejiro8.hatenablog.com/entry/2026/05/28/235146",
+      "source": "mejiro8.hatenablog.com",
+      "date": "2026-06-01",
+      "done": false
+    },
+    {
+      "id": 2016513661,
+      "title": "モノリスの緩やかなリアーキテクチャ - 7年を振り返る - コドモン Product Team Blog",
+      "url": "https://tech.codmon.com/entry/2026/06/01/090000",
+      "source": "tech.codmon.com",
+      "date": "2026-06-01",
+      "done": false
+    },
+    {
+      "id": 2016495152,
+      "title": "Claudeを組織で安全に使うために NOT A HOTELで実施している４つのレイヤー｜kajinari | モダンな情シス",
+      "url": "https://note.com/kajinari/n/n6494b35a4826",
+      "source": "note.com",
+      "date": "2026-05-31",
+      "done": false
+    },
+    {
+      "id": 2016361204,
+      "title": "1日でわかるWebサービス制作の全て ～企画から実装まで～",
+      "url": "https://yusukebe.github.io/webservice-oneday/",
+      "source": "yusukebe.github.io",
+      "date": "2026-05-31",
+      "done": false
+    },
+    {
+      "id": 2015808144,
+      "title": "Figma Make, Now on Your Local Code | Figma Blog",
+      "url": "https://www.figma.com/blog/figma-make-now-on-your-local-code/",
+      "source": "figma.com",
+      "date": "2026-05-29",
+      "done": false
+    },
+    {
+      "id": 2015807823,
+      "title": "Declarative partial updates | Blog | Chrome for Developers",
+      "url": "https://developer.chrome.com/blog/declarative-partial-updates",
+      "source": "developer.chrome.com",
+      "date": "2026-05-29",
+      "done": false
+    },
+    {
+      "id": 2015274857,
+      "title": "Agentic AI時代における メルカリのAIガバナンスとガードレール実装",
+      "url": "https://speakerdeck.com/naoichihara/agentic-aishi-dai-niokeru-merukarinoaigabanansutogadorerushi-zhuang",
+      "source": "speakerdeck.com",
+      "date": "2026-05-27",
+      "done": false
+    },
+    {
+      "id": 2015255154,
+      "title": "ユーザー体験への誤解を払拭し、「UI/UX」表記を避ける | Click and Magic",
+      "url": "https://clickandmagic.com/notes/avoiding_uiux",
+      "source": "clickandmagic.com",
+      "date": "2026-05-27",
+      "done": false
+    },
+    {
+      "id": 2014924228,
+      "title": "SkillOpt: Executive Strategy for Self-Evolving Agent Skills",
+      "url": "https://arxiv.org/abs/2605.23904",
+      "source": "arxiv.org",
+      "date": "2026-05-26",
+      "done": false
+    },
+    {
+      "id": 2014857769,
+      "title": "GitHub - sivchari/gomu: High-performance mutation testing tool for Go",
+      "url": "https://github.com/sivchari/gomu",
+      "source": "github.com",
+      "date": "2026-05-26",
+      "done": false
+    },
+    {
+      "id": 2014857638,
+      "title": "仕様駆動開発をする前に押さえておくべき「振る舞い仕様」のこと - 若くない何かの悩み",
+      "url": "https://blog.kuniwak.com/entry/2026/05/23/143148",
+      "source": "blog.kuniwak.com",
+      "date": "2026-05-26",
+      "done": false
+    },
+    {
+      "id": 2014552967,
+      "title": "作るべきものと向き合う ── ecspressoに見る、「やらないこと」を決める技術選定 - Findy Media",
+      "url": "https://findy-code.io/media/articles/event-fujiwara-260226",
+      "source": "findy-code.io",
+      "date": "2026-05-25",
+      "done": false
+    },
+    {
+      "id": 2014524072,
+      "title": "Real World Effect-TS: 堅牢なプロダクトを型で組み上げる",
+      "url": "https://speakerdeck.com/asa1984/real-world-effect-ts-jian-lao-napurodakutowoxing-dezu-mishang-geru",
+      "source": "speakerdeck.com",
+      "date": "2026-05-24",
+      "done": false
+    },
+    {
+      "id": 2014523894,
+      "title": "あなたのClaude CodeのWebFetch、実はWebをちゃんと読んでいない",
+      "url": "https://zenn.dev/zhizhiarv/articles/claude-code-webfetch-haiku-summary",
+      "source": "zenn.dev",
+      "date": "2026-05-24",
+      "done": false
+    },
+    {
+      "id": 2014521188,
+      "title": "人生初の OSS コントリビュートまで - Alstrocrack Tech Blog",
+      "url": "https://alstrocrack.hatenablog.jp/entry/2026/05/23/185442",
+      "source": "alstrocrack.hatenablog.jp",
+      "date": "2026-05-24",
+      "done": false
+    },
+    {
+      "id": 2014464624,
+      "title": "コードレビューを6段階にしたら、AIと人間の分業が見えた",
+      "url": "https://zenn.dev/kenimo49/articles/code-review-6-stages-ai-human-boundary",
+      "source": "zenn.dev",
+      "date": "2026-05-24",
+      "done": false
+    },
+    {
+      "id": 2014439855,
+      "title": "https://www.thoughtworks.com/content/dam/thoughtworks/documents/report/tw_future%20_of_software_development_retreat_%20key_takeaways.pdf",
+      "url": "https://www.thoughtworks.com/content/dam/thoughtworks/documents/report/tw_future%20_of_software_development_retreat_%20key_takeaways.pdf",
+      "source": "thoughtworks.com",
+      "date": "2026-05-24",
+      "done": false
+    },
+    {
+      "id": 2013377533,
+      "title": "IBMの株価が13％下落、AnthropicがClaude Codeで「COBOLを使ったレガシーシステムのモダナイゼーションの自動化」を解説したのが原因",
+      "url": "https://gigazine.net/news/20260224-ibm-ai-casualty-anthropic-claude-code-cobol/",
+      "source": "gigazine.net",
+      "date": "2026-05-20",
+      "done": false
+    },
+    {
+      "id": 2012779258,
+      "title": "ゼロからデータ基盤構築をした時の失敗談：すべては要件定義できまる",
+      "url": "https://zenn.dev/ivry/articles/data-engineer-principles",
+      "source": "zenn.dev",
+      "date": "2026-05-19",
+      "done": false
+    },
+    {
+      "id": 2012773850,
+      "title": "生成AIを使ったソフトウェア開発におけるセキュリティの問題点について整理してみた | DevelopersIO",
+      "url": "https://dev.classmethod.jp/articles/security-on-software-development-with-generative-ai/",
+      "source": "dev.classmethod.jp",
+      "date": "2026-05-19",
+      "done": false
+    },
+    {
+      "id": 2012672643,
+      "title": "設計の境界線と、その手前にあるもの",
+      "url": "https://zenn.dev/katzchang/articles/2786bf33bbed42",
+      "source": "zenn.dev",
+      "date": "2026-05-18",
+      "done": false
+    },
+    {
+      "id": 2012513633,
+      "title": "How to set up an AI-native organization · aweb",
+      "url": "https://aweb.ai/blog/ai-first-company-howto/",
+      "source": "aweb.ai",
+      "date": "2026-05-18",
+      "done": false
+    },
+    {
+      "id": 2012123138,
+      "title": "生成AIツールを利用して開発されたソースコードにはどこから著作権が発生するのか？",
+      "url": "https://shujisado.com/2025/12/10/copyrightability-of-ai-generated-code/",
+      "source": "shujisado.com",
+      "date": "2026-05-16",
+      "done": false
+    },
+    {
+      "id": 2012123314,
+      "title": "GPLコードを学習したAIモデルにGPLが伝播するという理論の現在地",
+      "url": "https://shujisado.com/2025/11/25/gpl_propagation_to_ai_models/",
+      "source": "shujisado.com",
+      "date": "2026-05-16",
+      "done": false
+    },
+    {
+      "id": 2011965030,
+      "title": "AI時代に、チケットというUIはまだ最適なのか - TechDoctor開発者Blog",
+      "url": "https://techblog.technology-doctor.com/entry/2026/05/11/144722",
+      "source": "techblog.technology-doctor.com",
+      "date": "2026-05-15",
+      "done": false
+    },
+    {
+      "id": 2010590273,
+      "title": "フロントエンドの相手が変わった - AIが加わったWebの新しいインターフェース設計",
+      "url": "https://speakerdeck.com/azukiazusa1/hurontoendonoxiang-shou-gabian-watuta-aigajia-watutawebnoxin-siiintahuesushe-ji",
+      "source": "speakerdeck.com",
+      "date": "2026-05-11",
+      "done": false
+    },
+    {
+      "id": 2010450623,
+      "title": "カラオケBanBanアプリに「予約ボタン」を1つ追加するのに、14ヶ月かかった話｜GENDA",
+      "url": "https://note.com/genda_jp/n/n4bf35e4690f9",
+      "source": "note.com",
+      "date": "2026-05-11",
+      "done": false
+    },
+    {
+      "id": 2008991521,
+      "title": "How OpenAI delivers low-latency voice AI at scale",
+      "url": "https://openai.com/index/delivering-low-latency-voice-ai-at-scale/",
+      "source": "openai.com",
+      "date": "2026-05-06",
+      "done": false
+    },
+    {
+      "id": 2007404968,
+      "title": "High Performance Git",
+      "url": "https://gitperf.com/",
+      "source": "gitperf.com",
+      "date": "2026-04-30",
+      "done": false
+    },
+    {
+      "id": 2007330473,
+      "title": "AIプロダクトのコミュニケーション — バクラクでのマーケティングデザインの裏側｜Cocoda",
+      "url": "https://cocoda.design/kkouga/p/p98b685f43713",
+      "source": "cocoda.design",
+      "date": "2026-04-30",
+      "done": false
+    },
+    {
+      "id": 2004593417,
+      "title": "AWS 社員が試した Kiro を用いたタスク管理法",
+      "url": "https://aws.amazon.com/jp/builders-flash/202604/kiro-task-management/",
+      "source": "aws.amazon.com",
+      "date": "2026-04-21",
+      "done": false
+    },
+    {
+      "id": 2004558138,
+      "title": "30年続く伝説の個人サイト『とほほのＷＷＷ入門』管理人に見る、エンジニアの継続力の正体「どうすればやめられるのか知りたい」 - エンジニアtype | 転職type",
+      "url": "https://type.jp/et/feature/30854/",
+      "source": "type.jp",
+      "date": "2026-04-21",
+      "done": false
+    },
+    {
+      "id": 2002935170,
+      "title": "無駄な議論を減らすために使ってる言葉 - Konifar's ZATSU",
+      "url": "https://konifar-zatsu.hatenadiary.jp/entry/2016/06/29/193911",
+      "source": "konifar-zatsu.hatenadiary.jp",
+      "date": "2026-04-16",
+      "done": false
+    },
+    {
+      "id": 2002935129,
+      "title": "意見を言う前に感謝や謝罪を伝えて感情の摩擦を減らす - Konifar's ZATSU",
+      "url": "https://konifar-zatsu.hatenadiary.jp/entry/2020/03/12/104716",
+      "source": "konifar-zatsu.hatenadiary.jp",
+      "date": "2026-04-16",
+      "done": false
+    },
+    {
+      "id": 2002557577,
+      "title": "Google Maps",
+      "url": "https://www.google.com/maps?entry=gps&ftid=0x3538a75f39bf8eed%3A0x8c9056922def5a84&g_ep=CAISEjI2LjE0LjAuODkxOTAzMTgwMBgAIIgnKkgsOTQyOTc2OTksOTQyODQ1MTEsOTQyMzExODgsOTQyODA1NjgsNDcwNzE3MDQsOTQyMTg2NDEsOTQyODIxMzQsOTQyODY4NjlCAkpQ&g_st=com.marcoarment.instapaperpro.InstapaperSave&lucs=%2C94297699%2C94284511%2C94231188%2C94280568%2C47071704%2C94218641%2C94282134%2C94286869&q=%25E3%2580%2592884-0002%2B%25E5%25AE%25AE%25E5%25B4%258E%25E7%259C%258C%25E5%2585%2590%25E6%25B9%25AF%25E9%2583%25A1%25E9%25AB%2598%25E9%258D%258B%25E7%2594%25BA%25E5%258C%2597%25E9%25AB%2598%25E9%258D%258B%25EF%25BC%2595%25EF%25BC%2592%25EF%25BC%2596%25EF%25BC%2591%2B%25E3%2582%25AB%25E3%2583%2595%25E3%2582%25A7%25E3%2583%25AC%25E3%2582%25B9%25E3%2583%2588%2B%25E5%25A4%25A7%25E4%25BD%25BF%25E9%25A4%25A8&shh=CAE&skid=bed5d6de-531e-4c8e-a848-5868773b6a0a",
+      "source": "google.com",
+      "date": "2026-04-14",
+      "done": false
+    },
+    {
+      "id": 2002540378,
+      "title": "エンジニアが給料を12倍にする方法 - k0kubun's blog",
+      "url": "https://k0kubun.hatenablog.com/entry/12x-salary",
+      "source": "k0kubun.hatenablog.com",
+      "date": "2026-04-14",
+      "done": false
+    },
+    {
+      "id": 2001547018,
+      "title": "卒論とは「2万字のレポート」ではなく「9ヶ月のプロジェクト」である〜日常のツッコミから始める卒論の作り方〜｜Yasushi HARA",
+      "url": "https://note.com/yasushihara/n/nf4a37718037f",
+      "source": "note.com",
+      "date": "2026-04-11",
+      "done": false
+    },
+    {
+      "id": 2000134603,
+      "title": "Meta Hiring Lead On Avoiding Downleveling, Lying, Passing OpenAI And Anthropic Interviews",
+      "url": "https://youtube.com/watch?v=nOapM8i5jr0&si=mLv7_oDMHVzTInfi",
+      "source": "youtube.com",
+      "date": "2026-04-07",
+      "done": false
+    },
+    {
+      "id": 2000065386,
+      "title": "AIを使ったライブラリの書き換えと再ライセンスが、オープンソースソフトウェアをオープンソースハードウェアのような知的財産が機能しない世界に引き込む",
+      "url": "https://www.yamdas.org/column/technique/oss-oshw-lowipj.html",
+      "source": "yamdas.org",
+      "date": "2026-04-07",
+      "done": false
+    },
+    {
+      "id": 2000065298,
+      "title": "「Claude」の作業を「GPT-5.4」が批判、「GitHub Copilot CLI」に新機能「Rubber Duck」／AIのセカンドオピニオンで問題の芽を摘み取る",
+      "url": "https://forest.watch.impress.co.jp/docs/news/2099555.html",
+      "source": "forest.watch.impress.co.jp",
+      "date": "2026-04-07",
+      "done": false
+    },
+    {
+      "id": 1998479908,
+      "title": "The Landscape of Agentic Reinforcement Learning for LLMs: A Survey",
+      "url": "https://speakerdeck.com/shunk031/the-landscape-of-agentic-reinforcement-learning-for-llms-a-survey",
+      "source": "speakerdeck.com",
+      "date": "2026-04-03",
+      "done": false
+    },
+    {
+      "id": 1997619323,
+      "title": "https://x.com/suzacque/status/2039259433856106995?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "url": "https://x.com/suzacque/status/2039259433856106995?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "source": "x.com",
+      "date": "2026-04-01",
+      "done": false
+    },
+    {
+      "id": 1996698678,
+      "title": "ハーネスエンジニアリング、それGit Workflowをbashで書き直してるだけでは",
+      "url": "https://zenn.dev/shio_shoppaize/articles/shogun-harness-engineering",
+      "source": "zenn.dev",
+      "date": "2026-03-30",
+      "done": false
+    },
+    {
+      "id": 1996697648,
+      "title": "“How to be a 10x engineer” – interview with a standout dev",
+      "url": "https://newsletter.pragmaticengineer.com/p/how-to-be-a-10x-engineer-interview",
+      "source": "newsletter.pragmaticengineer.com",
+      "date": "2026-03-30",
+      "done": false
+    },
+    {
+      "id": 1996417484,
+      "title": "コーディングエージェント向けのリモートサンドボックス",
+      "url": "https://blog.lai.so/agents-sandbox/",
+      "source": "blog.lai.so",
+      "date": "2026-03-29",
+      "done": false
+    },
+    {
+      "id": 1996411292,
+      "title": "個人的にGitHub Actionsまわりで気をつけていること | ssrf.dev",
+      "url": "https://ssrf.dev/posts/2026/03/27/personal-gha-security-tips/",
+      "source": "ssrf.dev",
+      "date": "2026-03-29",
+      "done": false
+    },
+    {
+      "id": 1996411120,
+      "title": "LLMに書かせる前提で設計された言語の設計について議論して｡",
+      "url": "https://fortee.jp/2026fp-matsuri/proposal/bc8c27a9-8dec-4284-9555-7c4816fb1191",
+      "source": "fortee.jp",
+      "date": "2026-03-29",
+      "done": false
+    },
+    {
+      "id": 1993793611,
+      "title": "AI推進における「勝手に広がる仕組み」の」作り方",
+      "url": "https://speakerdeck.com/notty/aitui-jin-niokeru-sheng-shou-niguang-garushi-zu-mi-no-zuo-rifang",
+      "source": "speakerdeck.com",
+      "date": "2026-03-22",
+      "done": false
+    },
+    {
+      "id": 1990386829,
+      "title": "PEP 827 – Type Manipulation | peps.python.org",
+      "url": "https://peps.python.org/pep-0827/",
+      "source": "peps.python.org",
+      "date": "2026-03-13",
+      "done": false
+    },
+    {
+      "id": 1952961141,
+      "title": "なぜ、コードは速く書けるのに開発は遅くなったのか ―AI時代の「理解負債」との向き合い方",
+      "url": "https://zenn.dev/coconala/articles/f8e4b637f64f9a",
+      "source": "zenn.dev",
+      "date": "2026-03-13",
+      "done": false
+    },
+    {
+      "id": 1989106083,
+      "title": "APIサーバーにCloudFrontを導入してセキュリティを向上する",
+      "url": "https://findy-tools.io/products/amazon-cloudfront/186/531",
+      "source": "findy-tools.io",
+      "date": "2026-03-09",
+      "done": false
+    },
+    {
+      "id": 1989076230,
+      "title": "Claude Code / Codex ユーザーのための誰でもわかるHarness Engineeringベストプラクティス",
+      "url": "https://nyosegawa.github.io/posts/harness-engineering-best-practices-2026/",
+      "source": "nyosegawa.github.io",
+      "date": "2026-03-09",
+      "done": false
+    },
+    {
+      "id": 1987870789,
+      "title": "Claude Code に向いているプログラミング言語",
+      "url": "https://zenn.dev/mametter/articles/3e8580ec034201",
+      "source": "zenn.dev",
+      "date": "2026-03-06",
+      "done": false
+    },
+    {
+      "id": 1987304352,
+      "title": "skill-creatorから学ぶSkill設計と、Orchestration Skillの作り方",
+      "url": "https://nyosegawa.github.io/posts/skill-creator-and-orchestration-skill/",
+      "source": "nyosegawa.github.io",
+      "date": "2026-03-06",
+      "done": false
+    },
+    {
+      "id": 1987321370,
+      "title": "Claude Code / MCP を安全に使うための実践ガイド ── 8桁後半の被害事例から学ぶ",
+      "url": "https://zenn.dev/ytksato/articles/057dc7c981d304",
+      "source": "zenn.dev",
+      "date": "2026-03-04",
+      "done": false
+    },
+    {
+      "id": 1987315894,
+      "title": "When AI Writes the World's Software, Who Verifies It?",
+      "url": "https://leodemoura.github.io/blog/2026/02/28/when-ai-writes-the-worlds-software.html",
+      "source": "leodemoura.github.io",
+      "date": "2026-03-04",
+      "done": false
+    },
+    {
+      "id": 1987306404,
+      "title": "要求定義・仕様記述・設計・検証の手引き - 理論から学ぶ明確で統一された成果物定義",
+      "url": "https://speakerdeck.com/orgachem/guidelines-for-requirements-definition-specification-writing-design-and-verification",
+      "source": "speakerdeck.com",
+      "date": "2026-03-04",
+      "done": false
+    },
+    {
+      "id": 1986468729,
+      "title": "void(0)",
+      "url": "https://voidzero.dev/",
+      "source": "voidzero.dev",
+      "date": "2026-03-03",
+      "done": false
+    },
+    {
+      "id": 1986467096,
+      "title": "Conventional Commits",
+      "url": "https://www.conventionalcommits.org/ja/v1.0.0/",
+      "source": "conventionalcommits.org",
+      "date": "2026-03-03",
+      "done": false
+    },
+    {
+      "id": 1986208581,
+      "title": "LINE Messengerの次世代ストレージ選定",
+      "url": "https://speakerdeck.com/lycorptech_jp/20260226a",
+      "source": "speakerdeck.com",
+      "date": "2026-03-02",
+      "done": false
+    },
+    {
+      "id": 1986040816,
+      "title": "Googleアメリカ本社で博士課程学生向けソフトウェアエンジニアインターンをすることになりました｜みきさー",
+      "url": "https://note.com/mixer_blender/n/ne7bf0211e343",
+      "source": "note.com",
+      "date": "2026-03-02",
+      "done": false
+    },
+    {
+      "id": 1985013413,
+      "title": "Plurality",
+      "url": "https://plurality.net/ja/",
+      "source": "plurality.net",
+      "date": "2026-02-27",
+      "done": false
+    },
+    {
+      "id": 1984563179,
+      "title": "非同期設計ガイドラインを公開しました | フューチャー技術ブログ",
+      "url": "https://future-architect.github.io/articles/20260220a/",
+      "source": "future-architect.github.io",
+      "date": "2026-02-26",
+      "done": false
+    },
+    {
+      "id": 1984559712,
+      "title": "https://x.com/mlbear2/status/2026952319674519969?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "url": "https://x.com/mlbear2/status/2026952319674519969?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "source": "x.com",
+      "date": "2026-02-26",
+      "done": false
+    },
+    {
+      "id": 1984558615,
+      "title": "https://x.com/commte/status/2026780381140472274?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "url": "https://x.com/commte/status/2026780381140472274?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "source": "x.com",
+      "date": "2026-02-26",
+      "done": false
+    },
+    {
+      "id": 1984555657,
+      "title": "Making Wolfram Tech Available as a Foundation Tool for LLM Systems",
+      "url": "https://writings.stephenwolfram.com/2026/02/making-wolfram-tech-available-as-a-foundation-tool-for-llm-systems/",
+      "source": "writings.stephenwolfram.com",
+      "date": "2026-02-26",
+      "done": false
+    },
+    {
+      "id": 1983746714,
+      "title": "“学校というインターフェース”のデザイン — 安平町早来学園 ICT空間設計｜Cocoda",
+      "url": "https://cocoda.design/daisukelab/p/p29292a70a20c",
+      "source": "cocoda.design",
+      "date": "2026-02-25",
+      "done": false
+    },
+    {
+      "id": 1982115087,
+      "title": "突然意識が飛んでもいいUIにする - 層の狭間で",
+      "url": "https://ymrl-dev.hateblo.jp/entry/2026/02/21/070756",
+      "source": "ymrl-dev.hateblo.jp",
+      "date": "2026-02-21",
+      "done": false
+    },
+    {
+      "id": 1981815489,
+      "title": "シニアエンジニアが呼吸するようにやっている「調査 / 切り分けの思考の型」",
+      "url": "https://zenn.dev/atrae/articles/d3d31ad0413bf3",
+      "source": "zenn.dev",
+      "date": "2026-02-20",
+      "done": false
+    },
+    {
+      "id": 1981109493,
+      "title": "Amazonでの12年間を振り返る",
+      "url": "https://zenn.dev/moomindani/articles/5b4ee6d4f33b44",
+      "source": "zenn.dev",
+      "date": "2026-02-19",
+      "done": false
+    },
+    {
+      "id": 1981039355,
+      "title": "2025年にPFN社員が読んだ面白かった本 - Preferred Networks Tech Blog",
+      "url": "https://tech.preferred.jp/ja/blog/book_2025/",
+      "source": "tech.preferred.jp",
+      "date": "2026-02-19",
+      "done": false
+    },
+    {
+      "id": 1980651088,
+      "title": "サイバーエージェント、AI研究に関する研修資料3種類を無料公開　「社会実装のアンチパターン」など解説",
+      "url": "https://www.itmedia.co.jp/aiplus/articles/2602/18/news110.html",
+      "source": "itmedia.co.jp",
+      "date": "2026-02-18",
+      "done": false
+    },
+    {
+      "id": 1979720349,
+      "title": "「iPadのおかげで留年しなかった」研修医あおいさんに学ぶ勉強術。国試1カ月前にベルリン留学→一発合格",
+      "url": "https://gori.me/ipad/163685",
+      "source": "gori.me",
+      "date": "2026-02-16",
+      "done": false
+    },
+    {
+      "id": 1978860160,
+      "title": "ABEMAのリアルタイム基盤紹介 | CyberAgent Developers Blog",
+      "url": "https://developers.cyberagent.co.jp/blog/archives/61806/",
+      "source": "developers.cyberagent.co.jp",
+      "date": "2026-02-14",
+      "done": false
+    },
+    {
+      "id": 1976640785,
+      "title": "Next.js がやってくれていたこと全部、自分でやってみた",
+      "url": "https://zenn.dev/ashunar0/articles/2b6c77e2fe251d",
+      "source": "zenn.dev",
+      "date": "2026-02-10",
+      "done": false
+    },
+    {
+      "id": 1976639018,
+      "title": "LLMのための強化学習手法 2025 -PPO・DPO・GRPO・DAPO一気に理解する-｜olachinkei",
+      "url": "https://note.com/olachin/n/n9706c13c8678",
+      "source": "note.com",
+      "date": "2026-02-10",
+      "done": false
+    },
+    {
+      "id": 1972813505,
+      "title": "批判的に読む｜EYR!｜千葉大学アカデミック・リンク・センター",
+      "url": "https://alc.chiba-u.jp/eyr/2020/10/29/03critical.html",
+      "source": "alc.chiba-u.jp",
+      "date": "2026-02-04",
+      "done": false
+    },
+    {
+      "id": 1972061368,
+      "title": "ニューロダイバージェント・アタッチメント理論（NAT）｜横道誠",
+      "url": "https://note.com/makotoyokomichi/n/n31a35e885e41",
+      "source": "note.com",
+      "date": "2026-02-03",
+      "done": false
+    },
+    {
+      "id": 1970449865,
+      "title": "Cloud RunとSupabaseで低コスト運用しようと思ったら無理だった話。 - izanami",
+      "url": "http://izanami.dev/post/2111f137-4bef-4231-9ea6-cbc3b94458e0",
+      "source": "izanami.dev",
+      "date": "2026-01-31",
+      "done": false
+    },
+    {
+      "id": 1970449636,
+      "title": "A complete guide to building skills for Claude | Claude",
+      "url": "https://claude.com/blog/complete-guide-to-building-skills-for-claude",
+      "source": "claude.com",
+      "date": "2026-01-31",
+      "done": false
+    },
+    {
+      "id": 1969974931,
+      "title": "解約率0%のシステムを、作り直すことにしました。〜エージェントからfindさんに紹介できません、と言われたあの日〜｜株式会社find｜公式note",
+      "url": "https://note.com/find_info/n/n9a0da3fffd9f",
+      "source": "note.com",
+      "date": "2026-01-30",
+      "done": false
+    },
+    {
+      "id": 1969241531,
+      "title": "Nani翻訳の技術的な話",
+      "url": "https://zenn.dev/catnose99/articles/nani-translate",
+      "source": "zenn.dev",
+      "date": "2026-01-29",
+      "done": false
+    },
+    {
+      "id": 1966563530,
+      "title": "Claude Code × MCPで実現するPRレビュー準備の自動化 ——週6時間のレビュー工数を削減した実践例——",
+      "url": "https://techblog.lycorp.co.jp/ja/20260122a",
+      "source": "techblog.lycorp.co.jp",
+      "date": "2026-01-24",
+      "done": false
+    },
+    {
+      "id": 1966563175,
+      "title": "Scaling PostgreSQL to power 800 million ChatGPT users",
+      "url": "https://openai.com/index/scaling-postgresql/",
+      "source": "openai.com",
+      "date": "2026-01-24",
+      "done": false
+    },
+    {
+      "id": 1965755007,
+      "title": "Agentic Coding 実践ワークショップ",
+      "url": "https://speakerdeck.com/watany/agentic-coding-workshops-20260121",
+      "source": "speakerdeck.com",
+      "date": "2026-01-23",
+      "done": false
+    },
+    {
+      "id": 1965295847,
+      "title": "崖際のワルツ　椎名うみ作品集アフタヌーン-椎名うみ-無料マンガ・試し読みが豊富！電子書籍をお得に買うならebookjapan",
+      "url": "https://ebookjapan.yahoo.co.jp/rd/shareLink/?publicationCd=A001773262",
+      "source": "ebookjapan.yahoo.co.jp",
+      "date": "2026-01-22",
+      "done": false
+    },
+    {
+      "id": 1962320037,
+      "title": "不眠、体の痛み、言葉が出ない…うつ病で「どん底」◆入院経て回復した元キャリア官僚が訴える仕事復帰の重要性＃働くあなたへ：時事ドットコム",
+      "url": "https://www.jiji.com/jc/v8?id=202601utsu-team",
+      "source": "jiji.com",
+      "date": "2026-01-17",
+      "done": false
+    },
+    {
+      "id": 1960909632,
+      "title": "Sound-Letter Matching Game - Phonics & Stuff",
+      "url": "https://phonicsandstuff.com/sound-letter-matching",
+      "source": "phonicsandstuff.com",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1960886697,
+      "title": "Gemini AI Visual Design - Google Design",
+      "url": "https://design.google/library/gemini-ai-visual-design",
+      "source": "design.google",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1960884448,
+      "title": "What AI is actually good for, according to developers",
+      "url": "https://github.blog/ai-and-ml/generative-ai/what-ai-is-actually-good-for-according-to-developers/",
+      "source": "github.blog",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1960882491,
+      "title": "おい、辞めないなら頑張れ - じゃあ、おうちで学べる",
+      "url": "https://syu-m-5151.hatenablog.com/entry/2026/01/12/003013",
+      "source": "syu-m-5151.hatenablog.com",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1960882387,
+      "title": "おい、辞めるな - じゃあ、おうちで学べる",
+      "url": "https://syu-m-5151.hatenablog.com/entry/2026/01/05/090020",
+      "source": "syu-m-5151.hatenablog.com",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1960843712,
+      "title": "https://x.com/thedankoe/status/2010751592346030461?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "url": "https://x.com/thedankoe/status/2010751592346030461?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
+      "source": "x.com",
+      "date": "2026-01-15",
+      "done": false
+    },
+    {
+      "id": 1952960876,
+      "title": "実践ウェブパフォーマンス改善 #1 CSS セレクタ | grip on minds",
+      "url": "https://griponminds.jp/blog/web-performance-improvement-01/",
+      "source": "griponminds.jp",
+      "date": "2025-12-31",
+      "done": false
+    },
+    {
+      "id": 1945400793,
+      "title": "await は Promise 以外のオブジェクトでも値を取り出せる",
+      "url": "https://azukiazusa.dev/blog/await-is-not-only-for-promise",
+      "source": "azukiazusa.dev",
+      "date": "2025-12-15",
+      "done": false
+    },
+    {
+      "id": 1945398616,
+      "title": "SmartHR炎上から考える、テックブログの本当の役割——萎縮・自粛が招く採用リスク｜久松剛",
+      "url": "https://comemo.nikkei.com/n/na309074e4534",
+      "source": "comemo.nikkei.com",
+      "date": "2025-12-15",
+      "done": false
+    },
+    {
+      "id": 1944151514,
+      "title": "LLMにやさしい言語SuiはLLMにやさしくなさそう - きしだのHatena",
+      "url": "https://nowokay.hatenablog.com/entry/2025/12/12/063351",
+      "source": "nowokay.hatenablog.com",
+      "date": "2025-12-12",
+      "done": false
+    },
+    {
+      "id": 1940960217,
+      "title": "5-Day AI Agents Intensive Course with Google",
+      "url": "https://www.kaggle.com/learn-guide/5-day-agents",
+      "source": "kaggle.com",
+      "date": "2025-12-05",
+      "done": false
+    },
+    {
+      "id": 1940939203,
+      "title": "操作より状態・性質に着目する",
+      "url": "https://zenn.dev/knowledgework/articles/c48539d2f35ecc",
+      "source": "zenn.dev",
+      "date": "2025-12-05",
+      "done": false
+    },
+    {
+      "id": 1940937491,
+      "title": "GitHub のマージ方式を人間に毎回選ばせるのは、もうやめよう（やめた） - エムスリーテックブログ",
+      "url": "https://www.m3tech.blog/entry/github-auto-merge",
+      "source": "m3tech.blog",
+      "date": "2025-12-05",
+      "done": false
+    },
+    {
+      "id": 1940936974,
+      "title": "真にチラつかないダークモードをついに実現したぞ。実現方法と気付きを書く | stin's Blog",
+      "url": "https://blog.stin.ink/articles/how-to-implement-a-perfect-dark-mode",
+      "source": "blog.stin.ink",
+      "date": "2025-12-05",
+      "done": false
+    },
+    {
+      "id": 1940912874,
+      "title": "高校の文化祭の整理券システムを一人で作ったけど問題だらけだった話。 - Qiita",
+      "url": "https://qiita.com/OtakuMoyashi/items/1c1ae9507dcc75b057d2",
+      "source": "qiita.com",
+      "date": "2025-12-05",
+      "done": false
+    },
+    {
+      "id": 1940525200,
+      "title": "miseのGitHub Backendが便利",
+      "url": "https://zenn.dev/koh_sh/articles/a1d3bc899cb6ba",
+      "source": "zenn.dev",
+      "date": "2025-12-04",
+      "done": false
+    },
+    {
+      "id": 1940523906,
+      "title": "Welcome to Instapaper!",
+      "url": "https://blog.instapaper.com/private/96972159656/tumblr_9wAYg3TlYhLs6ARGN",
+      "source": "blog.instapaper.com",
+      "date": "2025-12-04",
+      "done": true
+    }
+  ]
+}

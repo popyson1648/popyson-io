@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
-    "lighthouse": "python3 scripts/run_lighthouse.py"
+    "lighthouse": "python3 scripts/run_lighthouse.py",
+    "reading:fetch": "node scripts/fetch_instapaper.mjs",
+    "reading:fetch:op": "op run --env-file=.op.env -- node scripts/fetch_instapaper.mjs",
+    "instapaper:auth:op": "op run --env-file=.op.env.auth -- node scripts/instapaper_auth.mjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

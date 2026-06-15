@@ -73,6 +73,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
         run: |
-          # Ensure the Direct Upload project exists (no-op if it already does).
-          npx wrangler pages project create "$PROJECT" --production-branch=main 2>/dev/null || true
+          echo "== existing pages projects =="
+          npx wrangler pages project list || true
+          echo "== ensure project '$PROJECT' exists =="
+          npx wrangler pages project create "$PROJECT" --production-branch=main || echo "(create failed or already exists)"
+          echo "== deploy =="
           npx wrangler pages deploy dist --project-name="$PROJECT" --branch=main

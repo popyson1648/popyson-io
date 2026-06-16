@@ -1,0 +1,55 @@
+[person]
+initials = "RS"
+name = "佐藤 玲"
+role = "ソフトウェアエンジニア"
+location = "東京"
+tagline = "分散システムと開発者ツールをつくっています。線で考えるのが好き。"
+bio = [
+  "バックエンドと開発基盤を中心に、約8年間ソフトウェアをつくっています。信頼性の高いシステムと、触っていて気持ちのいい開発者体験の両立に関心があります。",
+  "最近は型システム、ストリーム処理、そして「速くて静かな」CLI ツールにのめり込んでいます。",
+]
+activities = [
+  "技術カンファレンスでの登壇（分散トレーシング、型駆動設計）",
+  "OSS メンテナ — ストリーム処理ライブラリ",
+  "社内の輪読会・勉強会の運営",
+  "技術書の翻訳レビュー",
+]
+
+[[person.career]]
+period = "2022 — now"
+role = "シニアエンジニア / 基盤チーム"
+org = "Tate Systems"
+
+[[person.career]]
+period = "2019 — 2022"
+role = "バックエンドエンジニア"
+org = "Kumo Inc."
+
+[[person.career]]
+period = "2017 — 2019"
+role = "ソフトウェアエンジニア"
+org = "Hashi Labs"
+
+[[person.links]]
+label = "GitHub"
+href = "https://github.com/popyson1648"
+
+[[person.links]]
+label = "X"
+href = "https://x.com/popyson1648"
+
+[[person.links]]
+label = "LinkedIn"
+href = "https://www.linkedin.com/in/shunsuke-setoguchi"
+
+[[person.links]]
+label = "Wantedly"
+href = "https://www.wantedly.com/id/shunsuke_setoguchi_s"
+
+[[person.links]]
+label = "RSS"
+href = "/rss"
+
+[[person.links]]
+label = "xxx at gmail.com"
+href = "mailto:xxx@gmail.com"

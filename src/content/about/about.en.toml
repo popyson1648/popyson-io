@@ -1,0 +1,31 @@
+[person]
+initials = "RS"
+name = "Rei Sato"
+role = "Software Engineer"
+location = "Tokyo"
+tagline = "Building distributed systems and developer tools. I like thinking in lines."
+bio = [
+  "I've spent about 8 years building software, focused on backend and developer infrastructure. I care about the overlap between reliable systems and developer experience that feels good to touch.",
+  "Lately I'm deep into type systems, stream processing, and CLI tools that are fast and quiet.",
+]
+activities = [
+  "Conference talks on distributed tracing and type-driven design",
+  "OSS maintainer of a stream-processing library",
+  "Running internal reading groups and study sessions",
+  "Technical book translation reviews",
+]
+
+[[person.career]]
+period = "2022 — now"
+role = "Senior Engineer / Platform"
+org = "Tate Systems"
+
+[[person.career]]
+period = "2019 — 2022"
+role = "Backend Engineer"
+org = "Kumo Inc."
+
+[[person.career]]
+period = "2017 — 2019"
+role = "Software Engineer"
+org = "Hashi Labs"

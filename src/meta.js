@@ -14,10 +14,9 @@
    and links bidirectional hreflang alternates (ja / en / x-default), so
    both languages are independently crawlable and shareable.
 
-   Plain ESM (no window / no JSON imports) so it is importable from Node
-   during the build, mirroring src/posts.js and src/apps.js.
+   Plain ESM so it is importable from Node during the build. Post data is
+   supplied by window.BlogData in the browser and configureMetaData() in Node.
    ============================================================ */
-import { POSTS } from "./posts.js";
 import { APPS } from "./apps.js";
 
 export const SITE = {
@@ -28,6 +27,15 @@ export const SITE = {
 };
 
 const L = (field, lang) => (field && field[lang]) || (field && field.ja) || "";
+let configuredPosts = [];
+
+export function configureMetaData({ POSTS = [] } = {}) {
+  configuredPosts = POSTS;
+}
+
+function posts() {
+  return globalThis.window?.BlogData?.POSTS || configuredPosts;
+}
 
 // Generic, concise per-page descriptions (overridden by article / work copy).
 const PAGE_DESC = {
@@ -67,7 +75,7 @@ export function localized(path, lang) {
   return path === "/" ? "/en" : `/en${path}`;
 }
 
-function findPost(id) { return POSTS.find((p) => p.id === id) || null; }
+function findPost(id) { return posts().find((p) => p.id === id) || null; }
 function findApp(id) { return APPS.find((a) => a.id === id) || null; }
 
 /** Page title + description for a route in a given language. */
@@ -142,7 +150,7 @@ export function allRoutes() {
     { dir: "",      route: { name: "about" } },   // home (About is the landing)
     { dir: "about", route: { name: "about" } },   // alias, canonicals to "/"
     { dir: "blog",  route: { name: "blog" } },
-    ...POSTS.map((p) => ({ dir: `blog/${p.id}`, route: { name: "article", id: p.id } })),
+    ...posts().map((p) => ({ dir: `blog/${p.id}`, route: { name: "article", id: p.id } })),
     { dir: "app",   route: { name: "app" } },
     ...APPS.map((a) => ({ dir: `app/${a.id}`, route: { name: "appDetail", id: a.id } })),
     { dir: "reading", route: { name: "reading" } },

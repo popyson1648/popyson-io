@@ -1,0 +1,76 @@
+# ============================================================
+# Color theme tokens — single source of truth.
+#
+# Each key under [light] / [dark] becomes a CSS custom property
+# (`bg` -> `--bg`) emitted at build time by the `tomlContent()`
+# Vite plugin in vite.config.js:
+#   [light] -> `:root, [data-theme="light"] { ... }`
+#   [dark]  -> `[data-theme="dark"] { ... }`
+# Values are raw CSS strings (hex, `transparent`, or `color-mix(...)`).
+#
+# Only colors live here. Non-color tokens (type scale, radius, noise,
+# blur surfaces) stay in src/styles.css :root.
+# ============================================================
+
+# ---- Light theme (grainy paper + blue/lime ink) ----
+[light]
+bg          = "#fdfff7"
+bg-subtle   = "#fdfff7"
+surface     = "transparent"
+text        = "#4960ff"
+text-muted  = "color-mix(in srgb, #4960ff 72%, #242526)"
+text-meta   = "color-mix(in srgb, #4960ff 82%, #242526)"
+text-faint  = "color-mix(in srgb, #4960ff 62%, #fdfff7)"
+line        = "color-mix(in srgb, #4960ff 52%, #fdfff7)"
+line-strong = "#4960ff"
+accent      = "#4960ff"
+accent-alt  = "#d4ff0a"
+accent-soft = "transparent"
+# cream/white text on the blue accent fill (e.g. selected tag chips)
+on-accent   = "#fdfff7"
+
+# message boxes — calm, distinct
+msg-info-b = "#4960ff"
+msg-info-bg = "transparent"
+msg-info-tx = "#4960ff"
+msg-tip-b = "#d4ff0a"
+msg-tip-bg = "transparent"
+msg-tip-tx = "#4960ff"
+msg-warn-b = "#d4ff0a"
+msg-warn-bg = "transparent"
+msg-warn-tx = "#4960ff"
+msg-note-b = "#4960ff"
+msg-note-bg = "transparent"
+msg-note-tx = "#4960ff"
+
+# ---- Dark theme — deep navy paper + cream ink (riso identity, inverted) ----
+# The riso circles and bg grain switch to mix-blend-mode: screen under
+# [data-theme="dark"] (see src/app.css); multiply would sink ink to black
+# on a dark ground.
+[dark]
+bg          = "#12141d"
+bg-subtle   = "#161927"
+surface     = "transparent"
+text        = "#e9ecf7"
+text-muted  = "color-mix(in srgb, #e9ecf7 78%, #12141d)"
+text-meta   = "color-mix(in srgb, #e9ecf7 88%, #12141d)"
+text-faint  = "color-mix(in srgb, #e9ecf7 55%, #12141d)"
+line        = "color-mix(in srgb, #e9ecf7 26%, #12141d)"
+line-strong = "color-mix(in srgb, #e9ecf7 70%, #12141d)"
+accent      = "#6f82ff"
+accent-alt  = "#d4ff0a"
+accent-soft = "transparent"
+on-accent   = "#12141d"
+
+msg-info-b = "#6f82ff"
+msg-info-bg = "transparent"
+msg-info-tx = "#e9ecf7"
+msg-tip-b = "#d4ff0a"
+msg-tip-bg = "transparent"
+msg-tip-tx = "#e9ecf7"
+msg-warn-b = "#d4ff0a"
+msg-warn-bg = "transparent"
+msg-warn-tx = "#e9ecf7"
+msg-note-b = "#6f82ff"
+msg-note-bg = "transparent"
+msg-note-tx = "#e9ecf7"

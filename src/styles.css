@@ -5,8 +5,8 @@
    ============================================================ */
 
 :root {
-  --r: 8px;
-  --r-sm: 5px;
+  --r: 5px;
+  --r-sm: 3px;
   --line-w: 1px;
   --maxw: 1160px;
   --gap: 24px;
@@ -66,50 +66,11 @@
   --grain-dark: var(--noise-url);
 }
 
-/* ---- Light theme (grainy paper + blue/lime ink) ---- */
-:root, [data-theme="light"] {
-  --bg:          #fdfff7;
-  --bg-subtle:   #fdfff7;
-  --surface:     transparent;
-  --text:        #4960ff;
-  --text-muted:  color-mix(in srgb, #4960ff 72%, #242526);
-  --text-meta:   color-mix(in srgb, #4960ff 82%, #242526);
-  --text-faint:  color-mix(in srgb, #4960ff 62%, #fdfff7);
-  --line:        color-mix(in srgb, #4960ff 52%, #fdfff7);
-  --line-strong: #4960ff;
-  --accent:      #4960ff;
-  --accent-alt:  #d4ff0a;
-  --accent-soft: transparent;
-  --on-accent:   #fdfff7; /* cream/white text on the blue accent fill (e.g. selected tag chips) */
-
-  /* message boxes — calm, distinct */
-  --msg-info-b:  #4960ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #4960ff;
-  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #4960ff;
-  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #4960ff;
-  --msg-note-b:  #4960ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #4960ff;
-}
-
-/* Dark theme — deep navy paper + cream ink (riso identity, inverted). */
-[data-theme="dark"] {
-  --bg:          #12141d;
-  --bg-subtle:   #161927;
-  --surface:     transparent;
-  --text:        #e9ecf7;
-  --text-muted:  color-mix(in srgb, #e9ecf7 78%, #12141d);
-  --text-meta:   color-mix(in srgb, #e9ecf7 88%, #12141d);
-  --text-faint:  color-mix(in srgb, #e9ecf7 55%, #12141d);
-  --line:        color-mix(in srgb, #e9ecf7 26%, #12141d);
-  --line-strong: color-mix(in srgb, #e9ecf7 70%, #12141d);
-  --accent:      #6f82ff;
-  --accent-alt:  #d4ff0a;
-  --accent-soft: transparent;
-  --on-accent:   #12141d;
-
-  --msg-info-b:  #6f82ff;  --msg-info-bg:  transparent;  --msg-info-tx:  #e9ecf7;
-  --msg-tip-b:   #d4ff0a;  --msg-tip-bg:   transparent;  --msg-tip-tx:   #e9ecf7;
-  --msg-warn-b:  #d4ff0a;  --msg-warn-bg:  transparent;  --msg-warn-tx:  #e9ecf7;
-  --msg-note-b:  #6f82ff;  --msg-note-bg:  transparent;  --msg-note-tx:  #e9ecf7;
-}
+/* ---- Color theme tokens ----
+   The light/dark color custom properties (--bg, --text, --accent, --msg-*, …)
+   are the single source of truth in src/content/theme.toml and are generated
+   into CSS at build time by the tomlContent() plugin in vite.config.js,
+   imported via `virtual:theme.css` in src/main.jsx. Edit colors there. */
 
 * { box-sizing: border-box; }
 

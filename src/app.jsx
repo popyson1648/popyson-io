@@ -1,22 +1,11 @@
 /* ============================================================
-   App shell: routing, theme, language, tweaks
+   App shell: routing, theme, language
    ============================================================ */
 import { useEffect, useMemo, useState } from "react";
 import { AppCtx, Footer, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
-import { TweakColor, TweakRadio, TweakSection, TweaksPanel, useTweaks } from "./tweaks-panel.jsx";
 import { headModel, localized } from "./meta.js";
-
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "topLayout": "hero",
-  "blogLayout": "list",
-  "appLayout": "cards",
-  "aboutLayout": "two-col",
-  "cornerStyle": "rounded",
-  "lightAccent": "#4960ff",
-  "darkAccent": "#6f82ff"
-}/*EDITMODE-END*/;
 
 const RISOGRAPH_DEFAULTS = {
   bgNoiseOpacity: 30,
@@ -120,7 +109,6 @@ function useSystemDark() {
 }
 
 export default function App() {
-  const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [route, setRoute] = useState(() => parseRoute(window.location.pathname, window.location.search));
   const lang = route.lang; // language is derived from the URL (no localStorage)
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
@@ -163,17 +151,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // apply tweak-driven CSS vars
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--r", tw.cornerStyle === "square" ? "0px" : "5px");
-    root.style.setProperty("--r-sm", tw.cornerStyle === "square" ? "0px" : "3px");
-  }, [tw.cornerStyle]);
-  useEffect(() => {
-    // accent override per resolved theme
-    const v = resolved === "dark" ? tw.darkAccent : tw.lightAccent;
-    document.documentElement.style.setProperty("--accent", v);
-  }, [tw.lightAccent, tw.darkAccent, resolved]);
+  // riso/grain CSS vars (corner radius + per-theme --accent now come straight
+  // from src/styles.css :root and the generated virtual:theme.css).
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--bg-noise-url", bgNoiseUrl);
@@ -194,7 +173,7 @@ export default function App() {
   }, [bgFilterId, bgNoiseUrl, circleFilterId, circleNoiseUrl, riso]);
 
   const t = window.I18N[lang];
-  const ctx = { t, lang, theme, setTheme, route, nav, tw };
+  const ctx = { t, lang, theme, setTheme, route, nav };
 
   let page;
   switch (route.name) {
@@ -236,33 +215,6 @@ export default function App() {
         <main id="main" className="app-main" tabIndex={-1}>{page}</main>
         <Footer />
       </div>
-
-      <TweaksPanel title="Tweaks">
-        <TweakSection label={lang === "ja" ? "レイアウト" : "Layout"} />
-        <TweakRadio label={lang === "ja" ? "トップ" : "Top page"} value={tw.topLayout}
-                    options={[{label: "Hero", value: "hero"}, {label: "Split", value: "split"}, {label: "Index", value: "index"}]}
-                    onChange={(v) => setTweak("topLayout", v)} />
-        <TweakRadio label="Blog" value={tw.blogLayout}
-                    options={[{label: "List", value: "list"}, {label: "Grid", value: "grid"}]}
-                    onChange={(v) => setTweak("blogLayout", v)} />
-        <TweakRadio label="Works" value={tw.appLayout}
-                    options={[{label: "Cards", value: "cards"}, {label: "Rows", value: "rows"}]}
-                    onChange={(v) => setTweak("appLayout", v)} />
-        <TweakRadio label="About" value={tw.aboutLayout}
-                    options={[{label: "2 col", value: "two-col"}, {label: "Stacked", value: "stacked"}]}
-                    onChange={(v) => setTweak("aboutLayout", v)} />
-
-        <TweakSection label={lang === "ja" ? "スタイル" : "Style"} />
-        <TweakRadio label={lang === "ja" ? "角" : "Corners"} value={tw.cornerStyle}
-                    options={[{label: lang === "ja" ? "角丸" : "Rounded", value: "rounded"}, {label: lang === "ja" ? "直角" : "Square", value: "square"}]}
-                    onChange={(v) => setTweak("cornerStyle", v)} />
-        <TweakColor label={lang === "ja" ? "アクセント（Light）" : "Accent (Light)"} value={tw.lightAccent}
-                    options={["#4960ff", "#d4ff0a", "#3c4ed6", "#2435b8"]}
-                    onChange={(v) => setTweak("lightAccent", v)} />
-        <TweakColor label={lang === "ja" ? "アクセント（Dark）" : "Accent (Dark)"} value={tw.darkAccent}
-                    options={["#4960ff", "#d4ff0a", "#3c4ed6", "#2435b8"]}
-                    onChange={(v) => setTweak("darkAccent", v)} />
-      </TweaksPanel>
     </AppCtx.Provider>
   );
 }

@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { parse as parseToml } from "smol-toml";
 import { POSTS } from "./src/posts.js";
 
 const SITE_URL = "https://popyson.com";
@@ -55,6 +58,61 @@ function buildFeed() {
   ].join("\n");
 }
 
+// --- Structured content (TOML) ---------------------------------------------
+// Single source of truth for the color theme (src/content/theme.toml) and the
+// About page content (src/content/about.toml). See the imported files.
+const THEME_TOML = fileURLToPath(new URL("./src/content/theme.toml", import.meta.url));
+const VIRTUAL_THEME_ID = "virtual:theme.css";
+const RESOLVED_THEME_ID = "\0" + VIRTUAL_THEME_ID;
+
+// Build `selector { --key: value; ... }` from a [light]/[dark] TOML table.
+// Each key becomes a CSS custom property (`bg` -> `--bg`); values are raw CSS.
+function cssBlock(selector, table) {
+  const body = Object.entries(table)
+    .map(([key, value]) => `  --${key}: ${value};`)
+    .join("\n");
+  return `${selector} {\n${body}\n}`;
+}
+
+function generateThemeCss() {
+  const theme = parseToml(readFileSync(THEME_TOML, "utf8"));
+  const blocks = [];
+  if (theme.light) blocks.push(cssBlock(':root, [data-theme="light"]', theme.light));
+  if (theme.dark) blocks.push(cssBlock('[data-theme="dark"]', theme.dark));
+  return blocks.join("\n\n") + "\n";
+}
+
+// Two jobs:
+//   1. `import "virtual:theme.css"` -> CSS generated from theme.toml at
+//      build/dev time, so colors ship in the bundled (and prerendered) CSS.
+//   2. `import x from "./*.toml"` -> the parsed object as an ES module
+//      (used by src/data.js for the About content).
+function tomlContent() {
+  return {
+    name: "toml-content",
+    resolveId(id) {
+      if (id === VIRTUAL_THEME_ID) return RESOLVED_THEME_ID;
+      return null;
+    },
+    load(id) {
+      if (id === RESOLVED_THEME_ID) {
+        // Tell Vite the virtual CSS depends on theme.toml (it is not otherwise
+        // in the module graph), so edits invalidate this module and trigger HMR.
+        this.addWatchFile(THEME_TOML);
+        return generateThemeCss();
+      }
+      return null;
+    },
+    transform(_code, id) {
+      if (id.endsWith(".toml")) {
+        const data = parseToml(readFileSync(id, "utf8"));
+        return { code: `export default ${JSON.stringify(data)};`, map: null };
+      }
+      return null;
+    },
+  };
+}
+
 // Emit a real RSS feed at /feed.xml during build (production only).
 function rssFeed() {
   return {
@@ -66,5 +124,5 @@ function rssFeed() {
 }
 
 export default defineConfig({
-  plugins: [react(), rssFeed()],
+  plugins: [react(), tomlContent(), rssFeed()],
 });

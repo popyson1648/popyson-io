@@ -7,7 +7,7 @@ import { localized } from "./meta.js";
 
 /* ===================== ABOUT ===================== */
 export function AboutPage() {
-  const { t, lang, nav, tw } = useContext(AppCtx);
+  const { t, lang, nav } = useContext(AppCtx);
   const { PERSON, APPS } = window.BlogData;
   const linkIcon = (label) => {
     if (label === "GitHub") return <Icon.github width={15} height={15} />;
@@ -114,43 +114,24 @@ export function AboutPage() {
         {PERSON.bio[lang].map((para, i) => <p key={i} style={{ maxWidth: "62ch", color: "var(--text-muted)", lineHeight: 1.8 }}>{para}</p>)}
       </div>
 
-      {tw.aboutLayout === "stacked" ? (
-        <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 40 }}>
-          <Career /><Activity /><Made />
-        </div>
-      ) : (
-        <>
-          <div className="about-grid">
-            <Career />
-            <Activity />
-          </div>
-          <div style={{ marginTop: 40 }}><Made /></div>
-        </>
-      )}
+      <div className="about-grid">
+        <Career />
+        <Activity />
+      </div>
+      <div style={{ marginTop: 40 }}><Made /></div>
     </div>
   );
 }
 
 /* ===================== APPLICATION ===================== */
 export function ApplicationPage() {
-  const { t, lang, nav, tw } = useContext(AppCtx);
+  const { t, lang, nav } = useContext(AppCtx);
   const { APPS } = window.BlogData;
-  const rows = tw.appLayout === "rows";
   return (
     <div className="container route-fade">
       <PageHead title={t.page_app.title} />
-      <div className={rows ? "post-list" : "app-grid"}>
-        {APPS.map((a) => rows ? (
-          <button className="pcard" type="button" key={a.id} onClick={() => nav("/app/" + a.id)} aria-label={`${t.detail}: ${a.title}`}>
-            <Ph className="pcard-thumb" />
-            <div className="pcard-body">
-              <h3 className="pcard-title">{a.title}</h3>
-              <div className="pcard-meta"><span>{L(a.tagline, lang)}</span><span>· {a.year}</span></div>
-              <p className="pcard-summary">{L(a.desc, lang)}</p>
-              <div className="tag-row" style={{ marginTop: 4 }}>{a.stack.map((s) => <Chip key={s} isStatic>{s}</Chip>)}</div>
-            </div>
-          </button>
-        ) : (
+      <div className="app-grid">
+        {APPS.map((a) => (
           <div className="acard" key={a.id}>
             <Ph className="acard-img" />
             <div className="acard-body">

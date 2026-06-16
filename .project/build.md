@@ -34,9 +34,11 @@ npm run preview
 ## Reading list (Instapaper)
 
 The reading list is generated from Instapaper into `src/reading.json`.
-Secrets are read through 1Password; edit `.op.env` (and `.op.env.auth`) so the
-`op://` references point at your vault. These files hold references only, not
-secrets.
+Secrets are read through 1Password; copy `.op.env.example` to `.op.env` and
+copy `.op.env.auth.example` to `.op.env.auth`, then edit the local files so the
+`op://` references point at your vault. The local `.op.env*` files are ignored
+because they reveal vault, item, and field paths even when they do not contain
+literal secret values.
 
 ```sh
 # one-time: exchange username/password for an access token, then store the

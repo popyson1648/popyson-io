@@ -8,6 +8,17 @@ import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 let highlighterPromise;
 
+const FILTER_PROPS = ["tags", "title", "body"];
+const SEARCH_RESULT_LIMIT = 8;
+const SEARCH_RECENT_LIMIT = 5;
+const TOOLBAR_VIEWPORT_GUTTER = 20;
+const ARTICLE_SCROLL_OFFSET = 76;
+const CODE_COPY_FEEDBACK_MS = 1400;
+
+function emptyFilters(initialTag = null) {
+  return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
+}
+
 function getHighlighter() {
   if (!highlighterPromise) {
     highlighterPromise = Promise.all([
@@ -52,7 +63,7 @@ export function BlogList() {
   // A tag can arrive via the query (/blog?tag=foo) when navigating from an
   // article's tag — seed the tag filter from it (ignoring unknown tags).
   const initialTag = route?.tag && TAGS.includes(route.tag) ? route.tag : null;
-  const [filters, setFilters] = useState({ tags: initialTag ? [initialTag] : [], title: "", body: "" });
+  const [filters, setFilters] = useState(emptyFilters(initialTag));
   // Keep in sync if the route tag changes while this list stays mounted.
   useEffect(() => {
     if (route?.tag && TAGS.includes(route.tag)) {
@@ -90,7 +101,7 @@ export function BlogList() {
   // less than the (still-wide) container while collapsing, and unlike the pill's
   // `auto` width, which collapses because `.fbar-inline` is a shrinkable flex item.
   // The span is also invariant under the reveal animation's uniform translate.
-  const measureWidth = (el) => {
+  const measureToolbarWidth = (el) => {
     const inner = el.firstElementChild;
     const kids = inner && inner.children;
     if (!kids || !kids.length) return el.getBoundingClientRect().width;
@@ -98,14 +109,14 @@ export function BlogList() {
     const extra = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
                 + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
     const span = kids[kids.length - 1].getBoundingClientRect().right - kids[0].getBoundingClientRect().left;
-    return Math.min(span + extra, window.innerWidth - 20);
+    return Math.min(span + extra, window.innerWidth - TOOLBAR_VIEWPORT_GUTTER);
   };
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
     const inner = el.firstElementChild;
     const start = el.getBoundingClientRect().width;
-    const target = measureWidth(el);
+    const target = measureToolbarWidth(el);
     // Asymmetric timing: entering/expanding lingers, collapsing exits quicker
     // (Material motion: exit transitions are shorter than enter transitions).
     el.style.transitionDuration = target >= start ? "260ms" : "180ms";
@@ -126,7 +137,7 @@ export function BlogList() {
   useEffect(() => {
     const onResize = () => {
       const el = controlsRef.current;
-      if (el) el.style.width = measureWidth(el) + "px";
+      if (el) el.style.width = measureToolbarWidth(el) + "px";
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -137,7 +148,7 @@ export function BlogList() {
     let live = true;
     document.fonts?.ready.then(() => {
       const el = controlsRef.current;
-      if (live && el) el.style.width = measureWidth(el) + "px";
+      if (live && el) el.style.width = measureToolbarWidth(el) + "px";
     });
     return () => { live = false; };
   }, []);
@@ -234,13 +245,14 @@ export function BlogList() {
   if (filters.tags.length) activeProps.push("tags");
   if (filters.title) activeProps.push("title");
   if (filters.body) activeProps.push("body");
-  const clearAll = () => setFilters({ tags: [], title: "", body: "" });
+  const clearAll = () => setFilters(emptyFilters());
   const sortLabel = sortKey === "date" ? t.s_date : t.s_kana;
   const orderLabel = sortDir === "asc" ? t.order_asc : t.order_desc;
   const hasActiveFilters = activeProps.length > 0;
 
   const toggleTag = (tg) => setFilters((f) => ({ ...f, tags: f.tags.includes(tg) ? f.tags.filter((x) => x !== tg) : [...f.tags, tg] }));
-  const propTabs = [["tags", t.f_tag], ["title", t.f_title], ["body", t.f_body]];
+  const filterLabels = { tags: t.f_tag, title: t.f_title, body: t.f_body };
+  const propTabs = FILTER_PROPS.map((key) => [key, filterLabels[key]]);
 
   // ---- inline search (same incremental index as the retired modal) ----
   const searchDocs = useMemo(() => POSTS.map((p) => ({
@@ -253,7 +265,7 @@ export function BlogList() {
   const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(searchDocs), [searchDocs]);
   const searchResults = useMemo(() => {
     const term = deferredQuery.trim();
-    return searchIndex.search(term, { limit: term ? 8 : 5 });
+    return searchIndex.search(term, { limit: term ? SEARCH_RESULT_LIMIT : SEARCH_RECENT_LIMIT });
   }, [deferredQuery, searchIndex]);
 
   useEffect(() => { setSearchActive(0); }, [deferredQuery]);
@@ -464,7 +476,7 @@ export function Article({ id }) {
 
   const jump = (headingId) => {
     const el = document.getElementById("sec-" + headingId);
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: "smooth" });
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - ARTICLE_SCROLL_OFFSET, behavior: "smooth" });
     setTocOpen(false);
   };
   const toc = (
@@ -583,7 +595,7 @@ export function CodeBlock({ lang, code }) {
     });
     return () => { live = false; };
   }, [lang, code]);
-  const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1400); };
+  const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), CODE_COPY_FEEDBACK_MS); };
   return (
     <div className="code" data-cf-change="ch-code-block">
       <div className="code-bar">

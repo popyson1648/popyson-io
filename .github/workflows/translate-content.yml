@@ -1,0 +1,189 @@
+name: Translate content
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/content/posts/**/index.ja.md"
+      - "src/content/about/about.ja.toml"
+
+concurrency:
+  group: translate-content-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  translate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip translate]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect translation targets
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+
+          if [[ "$before" =~ ^0+$ ]]; then
+            if git rev-parse "${after}^" >/dev/null 2>&1; then
+              before="${after}^"
+            else
+              before="$(git hash-object -t tree /dev/null)"
+            fi
+          fi
+
+          mapfile -t changed_sources < <(
+            git diff --name-only "$before" "$after" -- \
+              ":(glob)src/content/posts/**/index.ja.md" \
+              "src/content/about/about.ja.toml" |
+              sort -u
+          )
+
+          if [[ "${#changed_sources[@]}" -eq 0 ]]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mappings_file="$RUNNER_TEMP/translation-mappings.txt"
+          targets_file="$RUNNER_TEMP/translation-targets.txt"
+          : > "$mappings_file"
+          : > "$targets_file"
+
+          for source in "${changed_sources[@]}"; do
+            if [[ "$source" =~ ^src/content/posts/([^/]+)/index\.ja\.md$ ]]; then
+              post_id="${BASH_REMATCH[1]}"
+              target="src/content/posts/${post_id}/index.en.md"
+            elif [[ "$source" == "src/content/about/about.ja.toml" ]]; then
+              target="src/content/about/about.en.toml"
+            else
+              echo "Unsupported translation source: $source" >&2
+              exit 1
+            fi
+
+            printf '%s -> %s\n' "$source" "$target" >> "$mappings_file"
+            printf '%s\n' "$target" >> "$targets_file"
+          done
+
+          {
+            echo "should_run=true"
+            echo "mappings<<EOF"
+            cat "$mappings_file"
+            echo "EOF"
+            echo "targets<<EOF"
+            sort -u "$targets_file"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update English translations with Claude
+        if: ${{ steps.detect.outputs.should_run == 'true' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Read .project/translation.md first and follow it exactly.
+
+            Translate only the changed Japanese source files listed below and update only their corresponding English target files.
+
+            Source-to-target mappings:
+            ${{ steps.detect.outputs.mappings }}
+
+            Hard constraints:
+            - Update only the listed English target files.
+            - Do not edit CLAUDE.md.
+            - Do not edit Japanese source files.
+            - Do not change article IDs.
+            - Do not change directory names.
+            - Do not modify assets.
+            - Do not perform unrelated refactors.
+            - Do not migrate article structure.
+            - Do not rename files.
+            - Do not change routes or URL behavior.
+            - Do not write post IDs into Markdown metadata.
+            - Keep Markdown and TOML syntax valid.
+            - Keep the site buildable.
+          claude_args: |
+            --max-turns 20
+            --allowedTools Read,Edit,MultiEdit,Write
+
+      - name: Validate generated file changes
+        if: ${{ steps.detect.outputs.should_run == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          targets_file="$RUNNER_TEMP/translation-targets.txt"
+          mapfile -t changed_files < <(
+            {
+              git diff --name-only HEAD
+              git ls-files --others --exclude-standard
+            } | sort -u
+          )
+
+          if [[ "${#changed_files[@]}" -eq 0 ]]; then
+            echo "Claude produced no file changes."
+            exit 0
+          fi
+
+          for file in "${changed_files[@]}"; do
+            if ! grep -Fxq "$file" "$targets_file"; then
+              echo "Disallowed generated change: $file" >&2
+              echo "Allowed target files:" >&2
+              cat "$targets_file" >&2
+              exit 1
+            fi
+          done
+
+      - name: Run verification
+        if: ${{ steps.detect.outputs.should_run == 'true' }}
+        run: python3 scripts/verify.py --mode ci
+
+      - name: Commit English translation updates
+        if: ${{ steps.detect.outputs.should_run == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          targets_file="$RUNNER_TEMP/translation-targets.txt"
+          has_translation_changes=false
+
+          while IFS= read -r target; do
+            if [[ -n "$target" && -n "$(git status --porcelain -- "$target")" ]]; then
+              has_translation_changes=true
+              break
+            fi
+          done < "$targets_file"
+
+          if [[ "$has_translation_changes" != "true" ]]; then
+            echo "No English translation changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          while IFS= read -r target; do
+            [[ -n "$target" ]] && git add "$target"
+          done < "$targets_file"
+
+          git commit -m "chore: update English translations [skip translate]"
+          git push

@@ -6,7 +6,7 @@
    - the build-time prerenderer in scripts/prerender.mjs.
 
    Plain ESM (no window / no JSON imports) so it is importable from
-   Node during the build, mirroring src/posts.js.
+   Node during the build.
    ============================================================ */
 export const APPS = [
   {

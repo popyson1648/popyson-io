@@ -19,7 +19,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { SITE, allRoutes, headModel } from "../src/meta.js";
+import { loadSiteContent } from "./content_loader.mjs";
+import { SITE, allRoutes, configureMetaData, headModel } from "../src/meta.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -102,6 +103,7 @@ function buildRobots() {
 }
 
 function main() {
+  configureMetaData(loadSiteContent());
   const template = readFileSync(join(DIST, "index.html"), "utf8");
   const routes = allRoutes();
   const models = [];

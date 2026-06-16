@@ -188,14 +188,25 @@ export function BlogList() {
     return () => { document.removeEventListener("pointerdown", onDoc, true); document.removeEventListener("keydown", onKey); };
   }, [openPanel]);
 
-  const rows = useMemo(() => POSTS.map((p) => ({
-    raw: p,
-    title: L(p.title, lang),
-    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
-    tags: p.tags,
-    date: p.date,
-    kana: p.kana,
-  })), [POSTS, lang]);
+  const postDocs = useMemo(() => POSTS.map((p) => {
+    const title = L(p.title, lang);
+    const body = `${L(p.summary, lang)} ${bodyText(p.id, lang)}`;
+    return {
+      p,
+      title,
+      body,
+      tags: p.tags,
+      tagsText: p.tags.map((tag) => `#${tag}`).join(" "),
+    };
+  }), [POSTS, lang]);
+  const rows = useMemo(() => postDocs.map((doc) => ({
+    raw: doc.p,
+    title: doc.title,
+    body: doc.body,
+    tags: doc.tags,
+    date: doc.p.date,
+    kana: doc.p.kana,
+  })), [postDocs]);
   const columns = useMemo(() => {
     const column = createColumnHelper();
     return [
@@ -255,12 +266,12 @@ export function BlogList() {
   const propTabs = FILTER_PROPS.map((key) => [key, filterLabels[key]]);
 
   // ---- inline search (same incremental index as the retired modal) ----
-  const searchDocs = useMemo(() => POSTS.map((p) => ({
-    p,
-    title: L(p.title, lang),
-    tags: p.tags.map((tag) => `#${tag}`).join(" "),
-    body: `${L(p.summary, lang)} ${bodyText(p.id, lang)}`,
-  })), [POSTS, lang]);
+  const searchDocs = useMemo(() => postDocs.map((doc) => ({
+    p: doc.p,
+    title: doc.title,
+    tags: doc.tagsText,
+    body: doc.body,
+  })), [postDocs]);
   const searchDocById = useMemo(() => new Map(searchDocs.map((doc) => [doc.p.id, doc])), [searchDocs]);
   const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(searchDocs), [searchDocs]);
   const searchResults = useMemo(() => {

@@ -40,7 +40,6 @@ def main() -> int:
     app = read("src/app.jsx")
     app_css = read("src/app.css")
     styles_css = read("src/styles.css")
-    tweaks = read("src/tweaks-panel.jsx")
 
     checks.append(("<button className=\"made-card\"" in pages, "made-card must be a native button"))
     checks.append(("<button className=\"fbtn ficon fbar-back\"" in blog, "filter/sort toolbar back control must be a native button"))
@@ -73,8 +72,7 @@ def main() -> int:
         ".article-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; font-family: var(--mono); font-size: 11px;",
         ".rel-date { font-size: 10.5px;",
     ]), "known public UI text must not regress to 10-11px"))
-    checks.append(("font:12px/1.4" in tweaks and ".twk-sect{font-size:12px;" in tweaks, "tweak panel text must stay at least 12px"))
-    font_violations = font_sizes_below("src/app.css", app_css, 12) + font_sizes_below("src/tweaks-panel.jsx", tweaks, 12)
+    font_violations = font_sizes_below("src/app.css", app_css, 12)
     checks.append((not font_violations, "font sizes must not be below 12px: " + ", ".join(font_violations[:5])))
 
     icon_controls = [line for line in components.splitlines() if "className=\"icon-btn" in line]

@@ -89,7 +89,7 @@ jobs:
           ref: ${{ steps.pr.outputs.head_ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: ${{ steps.pr.outputs.should_run == 'true' }}
         with:
           python-version: "3.11"

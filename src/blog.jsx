@@ -606,7 +606,7 @@ const markdownComponents = {
   },
   pre({ children }) {
     const child = Children.toArray(children)[0];
-    if (!isValidElement(child)) return <pre>{children}</pre>;
+    if (!isValidElement(child) || child.type !== "code") return <pre>{children}</pre>;
     const match = /language-([^\s]+)/.exec(child.props.className || "");
     const code = String(child.props.children || "").replace(/\n$/, "");
     return <CodeBlock lang={match?.[1] || "text"} code={code} />;

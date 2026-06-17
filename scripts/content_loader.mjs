@@ -33,7 +33,9 @@ function extractMarkdownHeadings(markdown) {
       continue;
     }
     if (fenced) continue;
-    const match = /^(#{1,6})[ \t]+(.+?)[ \t#]*$/.exec(line);
+    // CommonMark allows up to 3 leading spaces before an ATX heading; match
+    // that here so the build-time TOC stays in sync with the runtime ids.
+    const match = /^ {0,3}(#{1,6})[ \t]+(.+?)[ \t#]*$/.exec(line);
     if (!match) continue;
     const depth = match[1].length;
     const text = match[2].trim();

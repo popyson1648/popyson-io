@@ -87,6 +87,9 @@ export function markdownToPlainText(markdown) {
   return String(markdown || "")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/~~~[\s\S]*?~~~/g, " ")
+    // Unwrap autolinks (<https://…>, <mailto:…>) before stripping raw HTML so
+    // their URLs stay searchable instead of being removed as if they were tags.
+    .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/gi, " $1 ")
     .replace(/<[^>\n]*>/g, " ")
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")

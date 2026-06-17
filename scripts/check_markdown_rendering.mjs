@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import {
   calloutVariant,
   markdownRemarkPlugins,
+  markdownToPlainText,
   safeMarkdownUrl,
 } from "../src/markdownPipeline.js";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
@@ -78,6 +79,12 @@ assert.equal(sectionId(slugifyHeading("Feature Set", new Map())), "sec-feature-s
 assert.equal(sectionId(""), "");
 assert.equal(calloutVariant("warning"), "warn");
 assert.equal(calloutVariant("note"), "note");
+
+// Search-index plain text keeps autolink URL tokens (the host/path survive even
+// though punctuation is stripped) but drops raw HTML tags.
+const plain = markdownToPlainText("see <https://example.com> and <b>x</b> here");
+assert.match(plain, /example\.com/);
+assert.doesNotMatch(plain, /<b>/);
 
 const validHtml = render(validMarkdownFixture);
 assert.match(validHtml, /<h1>H1<\/h1>/);

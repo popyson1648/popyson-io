@@ -82,7 +82,7 @@ jobs:
           echo "number=$number" >> "$GITHUB_OUTPUT"
           echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: ${{ steps.pr.outputs.should_run == 'true' }}
         with:
           token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}

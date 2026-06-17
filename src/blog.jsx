@@ -5,7 +5,8 @@ import { Children, isValidElement, useContext, useDeferredValue, useEffect, useL
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import Markdown from "react-markdown";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, fmtDate, highlight } from "./components.jsx";
-import { markdownRemarkPlugins, safeMarkdownUrl } from "./markdownPipeline.js";
+import { calloutVariant, markdownRemarkPlugins, safeMarkdownUrl } from "./markdownPipeline.js";
+import { sectionId } from "./headingSlug.js";
 import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 let highlighterPromise;
@@ -488,7 +489,7 @@ export function Article({ id }) {
     .slice(0, 3).map((x) => x.p);
 
   const jump = (headingId) => {
-    const el = document.getElementById("sec-" + headingId);
+    const el = document.getElementById(sectionId(headingId));
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - ARTICLE_SCROLL_OFFSET, behavior: "smooth" });
     setTocOpen(false);
   };
@@ -496,7 +497,7 @@ export function Article({ id }) {
     <ol className="toc-list">
       {headings.map((h) => (
         <li key={h.id}>
-          <a href={"#sec-" + h.id} onClick={(e) => { e.preventDefault(); jump(h.id); }}>
+          <a href={"#" + sectionId(h.id)} onClick={(e) => { e.preventDefault(); jump(h.id); }}>
             {L({ ja: h.ja, en: h.en }, lang)}
           </a>
         </li>
@@ -582,8 +583,8 @@ const markdownComponents = {
     return <h1 {...props} id={headingId(node) || undefined}>{children}</h1>;
   },
   h2({ node, children, ...props }) {
-    const id = headingId(node);
-    return <h2 {...props} id={id ? "sec-" + id : undefined}>{children}</h2>;
+    const id = sectionId(headingId(node));
+    return <h2 {...props} id={id || undefined}>{children}</h2>;
   },
   h3({ node, children, ...props }) {
     return <h3 {...props} id={headingId(node) || undefined}>{children}</h3>;
@@ -614,7 +615,7 @@ const markdownComponents = {
     return <code className={className} {...props}>{children}</code>;
   },
   callout({ type, title, children, node: _node }) {
-    const variant = type === "warning" ? "warn" : type;
+    const variant = calloutVariant(type);
     return (
       <div className={"msg msg-" + variant} data-cf-change="ch-message-boxes">
         <div className="msg-body">

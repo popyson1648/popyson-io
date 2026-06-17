@@ -3,9 +3,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Markdown from "react-markdown";
 import {
+  calloutVariant,
   markdownRemarkPlugins,
   safeMarkdownUrl,
 } from "../src/markdownPipeline.js";
+import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 import {
   calloutMarkdownFixture,
   malformedMarkdownFixture,
@@ -15,7 +17,18 @@ import {
 
 const e = React.createElement;
 
+// blog.jsx renders the real article with JSX components that depend on browser
+// APIs (AppCtx, Shiki) and cannot be imported into plain Node. To still cover
+// the renderer's risky decisions, these test components mirror blog.jsx's
+// markup but call the *same* shared helpers (calloutVariant, sectionId,
+// safeMarkdownUrl) that blog.jsx uses — so the two cannot silently diverge.
+const headingId = (node) => node?.properties?.id || "";
+
 const components = {
+  h2({ node, children }) {
+    const id = sectionId(headingId(node));
+    return e("h2", { id: id || undefined }, children);
+  },
   a({ children, href }) {
     const safeHref = safeMarkdownUrl(href);
     if (!safeHref) return e("span", null, children);
@@ -37,7 +50,16 @@ const components = {
     return e("code", { className }, children);
   },
   callout({ type, title, children }) {
-    return e("aside", { "data-callout": type, "data-title": title || "" }, children);
+    return e(
+      "div",
+      { className: "msg msg-" + calloutVariant(type) },
+      e(
+        "div",
+        { className: "msg-body" },
+        title ? e("div", { className: "msg-title" }, title) : null,
+        children,
+      ),
+    );
   },
 };
 
@@ -50,9 +72,17 @@ function render(markdown) {
   }, markdown));
 }
 
+// Shared heading/anchor helpers: the slug and section id used here are the same
+// ones the build-time TOC (content_loader.mjs) and blog.jsx rely on.
+assert.equal(sectionId(slugifyHeading("Feature Set", new Map())), "sec-feature-set");
+assert.equal(sectionId(""), "");
+assert.equal(calloutVariant("warning"), "warn");
+assert.equal(calloutVariant("note"), "note");
+
 const validHtml = render(validMarkdownFixture);
 assert.match(validHtml, /<h1>H1<\/h1>/);
-assert.match(validHtml, /<h2 id="feature-set">Feature Set<\/h2>/);
+// h2 carries the shared `sec-`-prefixed slug so the TOC anchor resolves.
+assert.match(validHtml, /<h2 id="sec-feature-set">Feature Set<\/h2>/);
 assert.match(validHtml, /<blockquote>/);
 assert.match(validHtml, /<table>/);
 assert.match(validHtml, /<input[^>]+type="checkbox"/);
@@ -63,10 +93,13 @@ assert.match(validHtml, /data-lang="ts"/);
 assert.match(validHtml, /indented code/);
 
 const calloutHtml = render(calloutMarkdownFixture);
-for (const type of ["note", "tip", "info", "warning", "danger"]) {
-  assert.match(calloutHtml, new RegExp(`data-callout="${type}"`));
+// Each callout type maps to its `.msg-*` variant via the shared helper.
+for (const type of ["note", "tip", "info", "danger"]) {
+  assert.match(calloutHtml, new RegExp(`class="msg msg-${type}"`));
 }
-assert.match(calloutHtml, /data-title="Supported Markdown"/);
+assert.match(calloutHtml, /class="msg msg-warn"/);
+assert.doesNotMatch(calloutHtml, /msg-warning/);
+assert.match(calloutHtml, /<div class="msg-title">Supported Markdown<\/div>/);
 assert.match(calloutHtml, /<strong>bold<\/strong>/);
 assert.match(calloutHtml, /data-lang="ts"/);
 

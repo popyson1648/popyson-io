@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
+import { slugifyHeading } from "../src/headingSlug.js";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
@@ -18,18 +19,6 @@ function parseFrontmatter(source, filePath) {
   const frontmatter = text.slice(4, end);
   const body = text.slice(end + 5).replace(/^\r?\n/, "");
   return { meta: parseToml(frontmatter), body };
-}
-
-function slugifyHeading(value, seen) {
-  const base = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[`*_~:[\](){}]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "") || "section";
-  const count = seen.get(base) || 0;
-  seen.set(base, count + 1);
-  return count ? `${base}-${count + 1}` : base;
 }
 
 function extractMarkdownHeadings(markdown) {

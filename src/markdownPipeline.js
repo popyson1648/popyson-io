@@ -1,8 +1,16 @@
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import { visit } from "unist-util-visit";
+import { slugifyHeading } from "./headingSlug.js";
 
 export const CALLOUT_TYPES = new Set(["note", "tip", "info", "warning", "danger"]);
+
+// Map a callout type to its `.msg-*` style variant. The `.msg` styling predates
+// these callouts and uses `warn` rather than `warning`, so normalize here and
+// share the mapping with the renderer to keep markup and CSS in sync.
+export function calloutVariant(type) {
+  return type === "warning" ? "warn" : type;
+}
 
 export function remarkCallouts() {
   return (tree) => {
@@ -47,18 +55,6 @@ function nodeText(node) {
   if (typeof node.value === "string") return node.value;
   if (!Array.isArray(node.children)) return "";
   return node.children.map(nodeText).join("");
-}
-
-function slugifyHeading(value, seen) {
-  const base = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[`*_~:[\](){}]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "") || "section";
-  const count = seen.get(base) || 0;
-  seen.set(base, count + 1);
-  return count ? `${base}-${count + 1}` : base;
 }
 
 export const markdownRemarkPlugins = [remarkGfm, remarkDirective, remarkCallouts, remarkHeadingIds];

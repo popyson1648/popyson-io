@@ -96,10 +96,14 @@ jobs:
 
       - name: Update English translations with Claude
         if: ${{ steps.detect.outputs.should_run == 'true' }}
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
+        shell: bash
+        env:
+          # The Claude Code CLI authenticates headlessly with this long-lived
+          # OAuth token (created via `claude setup-token`). The push event is
+          # unsupported by anthropics/claude-code-action, so the workflow calls
+          # the CLI directly instead.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PROMPT: |
             Read .project/translation.md first and follow it exactly.
 
             Translate only the changed Japanese source files listed below and update only their corresponding English target files.
@@ -121,9 +125,15 @@ jobs:
             - Do not write post IDs into Markdown metadata.
             - Keep Markdown and TOML syntax valid.
             - Keep the site buildable.
-          claude_args: |
-            --max-turns 20
-            --allowedTools Read,Edit,MultiEdit,Write
+        run: |
+          set -euo pipefail
+
+          npm install -g @anthropic-ai/claude-code@2.1.179
+
+          claude -p "$PROMPT" \
+            --max-turns 20 \
+            --allowed-tools "Read,Edit,MultiEdit,Write" \
+            --permission-mode acceptEdits
 
       - name: Validate generated file changes
         if: ${{ steps.detect.outputs.should_run == 'true' }}

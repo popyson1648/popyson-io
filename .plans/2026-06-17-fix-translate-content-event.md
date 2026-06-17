@@ -27,9 +27,9 @@ Fix the failing `Translate content` workflow. The "Update English translations w
 ## Steps
 
 1. Replace the action step with a `run:` step that:
-   - Installs `@anthropic-ai/claude-code@2.1.179` globally.
+   - Runs the pinned CLI via `npx` to avoid global-install permission issues on the runner.
    - Passes the prompt via the `PROMPT` env var (built in YAML, including the detected mappings) to avoid shell quoting/injection.
-   - Runs `claude -p "$PROMPT" --max-turns 20 --allowed-tools "Read,Edit,MultiEdit,Write" --permission-mode acceptEdits`.
+   - Runs `npx --yes @anthropic-ai/claude-code@2.1.179 -p "$PROMPT" --max-turns 20 --allowed-tools "Read,Edit,MultiEdit,Write" --permission-mode acceptEdits`.
 2. Validate workflow YAML syntax.
 3. Run `python3 scripts/verify.py --mode ci`.
 4. Record the decision in `.decisions/`.

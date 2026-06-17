@@ -46,6 +46,9 @@ manual approval. Use a dedicated automation token for fully automatic PR checks.
 
 - `.github/dependabot.yml`: enables version update PRs for npm and GitHub
   Actions. Dependabot security updates are controlled by GitHub settings.
+- `.github/workflows/secret-scan.yml`: runs Gitleaks on pushes, pull requests,
+  and manual dispatch. It disables PR comments and artifact upload so detected
+  values are not copied into review surfaces.
 - `.github/workflows/security-alert-remediation.yml`: runs daily and on manual
   dispatch, reads open Dependabot and code scanning alerts, asks Claude Code for
   a minimal fix, verifies it, and opens a remediation PR.
@@ -55,6 +58,9 @@ manual approval. Use a dedicated automation token for fully automatic PR checks.
   PR is quiet and checks are green.
 
 ## Secret Scanning Policy
+
+Gitleaks is configured in `.gitleaks.toml` and runs in both pre-commit and CI.
+It is a static gate before code reaches GitHub or Claude-driven automation.
 
 Secret scanning alert payloads are not fetched, printed, summarized, or sent to
 Claude. Secret alerts can contain credentials, so they must be handled in

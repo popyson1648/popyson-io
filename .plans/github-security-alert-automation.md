@@ -7,6 +7,7 @@ Enable a best-practice security alert workflow where GitHub detects dependency a
 ## Scope
 
 - Add Dependabot configuration for npm and GitHub Actions version/security updates.
+- Add Gitleaks as a pre-commit and CI secret scanning gate.
 - Add scheduled security alert remediation with Claude Code GitHub Actions.
 - Add automated follow-up for security remediation PRs.
 - Document required GitHub security settings, secrets, permissions, and operating model.
@@ -29,16 +30,18 @@ Enable a best-practice security alert workflow where GitHub detects dependency a
 ## Steps
 
 1. Add `.github/dependabot.yml`.
-2. Add `.github/workflows/security-alert-remediation.yml`.
-3. Add `.github/workflows/security-pr-followup.yml`.
-4. Add `.project/security-automation.md` and link it from `.project/README.md`.
-5. Add `.decisions/security-alert-automation.md`.
-6. Run repository verification.
-7. Review the resulting changes for permissions, secret handling, and duplicate-PR behavior.
+2. Add `.gitleaks.toml`, pre-commit Gitleaks integration, and a secret scan workflow.
+3. Add `.github/workflows/security-alert-remediation.yml`.
+4. Add `.github/workflows/security-pr-followup.yml`.
+5. Add `.project/security-automation.md` and link it from `.project/README.md`.
+6. Add `.decisions/security-alert-automation.md`.
+7. Run repository verification.
+8. Review the resulting changes for permissions, secret handling, and duplicate-PR behavior.
 
 ## Verification
 
 - Run `python3 scripts/verify.py --mode ci`.
+- Run Gitleaks through pre-commit or the secret scan workflow.
 - Inspect workflow YAML for least-privilege permissions and expected triggers.
 - Confirm secret scanning alert contents are not included in Claude prompts.
 

@@ -12,14 +12,12 @@ on:
     types: [submitted]
   pull_request_review_comment:
     types: [created]
-  issue_comment:
-    types: [created]
   schedule:
     - cron: "43 * * * *"
   workflow_dispatch:
 
 concurrency:
-  group: security-pr-followup-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  group: security-pr-followup-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -51,11 +49,6 @@ jobs:
           case "${{ github.event_name }}" in
             pull_request_review|pull_request_review_comment)
               number="${{ github.event.pull_request.number }}"
-              ;;
-            issue_comment)
-              if [[ "${{ github.event.issue.pull_request && 'true' || 'false' }}" == "true" ]]; then
-                number="${{ github.event.issue.number }}"
-              fi
               ;;
           esac
 

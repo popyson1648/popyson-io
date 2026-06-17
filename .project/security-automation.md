@@ -53,7 +53,7 @@ manual approval. Use a dedicated automation token for fully automatic PR checks.
   dispatch, reads open Dependabot and code scanning alerts, asks Claude Code for
   a minimal fix, verifies it, and opens a remediation PR.
 - `.github/workflows/security-pr-followup.yml`: watches security remediation
-  PR review/comment activity and also runs hourly. It asks Claude Code to fix
+  PR review activity and also runs hourly. It asks Claude Code to fix
   actionable review or CI feedback, pushes changes, or comments `LGTM` when the
   PR is quiet and checks are green.
 

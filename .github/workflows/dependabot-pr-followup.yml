@@ -15,6 +15,16 @@ on:
     - cron: "17 * * * *"
   workflow_dispatch:
 
+# The repository default GITHUB_TOKEN is read-only. A reusable workflow cannot
+# request more than its caller grants, so declare the permissions the reusable
+# follow-up job needs here; otherwise the call fails at startup.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  statuses: read
+  checks: read
+
 jobs:
   follow-up:
     uses: ./.github/workflows/_pr-followup.yml

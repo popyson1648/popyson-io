@@ -35,6 +35,7 @@ automation:
 - Dependabot alerts: read
 - Code scanning alerts: read
 - Contents: write
+- Workflows: write
 - Pull requests: write
 - Issues: write
 

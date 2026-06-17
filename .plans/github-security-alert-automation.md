@@ -23,7 +23,7 @@ Enable a best-practice security alert workflow where GitHub detects dependency a
 
 - GitHub Advanced Security-related feature availability depends on repository visibility and account/organization settings.
 - `CLAUDE_CODE_OAUTH_TOKEN` is available as a GitHub Actions secret.
-- A GitHub App installation token or fine-grained PAT is available as `SECURITY_AUTOMATION_TOKEN` for reading security alerts and creating/updating remediation PRs without workflow approval prompts.
+- A GitHub App installation token or fine-grained PAT is available as `SECURITY_AUTOMATION_TOKEN` for reading security alerts and creating/updating remediation PRs without workflow approval prompts. It can also update workflow files when Dependabot opens GitHub Actions update PRs.
 - CodeQL default setup, Dependabot alerts/security updates, and secret scanning/push protection are enabled in GitHub settings.
 
 ## Steps

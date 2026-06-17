@@ -52,10 +52,18 @@ manual approval. Use a dedicated automation token for fully automatic PR checks.
 - `.github/workflows/security-alert-remediation.yml`: runs daily and on manual
   dispatch, reads open Dependabot and code scanning alerts, asks Claude Code for
   a minimal fix, verifies it, and opens a remediation PR.
-- `.github/workflows/security-pr-followup.yml`: watches security remediation
-  PR review activity and also runs hourly. It asks Claude Code to fix
-  actionable review or CI feedback, pushes changes, or comments `LGTM` when the
-  PR is quiet and checks are green.
+- `.github/workflows/_pr-followup.yml`: shared `workflow_call` job that follows
+  up on one matching open maintenance PR. It asks Claude Code to fix actionable
+  review or CI feedback, runs `python3 scripts/verify.py --mode ci`, pushes the
+  minimal fix, or comments `LGTM` when the PR is quiet and checks are green. A
+  `selector` input chooses which PRs to act on (`security` or `dependabot`). It
+  never merges a PR.
+- `.github/workflows/security-pr-followup.yml`: thin caller that runs the shared
+  follow-up on security remediation PRs (label `security-alert-remediation`) on
+  review activity, hourly, and on manual dispatch.
+- `.github/workflows/dependabot-pr-followup.yml`: thin caller that runs the
+  shared follow-up on Dependabot PRs (author `app/dependabot` or label
+  `dependencies`) on review activity, hourly, and on manual dispatch.
 
 ## Secret Scanning Policy
 
@@ -70,7 +78,9 @@ GitHub's security UI and by revoking or rotating the affected secret.
 
 - The automation never merges a PR.
 - The automation never dismisses alerts.
-- One open `security-alert-remediation` PR is handled at a time to avoid
-  duplicate fixes.
+- Each follow-up run handles one matching open PR at a time (the most recently
+  updated) to avoid duplicate fixes.
+- Labels `dependencies` and `security` must exist so Dependabot can apply them;
+  the `dependabot` selector also matches PRs authored by `app/dependabot`.
 - If Claude cannot safely fix an alert, the workflow should leave the alert open
   for manual handling rather than making speculative changes.

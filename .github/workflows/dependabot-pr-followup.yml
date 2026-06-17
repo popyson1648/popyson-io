@@ -1,7 +1,8 @@
-name: Security remediation PR follow-up
+name: Dependabot PR follow-up
 
-# Thin caller: follows up on security remediation PRs by delegating to the
-# shared reusable follow-up workflow. It never merges a PR.
+# Thin caller: follows up on Dependabot update PRs by delegating to the shared
+# reusable follow-up workflow. Failing PRs get a minimal Claude fix; green PRs
+# get an `LGTM` comment. It never merges a PR.
 
 on:
   pull_request_review:
@@ -9,13 +10,13 @@ on:
   pull_request_review_comment:
     types: [created]
   schedule:
-    - cron: "43 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 jobs:
   follow-up:
     uses: ./.github/workflows/_pr-followup.yml
     with:
-      selector: security
+      selector: dependabot
       pr_number: ${{ github.event.pull_request.number || '' }}
     secrets: inherit

@@ -26,9 +26,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.2",
-    "eslint": "^9.28.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
     "lighthouse": "^13.4.0",
     "smol-toml": "^1.6.1",
     "vite": "^8.0.16"

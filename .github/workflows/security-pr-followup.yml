@@ -162,13 +162,13 @@ jobs:
               state: review.state,
               submittedAt: review.submittedAt,
             })),
-            review_comments: reviewComments.map((comment) => ({
+            review_comments: reviewComments.slice(0, 50).map((comment) => ({
               id: comment.id,
               author: comment.user?.login,
               body: comment.body,
               path: comment.path,
               line: comment.line ?? comment.original_line,
-              diff_hunk: comment.diff_hunk,
+              diff_hunk: comment.diff_hunk?.slice(0, 1200),
               url: comment.html_url,
             })),
           };

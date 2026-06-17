@@ -79,7 +79,7 @@ jobs:
           gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${GH_REPO}/dependabot/alerts?state=open&sort=epss_percentage&direction=desc&per_page=20" \
+            "/repos/${GH_REPO}/dependabot/alerts?state=open&per_page=20" \
             > "$dependabot_file"
 
           gh api \

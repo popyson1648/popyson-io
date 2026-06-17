@@ -42,6 +42,9 @@ msg-warn-tx = "#4960ff"
 msg-note-b = "#4960ff"
 msg-note-bg = "transparent"
 msg-note-tx = "#4960ff"
+msg-danger-b = "#ff4d6d"
+msg-danger-bg = "transparent"
+msg-danger-tx = "#4960ff"
 
 # ---- Dark theme — deep navy paper + cream ink (riso identity, inverted) ----
 # The riso circles and bg grain switch to mix-blend-mode: screen under
@@ -74,3 +77,6 @@ msg-warn-tx = "#e9ecf7"
 msg-note-b = "#6f82ff"
 msg-note-bg = "transparent"
 msg-note-tx = "#e9ecf7"
+msg-danger-b = "#ff6b8a"
+msg-danger-bg = "transparent"
+msg-danger-tx = "#e9ecf7"

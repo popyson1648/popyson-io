@@ -17,7 +17,7 @@ In the old CLI we wrote the same information three times: the argument definitio
 - Flags in help that no longer work
 - Validation that only fires on some paths
 
-:::warn
+:::warning
 "Just add an if" is fast in the short term. But nobody tests that branch, and it always breaks six months later.
 :::
 

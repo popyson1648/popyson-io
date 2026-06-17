@@ -1,0 +1,4 @@
+title = "popyson-io Gitleaks configuration"
+
+[extend]
+useDefault = true

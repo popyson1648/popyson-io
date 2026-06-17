@@ -10,6 +10,8 @@ on:
   pull_request_review_comment:
     types: [created]
   schedule:
+    # hourly at :17; off-the-hour, staggered from security-pr-followup (:43).
+    # See .decisions/scheduled-workflow-cron-timing.md
     - cron: "17 * * * *"
   workflow_dispatch:
 

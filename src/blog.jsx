@@ -1,9 +1,12 @@
 /* ============================================================
    Blog: list (filter + sort) and article (TOC + components)
    ============================================================ */
-import { useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Children, isValidElement, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
+import Markdown from "react-markdown";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, fmtDate, highlight } from "./components.jsx";
+import { calloutVariant, markdownRemarkPlugins, safeMarkdownUrl } from "./markdownPipeline.js";
+import { sectionId } from "./headingSlug.js";
 import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 let highlighterPromise;
@@ -476,8 +479,8 @@ export function Article({ id }) {
   useEffect(() => { window.scrollTo(0, 0); setTocOpen(false); }, [id]);
   if (!post) return <div className="container route-fade"><p>Not found.</p></div>;
 
-  const blocks = window.ArticleBody.get(id);
-  const headings = blocks.filter((b) => b.kind === "h2");
+  const body = window.ArticleBody.get(id);
+  const headings = body.headings || [];
 
   const related = POSTS
     .filter((p) => p.id !== id)
@@ -486,7 +489,7 @@ export function Article({ id }) {
     .slice(0, 3).map((x) => x.p);
 
   const jump = (headingId) => {
-    const el = document.getElementById("sec-" + headingId);
+    const el = document.getElementById(sectionId(headingId));
     if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - ARTICLE_SCROLL_OFFSET, behavior: "smooth" });
     setTocOpen(false);
   };
@@ -494,7 +497,7 @@ export function Article({ id }) {
     <ol className="toc-list">
       {headings.map((h) => (
         <li key={h.id}>
-          <a href={"#sec-" + h.id} onClick={(e) => { e.preventDefault(); jump(h.id); }}>
+          <a href={"#" + sectionId(h.id)} onClick={(e) => { e.preventDefault(); jump(h.id); }}>
             {L({ ja: h.ja, en: h.en }, lang)}
           </a>
         </li>
@@ -537,7 +540,7 @@ export function Article({ id }) {
         </div>
 
         <div className="prose">
-          {blocks.map((b, i) => <Block key={i} b={b} lang={lang} />)}
+          <MarkdownArticle markdown={body[lang] || body.ja || body.en || ""} />
         </div>
 
         <section className="related">
@@ -560,32 +563,69 @@ export function Article({ id }) {
   );
 }
 
-/* render one content block */
-export function Block({ b, lang }) {
-  switch (b.kind) {
-    case "h2":
-      return <h2 id={"sec-" + b.id} data-cf-change={b.id === "problem" ? "ch-heading-decoration" : undefined}>{L({ ja: b.ja, en: b.en }, lang)}</h2>;
-    case "p":
-      return <p>{L({ ja: b.ja, en: b.en }, lang)}</p>;
-    case "ul":
-      return <ul>{(b[lang] || []).map((x, i) => <li key={i}>{x}</li>)}</ul>;
-    case "ol":
-      return <ol data-cf-change="ch-numbered-list">{(b[lang] || []).map((x, i) => <li key={i}>{x}</li>)}</ol>;
-    case "code":
-      return <CodeBlock lang={b.lang} code={b.code} />;
-    case "msg": {
-      const message = L({ ja: b.ja, en: b.en }, lang).trim();
-      return (
-        <div className={"msg msg-" + b.variant} data-cf-change="ch-message-boxes">
-          <div className="msg-body">
-            <p>{message}</p>
-          </div>
-        </div>
-      );
-    }
-    default: return null;
-  }
+export function MarkdownArticle({ markdown }) {
+  return (
+    <Markdown
+      remarkPlugins={markdownRemarkPlugins}
+      skipHtml
+      urlTransform={safeMarkdownUrl}
+      components={markdownComponents}
+    >
+      {markdown}
+    </Markdown>
+  );
 }
+
+const headingId = (node) => node?.properties?.id || "";
+
+const markdownComponents = {
+  h1({ node, children, ...props }) {
+    return <h1 {...props} id={headingId(node) || undefined}>{children}</h1>;
+  },
+  h2({ node, children, ...props }) {
+    const id = sectionId(headingId(node));
+    return <h2 {...props} id={id || undefined}>{children}</h2>;
+  },
+  h3({ node, children, ...props }) {
+    return <h3 {...props} id={headingId(node) || undefined}>{children}</h3>;
+  },
+  a({ children, href, node: _node, ...props }) {
+    const safeHref = safeMarkdownUrl(href);
+    if (!safeHref) return <span>{children}</span>;
+    const external = /^https?:\/\//i.test(safeHref);
+    return (
+      <a href={safeHref} rel={external ? "noreferrer" : undefined} {...props}>
+        {children}
+      </a>
+    );
+  },
+  img({ src, alt, node: _node, ...props }) {
+    const safeSrc = safeMarkdownUrl(src);
+    if (!safeSrc) return null;
+    return <img src={safeSrc} alt={alt || ""} loading="lazy" {...props} />;
+  },
+  pre({ children }) {
+    const child = Children.toArray(children)[0];
+    if (!isValidElement(child) || child.type !== "code") return <pre>{children}</pre>;
+    const match = /language-([^\s]+)/.exec(child.props.className || "");
+    const code = String(child.props.children || "").replace(/\n$/, "");
+    return <CodeBlock lang={match?.[1] || "text"} code={code} />;
+  },
+  code({ className, children, node: _node, ...props }) {
+    return <code className={className} {...props}>{children}</code>;
+  },
+  callout({ type, title, children, node: _node }) {
+    const variant = calloutVariant(type);
+    return (
+      <div className={"msg msg-" + variant} data-cf-change="ch-message-boxes">
+        <div className="msg-body">
+          {title && <div className="msg-title">{title}</div>}
+          {children}
+        </div>
+      </div>
+    );
+  },
+};
 
 export function CodeBlock({ lang, code }) {
   const { t } = useContext(AppCtx);

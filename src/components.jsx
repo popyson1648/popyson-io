@@ -2,6 +2,7 @@
    Shared components, icons, helpers.  Exports to window.
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useContext, createContext, useId } from "react";
+import { markdownToPlainText } from "./markdownPipeline.js";
 import { localized, routeToPath } from "./meta.js";
 
 export const AppCtx = createContext(null);
@@ -20,7 +21,11 @@ export function L(obj, lang) { // localize {ja,en} or plain string
 
 /* searchable body text for "body" search/filter */
 export function bodyText(id, lang) {
-  const blocks = window.ArticleBody.get(id);
+  const body = window.ArticleBody.get(id);
+  if (body && !Array.isArray(body)) {
+    return markdownToPlainText(body[lang] || body.ja || body.en || "").toLowerCase();
+  }
+  const blocks = body || [];
   const parts = [];
   for (const b of blocks) {
     if (b.kind === "p" || b.kind === "h2" || b.kind === "msg") parts.push(L({ ja: b.ja, en: b.en }, lang));
@@ -262,4 +267,3 @@ export function bestSnippet(fields, where, q) {
   const exactField = order.find((field) => findQueryMatch(fields[field], q));
   return searchSnippet(fields[exactField || order[0]], q);
 }
-

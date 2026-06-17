@@ -23,9 +23,10 @@ run_pre_push = true
 run_in_ci = true
 
 [phases.test_unit]
-enabled = false
-command = ""
-reason = "No unit test suite is configured yet."
+enabled = true
+command = "node scripts/check_markdown_rendering.mjs"
+run_pre_commit = true
+run_in_ci = true
 
 [phases.test_integration]
 enabled = false

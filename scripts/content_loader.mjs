@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
+import { slugifyHeading } from "../src/headingSlug.js";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
@@ -20,123 +21,47 @@ function parseFrontmatter(source, filePath) {
   return { meta: parseToml(frontmatter), body };
 }
 
-function slugifyHeading(value, seen) {
-  const base = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[`*_~:[\](){}]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "") || "section";
-  const count = seen.get(base) || 0;
-  seen.set(base, count + 1);
-  return count ? `${base}-${count + 1}` : base;
-}
-
-function parseMarkdownBlocks(markdown) {
-  const blocks = [];
+function extractMarkdownHeadings(markdown) {
+  const headings = [];
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const seenHeadings = new Map();
-  let i = 0;
+  let fenced = false;
 
-  const readParagraph = () => {
-    const parts = [];
-    while (i < lines.length) {
-      const line = lines[i];
-      if (!line.trim()) break;
-      if (/^(#{2} |\d+\. |- |```|:::)/.test(line)) break;
-      parts.push(line.trim());
-      i += 1;
-    }
-    if (parts.length) blocks.push({ kind: "p", text: parts.join(" ") });
-  };
-
-  while (i < lines.length) {
-    const line = lines[i];
-    if (!line.trim()) {
-      i += 1;
+  for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
       continue;
     }
-
-    if (line.startsWith("```")) {
-      const lang = line.slice(3).trim() || "text";
-      i += 1;
-      const code = [];
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        code.push(lines[i]);
-        i += 1;
-      }
-      if (i < lines.length) i += 1;
-      blocks.push({ kind: "code", lang, code: code.join("\n") });
-      continue;
+    if (fenced) continue;
+    // CommonMark allows up to 3 leading spaces before an ATX heading; match
+    // that here so the build-time TOC stays in sync with the runtime ids.
+    const match = /^ {0,3}(#{1,6})[ \t]+(.+?)[ \t#]*$/.exec(line);
+    if (!match) continue;
+    const depth = match[1].length;
+    const text = match[2].trim();
+    if (depth === 2) {
+      headings.push({ id: slugifyHeading(text, seenHeadings), text });
     }
-
-    if (line.startsWith(":::")) {
-      const variant = line.slice(3).trim() || "info";
-      i += 1;
-      const parts = [];
-      while (i < lines.length && !lines[i].startsWith(":::")) {
-        if (lines[i].trim()) parts.push(lines[i].trim());
-        i += 1;
-      }
-      if (i < lines.length) i += 1;
-      blocks.push({ kind: "msg", variant, text: parts.join(" ") });
-      continue;
-    }
-
-    if (line.startsWith("## ")) {
-      const text = line.slice(3).trim();
-      blocks.push({ kind: "h2", id: slugifyHeading(text, seenHeadings), text });
-      i += 1;
-      continue;
-    }
-
-    if (line.startsWith("- ")) {
-      const items = [];
-      while (i < lines.length && lines[i].startsWith("- ")) {
-        items.push(lines[i].slice(2).trim());
-        i += 1;
-      }
-      blocks.push({ kind: "ul", items });
-      continue;
-    }
-
-    if (/^\d+\. /.test(line)) {
-      const items = [];
-      while (i < lines.length && /^\d+\. /.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\. /, "").trim());
-        i += 1;
-      }
-      blocks.push({ kind: "ol", items });
-      continue;
-    }
-
-    readParagraph();
   }
 
-  return blocks;
+  return headings;
 }
 
-function localizeBlocks(jaBlocks, enBlocks) {
-  const max = Math.max(jaBlocks.length, enBlocks.length);
-  const out = [];
+function localizeMarkdown(jaBody, enBody) {
+  const jaHeadings = extractMarkdownHeadings(jaBody);
+  const enHeadings = extractMarkdownHeadings(enBody);
+  const max = Math.max(jaHeadings.length, enHeadings.length);
+  const headings = [];
   for (let i = 0; i < max; i += 1) {
-    const ja = jaBlocks[i];
-    const en = enBlocks[i];
-    const kind = ja?.kind || en?.kind;
-    if (!kind) continue;
-    if (kind === "code") {
-      out.push({ kind, lang: ja?.lang || en?.lang, code: ja?.code || en?.code || "" });
-    } else if (kind === "h2") {
-      out.push({ kind, id: ja?.id || en?.id || `section-${i + 1}`, ja: ja?.text || "", en: en?.text || "" });
-    } else if (kind === "ul" || kind === "ol") {
-      out.push({ kind, ja: ja?.items || [], en: en?.items || [] });
-    } else if (kind === "msg") {
-      out.push({ kind, variant: ja?.variant || en?.variant || "info", ja: ja?.text || "", en: en?.text || "" });
-    } else if (kind === "p") {
-      out.push({ kind, ja: ja?.text || "", en: en?.text || "" });
-    }
+    const ja = jaHeadings[i];
+    const en = enHeadings[i];
+    headings.push({
+      id: ja?.id || en?.id || `section-${i + 1}`,
+      ja: ja?.text || "",
+      en: en?.text || "",
+    });
   }
-  return out;
+  return { ja: jaBody, en: enBody, headings };
 }
 
 function readPost(dirName) {
@@ -158,7 +83,7 @@ function readPost(dirName) {
     kana: String(common.kana || ""),
     summary: { ja: ja.meta.summary || "", en: en.meta.summary || "" },
   };
-  return { post, body: localizeBlocks(parseMarkdownBlocks(ja.body), parseMarkdownBlocks(en.body)) };
+  return { post, body: localizeMarkdown(ja.body, en.body) };
 }
 
 function readAbout(locale) {

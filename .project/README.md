@@ -35,6 +35,7 @@ python3 scripts/verify.py --mode edit
 
 - `.project/structure.md`: source layout and important modules.
 - `.project/build.md`: setup, build, run, preview, and reading-list workflow.
+- `.project/security-automation.md`: security alert settings, automation secrets, and remediation workflow.
 - `.project/testing.md`: verification phases and when to run them.
 - `.project/verification.toml`: verification command source of truth.
 - `.decisions/`: accepted decisions.

@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security
+    groups:
+      vite:
+        patterns:
+          - vite
+          - "@vitejs/*"
+      react:
+        patterns:
+          - react
+          - react-dom
+      lint:
+        dependency-type: development
+        patterns:
+          - eslint
+          - "eslint-*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:30"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security

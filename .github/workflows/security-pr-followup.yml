@@ -9,6 +9,8 @@ on:
   pull_request_review_comment:
     types: [created]
   schedule:
+    # hourly at :43; off-the-hour, staggered from dependabot-pr-followup (:17).
+    # See .decisions/scheduled-workflow-cron-timing.md
     - cron: "43 * * * *"
   workflow_dispatch:
 

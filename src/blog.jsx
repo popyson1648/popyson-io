@@ -476,7 +476,15 @@ export function Article({ id }) {
   const { POSTS } = window.BlogData;
   const post = POSTS.find((p) => p.id === id);
   const [tocOpen, setTocOpen] = useState(false);
-  useEffect(() => { window.scrollTo(0, 0); setTocOpen(false); }, [id]);
+  // Collapse the mobile TOC when navigating to a different article. Resetting
+  // during render (vs. inside the effect) keeps it in sync without a second
+  // render pass — the React-recommended way to reset state on a prop change.
+  const [tocResetId, setTocResetId] = useState(id);
+  if (tocResetId !== id) {
+    setTocResetId(id);
+    setTocOpen(false);
+  }
+  useEffect(() => { window.scrollTo(0, 0); }, [id]);
   if (!post) return <div className="container route-fade"><p>Not found.</p></div>;
 
   const body = window.ArticleBody.get(id);

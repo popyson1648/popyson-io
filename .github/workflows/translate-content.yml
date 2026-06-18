@@ -140,6 +140,8 @@ jobs:
           set -euo pipefail
 
           targets_file="$RUNNER_TEMP/translation-targets.txt"
+          git clean -fdX
+
           mapfile -t changed_files < <(
             {
               git diff --name-only HEAD

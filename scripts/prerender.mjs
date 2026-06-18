@@ -14,10 +14,18 @@
 
    Route metadata is shared with the runtime via src/meta.js — the single
    source of truth, so prerendered and live <head>s never drift.
+
+   For non-article routes the primary body content is rendered from the real
+   React page components (src/prerenderRoutes.jsx) through Vite's SSR pipeline
+   and baked into `#root`. Article routes keep the dedicated body injection
+   below. The SPA still mounts via createRoot and replaces the baked markup,
+   so there is no hydration and no DOM-mismatch warning.
    ============================================================ */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { createServer } from "vite";
 
 import { loadSiteContent, renderArticleBodies } from "./content_loader.mjs";
 import { SITE, allRoutes, configureMetaData, headModel } from "../src/meta.js";
@@ -122,6 +130,23 @@ function buildRobots() {
   ].join("\n");
 }
 
+// Render non-article route bodies from the real React page components. Vite's
+// SSR loader handles JSX and the virtual:site-content module; the server runs
+// in middleware mode purely as a module transformer (no requests are served).
+async function withRouteRenderer(run) {
+  const vite = await createServer({
+    server: { middlewareMode: true },
+    appType: "custom",
+    logLevel: "warn",
+  });
+  try {
+    const mod = await vite.ssrLoadModule("/src/prerenderRoutes.jsx");
+    return await run(mod.renderRouteRoot);
+  } finally {
+    await vite.close();
+  }
+}
+
 async function main() {
   const content = await renderArticleBodies(loadSiteContent());
   configureMetaData(content);
@@ -130,15 +155,20 @@ async function main() {
   const models = [];
   let count = 0;
 
-  for (const { dir, route, lang } of routes) {
-    const m = headModel(route, lang);
-    models.push(m);
-    const html = injectRoot(injectHead(template, m), renderArticleRoot(route, lang, content));
-    const outDir = dir ? join(DIST, dir) : DIST;
-    mkdirSync(outDir, { recursive: true });
-    writeFileSync(join(outDir, "index.html"), html);
-    count += 1;
-  }
+  await withRouteRenderer(async (renderRouteRoot) => {
+    for (const { dir, route, lang } of routes) {
+      const m = headModel(route, lang);
+      models.push(m);
+      const rootHtml = route.name === "article"
+        ? renderArticleRoot(route, lang, content)
+        : await renderRouteRoot(route, lang);
+      const html = injectRoot(injectHead(template, m), rootHtml);
+      const outDir = dir ? join(DIST, dir) : DIST;
+      mkdirSync(outDir, { recursive: true });
+      writeFileSync(join(outDir, "index.html"), html);
+      count += 1;
+    }
+  });
 
   writeFileSync(join(DIST, "sitemap.xml"), buildSitemap(models));
   writeFileSync(join(DIST, "robots.txt"), buildRobots());

@@ -5,6 +5,7 @@
 - Lint: ESLint over JavaScript and JSX source.
 - Build: Vite production build.
 - Search smoke: Pagefind checks against the built Japanese and English indexes.
+- Prerender smoke: asserts every route/locale bakes its primary body into the static `#root`.
 - Secret scan: Gitleaks over pushed and proposed changes.
 - Performance: Lighthouse CI against the built static app.
 

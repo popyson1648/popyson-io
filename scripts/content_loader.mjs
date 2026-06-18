@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { slugifyHeading } from "../src/headingSlug.js";
+import { renderArticleBody } from "./articleHtml.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
@@ -124,6 +125,22 @@ export function loadSiteContent() {
   const tags = [...new Set(posts.flatMap((post) => post.tags))];
   const person = localizeAbout(readAbout("ja"), readAbout("en"));
   return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person };
+}
+
+export async function renderArticleBodies(content) {
+  const copyLabels = { ja: "コードをコピー", en: "Copy code" };
+  const entries = await Promise.all(Object.entries(content.ARTICLE_BODIES).map(async ([id, body]) => [
+    id,
+    {
+      ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
+      en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
+      headings: body.headings,
+    },
+  ]));
+  return {
+    ...content,
+    ARTICLE_BODIES: Object.fromEntries(entries),
+  };
 }
 
 export function contentWatchFiles() {

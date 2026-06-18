@@ -2,7 +2,6 @@
    Shared components, icons, helpers.  Exports to window.
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useContext, createContext, useId } from "react";
-import { markdownToPlainText } from "./markdownPipeline.js";
 import { localized, routeToPath } from "./meta.js";
 
 export const AppCtx = createContext(null);
@@ -23,7 +22,8 @@ export function L(obj, lang) { // localize {ja,en} or plain string
 export function bodyText(id, lang) {
   const body = window.ArticleBody.get(id);
   if (body && !Array.isArray(body)) {
-    return markdownToPlainText(body[lang] || body.ja || body.en || "").toLowerCase();
+    const localizedBody = body[lang] || body.ja || body.en || {};
+    return String(localizedBody.text || "").toLowerCase();
   }
   const blocks = body || [];
   const parts = [];

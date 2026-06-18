@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { parse as parseToml } from "smol-toml";
-import { contentWatchFiles, loadSiteContent } from "./scripts/content_loader.mjs";
+import { contentWatchFiles, loadSiteContent, renderArticleBodies } from "./scripts/content_loader.mjs";
 
 const SITE_URL = "https://popyson.com";
 const SITE_TITLE = "popyson.com";
@@ -98,7 +98,7 @@ function tomlContent() {
       if (id === VIRTUAL_SITE_CONTENT_ID) return RESOLVED_SITE_CONTENT_ID;
       return null;
     },
-    load(id) {
+    async load(id) {
       if (id === RESOLVED_THEME_ID) {
         // Tell Vite the virtual CSS depends on theme.toml (it is not otherwise
         // in the module graph), so edits invalidate this module and trigger HMR.
@@ -107,7 +107,7 @@ function tomlContent() {
       }
       if (id === RESOLVED_SITE_CONTENT_ID) {
         for (const file of contentWatchFiles()) this.addWatchFile(file);
-        const content = loadSiteContent();
+        const content = await renderArticleBodies(loadSiteContent());
         return Object.entries(content)
           .map(([key, value]) => `export const ${key} = ${JSON.stringify(value)};`)
           .join("\n") + "\n";

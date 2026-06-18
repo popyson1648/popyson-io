@@ -56,8 +56,17 @@ def main() -> int:
         "filter/sort panel triggers must expose expanded state and controls"))
     checks.append(("role=\"status\"" in pages and "aria-live=\"polite\"" in pages, "copy feedback must be announced with a live region"))
     checks.append(("aria-label={t.copy_rss_url}" in pages, "RSS copy button must have an accessible name"))
-    checks.append(("aria-label={copied ? t.copied_code : t.copy_code}" in blog, "code copy button must have an accessible name"))
-    checks.append(("getHighlighter()" in blog and "import(\"shiki/core\")" in blog, "Shiki must be lazy-loaded from code blocks"))
+    checks.append((
+        "button.setAttribute(\"aria-label\", t.copy_code)" in blog
+        and "button.setAttribute(\"aria-label\", t.copied_code)" in blog
+        and ".code-copy" in blog,
+        "code copy button must keep an accessible name"))
+    checks.append((
+        "react-markdown" not in blog
+        and "shiki" not in blog
+        and "remark" not in blog
+        and "micromark" not in blog,
+        "client article code must not import the Markdown/Shiki stack"))
     checks.append(("id=\"main\"" in app, "main content region must be directly targetable"))
     checks.append((".sr-only" in styles_css, "screen-reader-only utility must exist"))
     checks.append(("@media (prefers-reduced-motion: reduce)" in app_css and ".modal" in app_css and ".menu" in app_css, "modal and menu animations must respect reduced motion"))

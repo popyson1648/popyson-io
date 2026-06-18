@@ -298,6 +298,13 @@ export function BlogList() {
     ...(filters.body ? [{ id: "body", value: filters.body }] : []),
   ], [filters]);
   const sorting = useMemo(() => [{ id: sortKey, desc: sortDir === "desc" }], [sortKey, sortDir]);
+  // TanStack Table's useReactTable() returns functions with interior mutability
+  // that React Compiler cannot memoize safely, so it skips compiling BlogList.
+  // There is no compiler-compatible alternative API yet (planned for TanStack
+  // Table v9); accepting the skip is the upstream-recommended handling. Remove
+  // this directive once v9 ships compiler-safe APIs.
+  // https://react.dev/reference/eslint-plugin-react-hooks/lints/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- no compiler-compatible TanStack Table API yet (v9 planned)
   const table = useReactTable({
     data: rows,
     columns,

@@ -92,6 +92,25 @@ function readAbout(locale) {
   return data.person || {};
 }
 
+export function relatedPostIds(post, posts, limit = 3) {
+  return posts
+    .filter((candidate) => candidate.id !== post.id)
+    .map((candidate) => ({
+      post: candidate,
+      score: candidate.tags.filter((tag) => post.tags.includes(tag)).length,
+    }))
+    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date))
+    .slice(0, limit)
+    .map((ranked) => ranked.post.id);
+}
+
+function withRelatedIds(posts) {
+  return posts.map((post) => ({
+    ...post,
+    relatedIds: relatedPostIds(post, posts),
+  }));
+}
+
 function localizeAbout(ja, en) {
   const person = {
     initials: ja.initials || en.initials || "",
@@ -119,7 +138,7 @@ export function loadSiteContent() {
     ? readdirSync(POSTS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
     : [];
   const entries = dirs.map(readPost).sort((a, b) => b.post.date.localeCompare(a.post.date));
-  const posts = entries.map((entry) => entry.post);
+  const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
   const tags = [...new Set(posts.flatMap((post) => post.tags))];
   const person = localizeAbout(readAbout("ja"), readAbout("en"));

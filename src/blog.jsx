@@ -489,12 +489,12 @@ export function Article({ id }) {
 
   const body = window.ArticleBody.get(id);
   const headings = body.headings || [];
-
-  const related = POSTS
-    .filter((p) => p.id !== id)
-    .map((p) => ({ p, score: p.tags.filter((tg) => post.tags.includes(tg)).length }))
-    .sort((a, b) => b.score - a.score || b.p.date.localeCompare(a.p.date))
-    .slice(0, 3).map((x) => x.p);
+  const related = [];
+  const relatedIds = Array.isArray(post.relatedIds) ? post.relatedIds : [];
+  for (const relatedId of relatedIds) {
+    const relatedPost = POSTS.find((candidate) => candidate.id === relatedId);
+    if (relatedPost) related.push(relatedPost);
+  }
 
   const jump = (headingId) => {
     const el = document.getElementById(sectionId(headingId));

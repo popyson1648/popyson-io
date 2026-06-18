@@ -79,7 +79,7 @@ function renderArticleRoot(route, lang, content) {
 }
 
 function injectRoot(template, rootHtml) {
-  return template.replace(/<div id="root">[\s\S]*?<\/div>/, `<div id="root">${rootHtml}</div>`);
+  return template.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootHtml}</div>`);
 }
 
 function buildSitemap(models) {

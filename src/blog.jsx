@@ -489,12 +489,10 @@ export function Article({ id }) {
 
   const body = window.ArticleBody.get(id);
   const headings = body.headings || [];
-  const related = [];
   const relatedIds = Array.isArray(post.relatedIds) ? post.relatedIds : [];
-  for (const relatedId of relatedIds) {
-    const relatedPost = POSTS.find((candidate) => candidate.id === relatedId);
-    if (relatedPost) related.push(relatedPost);
-  }
+  const related = relatedIds
+    .map((relatedId) => POSTS.find((candidate) => candidate.id === relatedId))
+    .filter(Boolean);
 
   const jump = (headingId) => {
     const el = document.getElementById(sectionId(headingId));

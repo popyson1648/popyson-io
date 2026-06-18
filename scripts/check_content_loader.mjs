@@ -29,4 +29,26 @@ assert.deepEqual(
   "empty post collections do not fail",
 );
 
+assert.deepEqual(
+  relatedPostIds({ id: "target" }, [
+    null,
+    { id: "draft-without-tags" },
+    { id: "draft-without-date", tags: ["build"] },
+  ]),
+  ["draft-without-tags", "draft-without-date"],
+  "partial draft-like post objects do not fail",
+);
+
+assert.deepEqual(
+  relatedPostIds(null, posts),
+  [],
+  "missing current post does not fail",
+);
+
+assert.deepEqual(
+  relatedPostIds(posts[1], null),
+  [],
+  "missing post collection does not fail",
+);
+
 console.log("content loader checks passed");

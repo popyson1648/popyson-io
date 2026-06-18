@@ -93,13 +93,16 @@ function readAbout(locale) {
 }
 
 export function relatedPostIds(post, posts, limit = 3) {
+  if (!post || !Array.isArray(posts)) return [];
+  const postTags = Array.isArray(post.tags) ? post.tags : [];
   return posts
-    .filter((candidate) => candidate.id !== post.id)
+    .filter((candidate) => candidate && candidate.id !== post.id)
     .map((candidate) => ({
       post: candidate,
-      score: candidate.tags.filter((tag) => post.tags.includes(tag)).length,
+      score: (Array.isArray(candidate.tags) ? candidate.tags : [])
+        .filter((tag) => postTags.includes(tag)).length,
     }))
-    .sort((a, b) => b.score - a.score || b.post.date.localeCompare(a.post.date))
+    .sort((a, b) => b.score - a.score || String(b.post.date || "").localeCompare(String(a.post.date || "")))
     .slice(0, limit)
     .map((ranked) => ranked.post.id);
 }

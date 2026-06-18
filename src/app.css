@@ -3832,3 +3832,25 @@
   left: auto;
   right: max(18px, calc(50vw - 572px));
 }
+
+/* Progressive Japanese contextual spacing. Keep this scoped to body-like text:
+   navigation, tags, labels, and controls use tighter UI spacing intentionally. */
+@supports (text-autospace: normal) {
+  html:lang(ja) :where(
+    .prose,
+    .about-tag,
+    .about-top + div p,
+    .acard-tagline,
+    .acard-desc,
+    .adetail-tagline,
+    .ritem-title,
+    .ritem-sub,
+    .post-index-title,
+    .post-index-summary,
+    .pcard-title,
+    .pcard-summary,
+    .rel-title
+  ) {
+    text-autospace: normal;
+  }
+}

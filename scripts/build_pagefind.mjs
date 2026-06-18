@@ -25,47 +25,50 @@ function articleContent(post, body, lang) {
 }
 
 async function main() {
-  const content = await renderArticleBodies(loadSiteContent());
-  const { index, errors } = await pagefind.createIndex();
-  if (!index || errors.length) {
-    throw new Error(`failed to create Pagefind index: ${errors.join(", ")}`);
-  }
-
-  let count = 0;
-  for (const post of content.POSTS) {
-    for (const lang of LOCALES) {
-      const body = content.ARTICLE_BODIES[post.id]?.[lang] || content.ARTICLE_BODIES[post.id]?.ja;
-      const response = await index.addCustomRecord({
-        url: localized(`/blog/${post.id}/`, lang),
-        content: articleContent(post, body, lang),
-        language: lang,
-        meta: {
-          title: localizedField(post.title, lang),
-          summary: localizedField(post.summary, lang),
-        },
-        filters: {
-          lang: [lang],
-          tag: post.tags || [],
-        },
-        sort: {
-          date: post.date,
-        },
-      });
-      if (response.errors.length) {
-        throw new Error(`failed to index ${post.id} (${lang}): ${response.errors.join(", ")}`);
-      }
-      count += 1;
+  try {
+    const content = await renderArticleBodies(loadSiteContent());
+    const { index, errors } = await pagefind.createIndex();
+    if (!index || errors.length) {
+      throw new Error(`failed to create Pagefind index: ${errors.join(", ")}`);
     }
-  }
 
-  rmSync(PAGEFIND_DIR, { recursive: true, force: true });
-  const response = await index.writeFiles({ outputPath: PAGEFIND_DIR });
-  if (response.errors.length) {
-    throw new Error(`failed to write Pagefind index: ${response.errors.join(", ")}`);
-  }
+    let count = 0;
+    for (const post of content.POSTS) {
+      for (const lang of LOCALES) {
+        const body = content.ARTICLE_BODIES[post.id]?.[lang] || content.ARTICLE_BODIES[post.id]?.ja;
+        const response = await index.addCustomRecord({
+          url: localized(`/blog/${post.id}/`, lang),
+          content: articleContent(post, body, lang),
+          language: lang,
+          meta: {
+            title: localizedField(post.title, lang),
+            summary: localizedField(post.summary, lang),
+          },
+          filters: {
+            lang: [lang],
+            tag: post.tags || [],
+          },
+          sort: {
+            date: post.date,
+          },
+        });
+        if (response.errors.length) {
+          throw new Error(`failed to index ${post.id} (${lang}): ${response.errors.join(", ")}`);
+        }
+        count += 1;
+      }
+    }
 
-  await pagefind.close();
-  console.log(`[pagefind] indexed ${count} article records to dist/pagefind`);
+    rmSync(PAGEFIND_DIR, { recursive: true, force: true });
+    const response = await index.writeFiles({ outputPath: PAGEFIND_DIR });
+    if (response.errors.length) {
+      throw new Error(`failed to write Pagefind index: ${response.errors.join(", ")}`);
+    }
+
+    console.log(`[pagefind] indexed ${count} article records to dist/pagefind`);
+  } finally {
+    await pagefind.close();
+  }
 }
 
 main();

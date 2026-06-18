@@ -16,7 +16,7 @@ const CODE_COPY_FEEDBACK_MS = 1400;
 const COPY_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="copy"><rect x="9" y="9" width="11" height="11" rx="1.5"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg>';
 const CHECK_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="check"><path d="M5 12l5 5 9-10"></path></svg>';
 let pagefindLoadPromise = null;
-let pagefindActiveLang = null;
+const pagefindInstances = new Map();
 
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
@@ -27,13 +27,13 @@ async function loadPagefind(lang) {
     pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js");
   }
   const pagefind = await pagefindLoadPromise;
-  if (pagefindActiveLang !== lang) {
-    await pagefind.destroy();
+  if (!pagefindInstances.has(lang)) {
     document.documentElement.lang = lang;
-    await pagefind.options({ excerptLength: 24 });
-    pagefindActiveLang = lang;
+    const instance = pagefind.createInstance();
+    await instance.options({ excerptLength: 24 });
+    pagefindInstances.set(lang, instance);
   }
-  return pagefind;
+  return pagefindInstances.get(lang);
 }
 
 function textFromHtml(value) {
@@ -73,9 +73,9 @@ function postIdFromSearchUrl(url) {
 async function searchPagefindPosts(query, lang, postsById, docsById, limit) {
   const pagefind = await loadPagefind(lang);
   const response = await pagefind.search(query, { filters: { lang: [lang] } });
+  const records = await Promise.all(response.results.map(async (result) => result.data()));
   const output = [];
-  for (const result of response.results) {
-    const data = await result.data();
+  for (const data of records) {
     const id = postIdFromSearchUrl(data.url);
     const p = id ? postsById.get(id) : null;
     const doc = id ? docsById.get(id) : null;

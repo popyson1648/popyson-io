@@ -4,6 +4,7 @@
 
 - Lint: ESLint over JavaScript and JSX source.
 - Build: Vite production build.
+- Search smoke: Pagefind checks against the built Japanese and English indexes.
 - Secret scan: Gitleaks over pushed and proposed changes.
 - Performance: Lighthouse CI against the built static app.
 

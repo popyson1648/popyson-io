@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/prerender.mjs",
+    "build": "vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
     "new:post": "node scripts/new_post.mjs",
@@ -26,6 +26,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "lighthouse": "^13.4.0",
+    "pagefind": "^1.5.2",
     "rehype-stringify": "^10.0.1",
     "remark-directive": "^4.0.0",
     "remark-gfm": "^4.0.1",

@@ -10,7 +10,7 @@ Use a static SoftMatcha2-style search adapter
 
 ## Status
 
-Accepted
+Superseded by `.decisions/pagefind-site-search.md`
 
 ## Decision
 
@@ -37,5 +37,4 @@ The requested site can remain static, and the current corpus is small enough to 
 
 ## Revisit Conditions
 
-- Add a real backend search service when the corpus becomes large enough to require indexed search.
-- Replace the adapter if SoftMatcha2 ships a browser-compatible package.
+- Superseded on 2026-06-18 when the site search moved to Pagefind.

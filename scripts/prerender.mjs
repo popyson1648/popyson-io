@@ -75,7 +75,14 @@ function renderArticleRoot(route, lang, content) {
   const body = content.ARTICLE_BODIES[route.id]?.[lang] || content.ARTICLE_BODIES[route.id]?.ja;
   if (!post || !body?.html) return "";
   const title = post.title?.[lang] || post.title?.ja || "";
-  return `<article class="article prerendered-article"><div class="article-head"><h1>${esc(title)}</h1></div><div class="prose">${body.html}</div></article>`;
+  return [
+    `<article class="article prerendered-article">`,
+    `  <div class="article-head">`,
+    `    <h1>${esc(title)}</h1>`,
+    `  </div>`,
+    `  <div class="prose">${body.html}</div>`,
+    `</article>`,
+  ].join("");
 }
 
 function injectRoot(template, rootHtml) {

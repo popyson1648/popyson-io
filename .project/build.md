@@ -18,6 +18,9 @@ npm ci
 npm run build
 ```
 
+The production build runs Vite, prerenders route HTML, then generates Pagefind
+custom-record indexes under `dist/pagefind/`.
+
 ## Run
 
 ```sh

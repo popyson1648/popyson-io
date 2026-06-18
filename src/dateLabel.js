@@ -1,8 +1,16 @@
 const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export function makeDateLabel(iso) {
-  const match = ISO_DATE_RE.exec(String(iso || ""));
+export function normalizeIsoDate(value) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  const text = String(value || "");
+  return ISO_DATE_RE.test(text) ? text : "";
+}
+
+export function makeDateLabel(value) {
+  const match = ISO_DATE_RE.exec(normalizeIsoDate(value));
   if (!match) return { ja: "", en: "" };
   const [, year, monthText, dayText] = match;
   const month = Number(monthText);

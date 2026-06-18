@@ -8,11 +8,6 @@ import { localized, routeToPath } from "./meta.js";
 export const AppCtx = createContext(null);
 
 /* ---------- helpers ---------- */
-export function fmtDate(iso, lang) {
-  const d = new Date(iso + "T00:00:00");
-  if (lang === "ja") return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-}
 export function L(obj, lang) { // localize {ja,en} or plain string
   if (obj == null) return "";
   if (typeof obj === "string") return obj;

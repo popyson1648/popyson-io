@@ -27,15 +27,18 @@ Current schedules:
 - `security-alert-remediation.yml`: `17 22 * * *` (UTC) = 07:17 JST, daily.
 - `security-pr-followup.yml`: `43 * * * *`, hourly at :43.
 - `dependabot-pr-followup.yml`: `17 * * * *`, hourly at :17.
-- `reading-refresh.yml`: `0 21 * * *` (UTC) = 06:00 JST, daily.
+- `reading-refresh.yml`: `29 * * * *`, hourly at :29.
+
+The three hourly jobs are staggered at `:17` / `:29` / `:43`.
 
 ## Context
 
 GitHub Actions runs scheduled workflows on UTC cron only. A large number of
 jobs across GitHub are scheduled at round times such as `:00`, so runs queued
-there are frequently delayed or dropped. The repository has two hourly follow-up
-workflows (security and Dependabot) plus daily jobs, and we want predictable,
-non-colliding runs without a documented rationale getting lost.
+there are frequently delayed or dropped. The repository has three hourly jobs
+(security follow-up, Dependabot follow-up, reading-list refresh) plus a daily
+job, and we want predictable, non-colliding runs without a documented rationale
+getting lost.
 
 ## Alternatives
 
@@ -49,10 +52,10 @@ non-colliding runs without a documented rationale getting lost.
 
 ## Reason
 
-Off-the-hour minutes reduce queueing delay. Staggering the two hourly
-follow-ups (`:17` vs `:43`) keeps them from competing. The early-morning daily
-slot lets the heavier Claude remediation run during low-traffic hours so a fresh
-PR is waiting at the start of the workday. Recording the convention prevents the
+Off-the-hour minutes reduce queueing delay. Staggering the three hourly jobs
+(`:17` / `:29` / `:43`) keeps them from competing. The early-morning daily slot
+lets the heavier Claude remediation run during low-traffic hours so a fresh PR
+is waiting at the start of the workday. Recording the convention prevents the
 times from being mistaken for meaningful or accidentally clustered later.
 
 ## Consequences
@@ -65,4 +68,4 @@ times from being mistaken for meaningful or accidentally clustered later.
 ## Revisit Conditions
 
 - GitHub adds timezone support or an alert-creation workflow trigger.
-- A third recurring workflow needs a slot and the stagger has to be rebalanced.
+- A fourth recurring workflow needs a slot and the stagger has to be rebalanced.

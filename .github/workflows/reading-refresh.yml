@@ -1,8 +1,12 @@
 name: Reading list refresh & deploy
 
-# Fetches the Instapaper reading list (unread + archive), commits the JSON
-# snapshot when it changes, builds the site, and deploys to Cloudflare Pages
-# via Direct Upload (wrangler). Everything runs in CI.
+# Fetches the Instapaper reading list (unread + archive) hourly, commits the
+# JSON snapshot when it changes, builds the site, and deploys to Cloudflare
+# Pages via Direct Upload (wrangler). Everything runs in CI.
+#
+# Scheduled runs only build + deploy when the snapshot actually changed (the
+# common case is no change, so most hourly runs end after the fetch). Manual
+# (workflow_dispatch) and push runs always build + deploy so code changes ship.
 #
 # Required GitHub secrets:
 #   OP_SERVICE_ACCOUNT_TOKEN  - 1Password service account (reads Development vault)
@@ -15,7 +19,7 @@ name: Reading list refresh & deploy
 
 on:
   schedule:
-    - cron: "0 21 * * *" # daily at 06:00 JST (21:00 UTC prev day)
+    - cron: "29 * * * *" # hourly at :29 UTC (staggered off :17 and :43)
   push:
     branches: [main]
   workflow_dispatch:
@@ -46,13 +50,15 @@ jobs:
 
       - name: Fetch reading list from Instapaper
         # Resilient: if Instapaper/op is unavailable, keep the last committed
-        # snapshot and still build + deploy.
+        # snapshot. A scheduled run then sees no change and skips redeploy; the
+        # live site already serves that last snapshot.
         continue-on-error: true
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: op run --env-file=.op.env -- npm run reading:fetch
 
       - name: Commit snapshot if changed
+        id: commit
         run: |
           if ! git diff --quiet -- src/reading.json; then
             git config user.name "github-actions[bot]"
@@ -60,14 +66,20 @@ jobs:
             git add src/reading.json
             git commit -m "chore(reading): refresh Instapaper snapshot"
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "No changes to src/reading.json"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Build + deploy only when the snapshot changed on a scheduled run; always
+      # for manual/push runs (so code changes ship even with no reading change).
       - name: Build
+        if: steps.commit.outputs.changed == 'true' || github.event_name != 'schedule'
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
+        if: steps.commit.outputs.changed == 'true' || github.event_name != 'schedule'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

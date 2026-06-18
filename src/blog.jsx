@@ -1,16 +1,12 @@
 /* ============================================================
    Blog: list (filter + sort) and article (TOC + components)
    ============================================================ */
-import { Children, isValidElement, useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import Markdown from "react-markdown";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
-import { calloutVariant, markdownRemarkPlugins, safeMarkdownUrl } from "./markdownPipeline.js";
 import { sectionId } from "./headingSlug.js";
 import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
-
-let highlighterPromise;
 
 const FILTER_PROPS = ["tags", "title", "body"];
 const SEARCH_RESULT_LIMIT = 8;
@@ -18,28 +14,11 @@ const SEARCH_RECENT_LIMIT = 5;
 const TOOLBAR_VIEWPORT_GUTTER = 20;
 const ARTICLE_SCROLL_OFFSET = 76;
 const CODE_COPY_FEEDBACK_MS = 1400;
+const COPY_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="copy"><rect x="9" y="9" width="11" height="11" rx="1.5"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg>';
+const CHECK_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="check"><path d="M5 12l5 5 9-10"></path></svg>';
 
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
-}
-
-function getHighlighter() {
-  if (!highlighterPromise) {
-    highlighterPromise = Promise.all([
-      import("shiki/core"),
-      import("shiki/engine/oniguruma"),
-      import("shiki/wasm"),
-      import("shiki/langs/rust.mjs"),
-      import("shiki/langs/typescript.mjs"),
-      import("shiki/themes/github-light.mjs"),
-      import("shiki/themes/github-dark.mjs"),
-    ]).then(([core, engine, wasm, rust, typescript, githubLight, githubDark]) => core.createHighlighterCore({
-      themes: [githubLight.default, githubDark.default],
-      langs: [rust.default, typescript.default],
-      engine: engine.createOnigurumaEngine(wasm.default),
-    }));
-  }
-  return highlighterPromise;
 }
 
 /* ===================== BLOG LIST (Notion-style filter/sort) ===================== */
@@ -477,6 +456,8 @@ export function Article({ id }) {
   const { POSTS } = window.BlogData;
   const post = POSTS.find((p) => p.id === id);
   const [tocOpen, setTocOpen] = useState(false);
+  const proseRef = useRef(null);
+  const copyTimers = useRef(new Map());
   // Collapse the mobile TOC when navigating to a different article. Resetting
   // during render (vs. inside the effect) keeps it in sync without a second
   // render pass — the React-recommended way to reset state on a prop change.
@@ -486,10 +467,48 @@ export function Article({ id }) {
     setTocOpen(false);
   }
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
+
+  const body = window.ArticleBody.get(id) || {};
+  const localizedBody = body[lang] || body.ja || body.en || { html: "" };
+  const bodyHtml = localizedBody.html || "";
+  const headings = body.headings || [];
+
+  useEffect(() => {
+    const root = proseRef.current;
+    if (!root) return undefined;
+    const timers = copyTimers.current;
+
+    const resetButton = (button) => {
+      button.setAttribute("aria-label", t.copy_code);
+      button.innerHTML = COPY_ICON_HTML;
+      button.dataset.copied = "false";
+    };
+    const setCopied = (button) => {
+      button.setAttribute("aria-label", t.copied_code);
+      button.innerHTML = CHECK_ICON_HTML;
+      button.dataset.copied = "true";
+      clearTimeout(timers.get(button));
+      timers.set(button, window.setTimeout(() => resetButton(button), CODE_COPY_FEEDBACK_MS));
+    };
+    const onClick = (event) => {
+      const button = event.target.closest?.(".code-copy");
+      if (!button || !root.contains(button)) return;
+      const code = button.closest(".code")?.querySelector(".code-highlight")?.textContent || "";
+      navigator.clipboard?.writeText(code);
+      setCopied(button);
+    };
+
+    root.querySelectorAll(".code-copy").forEach(resetButton);
+    root.addEventListener("click", onClick);
+    return () => {
+      root.removeEventListener("click", onClick);
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    };
+  }, [bodyHtml, t.copy_code, t.copied_code]);
+
   if (!post) return <div className="container route-fade"><p>Not found.</p></div>;
 
-  const body = window.ArticleBody.get(id);
-  const headings = body.headings || [];
   const relatedIds = Array.isArray(post.relatedIds) ? post.relatedIds : [];
   const related = relatedIds
     .map((relatedId) => POSTS.find((candidate) => candidate.id === relatedId))
@@ -546,9 +565,7 @@ export function Article({ id }) {
           ))}</div>
         </div>
 
-        <div className="prose">
-          <MarkdownArticle markdown={body[lang] || body.ja || body.en || ""} />
-        </div>
+        <div className="prose" ref={proseRef} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
 
         <section className="related">
           <hr className="hr" />
@@ -566,107 +583,6 @@ export function Article({ id }) {
           </div>
         </section>
       </article>
-    </div>
-  );
-}
-
-export function MarkdownArticle({ markdown }) {
-  return (
-    <Markdown
-      remarkPlugins={markdownRemarkPlugins}
-      skipHtml
-      urlTransform={safeMarkdownUrl}
-      components={markdownComponents}
-    >
-      {markdown}
-    </Markdown>
-  );
-}
-
-const headingId = (node) => node?.properties?.id || "";
-
-const markdownComponents = {
-  h1({ node, children, ...props }) {
-    return <h1 {...props} id={headingId(node) || undefined}>{children}</h1>;
-  },
-  h2({ node, children, ...props }) {
-    const id = sectionId(headingId(node));
-    return <h2 {...props} id={id || undefined}>{children}</h2>;
-  },
-  h3({ node, children, ...props }) {
-    return <h3 {...props} id={headingId(node) || undefined}>{children}</h3>;
-  },
-  a({ children, href, node: _node, ...props }) {
-    const safeHref = safeMarkdownUrl(href);
-    if (!safeHref) return <span>{children}</span>;
-    const external = /^https?:\/\//i.test(safeHref);
-    return (
-      <a href={safeHref} rel={external ? "noreferrer" : undefined} {...props}>
-        {children}
-      </a>
-    );
-  },
-  img({ src, alt, node: _node, ...props }) {
-    const safeSrc = safeMarkdownUrl(src);
-    if (!safeSrc) return null;
-    return <img src={safeSrc} alt={alt || ""} loading="lazy" {...props} />;
-  },
-  pre({ children }) {
-    const child = Children.toArray(children)[0];
-    if (!isValidElement(child) || child.type !== "code") return <pre>{children}</pre>;
-    const match = /language-([^\s]+)/.exec(child.props.className || "");
-    const code = String(child.props.children || "").replace(/\n$/, "");
-    return <CodeBlock lang={match?.[1] || "text"} code={code} />;
-  },
-  code({ className, children, node: _node, ...props }) {
-    return <code className={className} {...props}>{children}</code>;
-  },
-  callout({ type, title, children, node: _node }) {
-    const variant = calloutVariant(type);
-    return (
-      <div className={"msg msg-" + variant} data-cf-change="ch-message-boxes">
-        <div className="msg-body">
-          {title && <div className="msg-title">{title}</div>}
-          {children}
-        </div>
-      </div>
-    );
-  },
-};
-
-export function CodeBlock({ lang, code }) {
-  const { t } = useContext(AppCtx);
-  const [copied, setCopied] = useState(false);
-  const [html, setHtml] = useState("");
-  useEffect(() => {
-    let live = true;
-    getHighlighter().then((highlighter) => highlighter.codeToHtml(code, {
-      lang: lang || "text",
-      themes: {
-        light: "github-light",
-        dark: "github-dark",
-      },
-    })).then((nextHtml) => {
-      if (live) setHtml(nextHtml);
-    }).catch(() => {
-      if (live) setHtml("");
-    });
-    return () => { live = false; };
-  }, [lang, code]);
-  const copy = () => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), CODE_COPY_FEEDBACK_MS); };
-  return (
-    <div className="code" data-cf-change="ch-code-block">
-      <div className="code-bar">
-        <span className="code-lang">{lang}</span>
-        <button className="btn btn-ghost" type="button" style={{ padding: "2px 6px" }} onClick={copy} aria-label={copied ? t.copied_code : t.copy_code}>
-          {copied ? <Icon.check width={13} height={13} /> : <Icon.copy width={13} height={13} />}
-        </button>
-      </div>
-      {html ? (
-        <div className="code-highlight" dangerouslySetInnerHTML={{ __html: html }} />
-      ) : (
-        <pre><code>{code}</code></pre>
-      )}
     </div>
   );
 }

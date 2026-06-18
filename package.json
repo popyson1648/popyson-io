@@ -17,20 +17,24 @@
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-markdown": "^10.1.0",
-    "remark-directive": "^4.0.0",
-    "remark-gfm": "^4.0.1",
-    "shiki": "^4.2.0",
-    "unist-util-visit": "^5.1.0"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@shikijs/rehype": "^4.2.0",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "lighthouse": "^13.4.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-directive": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "shiki": "^4.2.0",
     "smol-toml": "^1.6.1",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
     "vite": "^8.0.16"
   }
 }

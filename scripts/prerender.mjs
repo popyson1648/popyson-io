@@ -19,7 +19,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadSiteContent } from "./content_loader.mjs";
+import { loadSiteContent, renderArticleBodies } from "./content_loader.mjs";
 import { SITE, allRoutes, configureMetaData, headModel } from "../src/meta.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,6 +69,19 @@ function injectHead(template, m) {
   return html;
 }
 
+function renderArticleRoot(route, lang, content) {
+  if (route.name !== "article") return "";
+  const post = content.POSTS.find((item) => item.id === route.id);
+  const body = content.ARTICLE_BODIES[route.id]?.[lang] || content.ARTICLE_BODIES[route.id]?.ja;
+  if (!post || !body?.html) return "";
+  const title = post.title?.[lang] || post.title?.ja || "";
+  return `<article class="article prerendered-article"><div class="article-head"><h1>${esc(title)}</h1></div><div class="prose">${body.html}</div></article>`;
+}
+
+function injectRoot(template, rootHtml) {
+  return template.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootHtml}</div>`);
+}
+
 function buildSitemap(models) {
   // One <url> per canonical, with hreflang alternates (Google's format).
   const seen = new Map();
@@ -102,8 +115,9 @@ function buildRobots() {
   ].join("\n");
 }
 
-function main() {
-  configureMetaData(loadSiteContent());
+async function main() {
+  const content = await renderArticleBodies(loadSiteContent());
+  configureMetaData(content);
   const template = readFileSync(join(DIST, "index.html"), "utf8");
   const routes = allRoutes();
   const models = [];
@@ -112,7 +126,7 @@ function main() {
   for (const { dir, route, lang } of routes) {
     const m = headModel(route, lang);
     models.push(m);
-    const html = injectHead(template, m);
+    const html = injectRoot(injectHead(template, m), renderArticleRoot(route, lang, content));
     const outDir = dir ? join(DIST, dir) : DIST;
     mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, "index.html"), html);

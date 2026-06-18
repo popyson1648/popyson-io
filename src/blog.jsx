@@ -6,7 +6,6 @@ import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowM
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
 import { sectionId } from "./headingSlug.js";
-import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
 const FILTER_PROPS = ["tags", "title", "body"];
 const SEARCH_RESULT_LIMIT = 8;
@@ -16,9 +15,82 @@ const ARTICLE_SCROLL_OFFSET = 76;
 const CODE_COPY_FEEDBACK_MS = 1400;
 const COPY_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="copy"><rect x="9" y="9" width="11" height="11" rx="1.5"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg>';
 const CHECK_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="check"><path d="M5 12l5 5 9-10"></path></svg>';
+let pagefindLoadPromise = null;
+const pagefindInstances = new Map();
 
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
+}
+
+async function loadPagefind(lang) {
+  if (!pagefindLoadPromise) {
+    pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js").catch((error) => {
+      pagefindLoadPromise = null;
+      throw error;
+    });
+  }
+  const pagefind = await pagefindLoadPromise;
+  if (!pagefindInstances.has(lang)) {
+    document.documentElement.lang = lang;
+    const instance = pagefind.createInstance();
+    await instance.options({ excerptLength: 24 });
+    pagefindInstances.set(lang, instance);
+  }
+  return pagefindInstances.get(lang);
+}
+
+function textFromHtml(value) {
+  return String(value || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeSearchText(value) {
+  return String(value || "").normalize("NFKC").toLowerCase();
+}
+
+function queryMatches(value, query) {
+  const text = normalizeSearchText(value);
+  const q = normalizeSearchText(query).trim();
+  if (!text || !q) return false;
+  if (text.includes(q)) return true;
+  return q.split(/\s+/).filter(Boolean).some((token) => text.includes(token));
+}
+
+function inferMatchLocation(doc, query) {
+  if (queryMatches(doc.title, query)) return "title";
+  if (queryMatches(doc.tags, query)) return "tag";
+  return "body";
+}
+
+function postIdFromSearchUrl(url) {
+  try {
+    const { pathname } = new URL(url, window.location.origin);
+    return pathname.match(/^\/(?:en\/)?blog\/([^/]+)/)?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function searchPagefindPosts(query, lang, postsById, docsById, limit) {
+  const pagefind = await loadPagefind(lang);
+  const response = await pagefind.search(query, { filters: { lang: [lang] } });
+  const records = await Promise.all(response.results.map(async (result) => result.data()));
+  const output = [];
+  for (const data of records) {
+    const id = postIdFromSearchUrl(data.url);
+    const p = id ? postsById.get(id) : null;
+    const doc = id ? docsById.get(id) : null;
+    if (!p || !doc) continue;
+    output.push({
+      p,
+      where: inferMatchLocation(doc, query),
+      snippet: textFromHtml(data.excerpt || data.meta?.summary || ""),
+    });
+    if (output.length >= limit) break;
+  }
+  return output;
 }
 
 /* ===================== BLOG LIST (Notion-style filter/sort) ===================== */
@@ -58,6 +130,7 @@ export function BlogList() {
   const [openPanel, setOpenPanel] = useState(null); // null | "search" | "filter" | "sort"
   const [filterProp, setFilterProp] = useState("tags"); // active filter tab: tags | title | body
   const [searchQuery, setSearchQuery] = useState("");
+  const [pagefindResults, setPagefindResults] = useState([]);
   const [searchActive, setSearchActive] = useState(0); // highlighted result index
   const deferredQuery = useDeferredValue(searchQuery); // debounce result computation while typing
   const panelRef = useRef(null);    // .fbar-wrap — outside-click boundary
@@ -256,11 +329,28 @@ export function BlogList() {
     body: doc.body,
   })), [postDocs]);
   const searchDocById = useMemo(() => new Map(searchDocs.map((doc) => [doc.p.id, doc])), [searchDocs]);
-  const searchIndex = useMemo(() => createSoftmatcha2SearchIndex(searchDocs), [searchDocs]);
+  const postById = useMemo(() => new Map(POSTS.map((p) => [p.id, p])), [POSTS]);
+  const recentSearchResults = useMemo(() => [...POSTS]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, SEARCH_RECENT_LIMIT)
+    .map((p) => ({ p, where: null, snippet: "" })), [POSTS]);
   const searchResults = useMemo(() => {
     const term = deferredQuery.trim();
-    return searchIndex.search(term, { limit: term ? SEARCH_RESULT_LIMIT : SEARCH_RECENT_LIMIT });
-  }, [deferredQuery, searchIndex]);
+    return term ? pagefindResults : recentSearchResults;
+  }, [deferredQuery, pagefindResults, recentSearchResults]);
+
+  useEffect(() => {
+    const term = deferredQuery.trim();
+    let live = true;
+    if (!term) {
+      setPagefindResults([]);
+      return () => { live = false; };
+    }
+    searchPagefindPosts(term, lang, postById, searchDocById, SEARCH_RESULT_LIMIT)
+      .then((results) => { if (live) setPagefindResults(results); })
+      .catch(() => { if (live) setPagefindResults([]); });
+    return () => { live = false; };
+  }, [deferredQuery, lang, postById, searchDocById]);
 
   useEffect(() => { setSearchActive(0); }, [deferredQuery]);
   // aria-activedescendant doesn't auto-scroll; keep the active option in view
@@ -369,10 +459,10 @@ export function BlogList() {
                 ) : (
                   <>
                     <div className="fbar-results-head">{searchQuery.trim() ? t.results(searchResults.length) : t.search_recent}</div>
-                    {searchResults.map(({ p, where }, i) => {
+                    {searchResults.map(({ p, where, snippet: pagefindSnippet }, i) => {
                       const query = searchQuery.trim();
                       const doc = searchDocById.get(p.id);
-                      const snippet = query && doc ? bestSnippet(doc, where, query) : "";
+                      const snippet = query && doc ? (pagefindSnippet || bestSnippet(doc, where, query)) : "";
                       return (
                         <button key={p.id} id={`fbar-result-${p.id}`} className={"sug" + (i === searchActive ? " active" : "")}
                                 type="button" role="option" aria-selected={i === searchActive}

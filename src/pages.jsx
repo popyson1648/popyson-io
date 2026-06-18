@@ -2,7 +2,8 @@
    Pages: About (default landing), Application(+detail), Reading List, RSS
    ============================================================ */
 import { useContext, useEffect, useState } from "react";
-import { AppCtx, Chip, Icon, L, PageHead, Ph, fmtDate } from "./components.jsx";
+import { AppCtx, Chip, Icon, L, PageHead, Ph } from "./components.jsx";
+import { localizedDateLabel } from "./dateLabel.js";
 import { localized } from "./meta.js";
 
 /* ===================== ABOUT ===================== */
@@ -199,7 +200,7 @@ export function ReadingPage() {
             <div className="ritem-main">
               <div className={"ritem-title" + (r.done ? " done" : "")}>{r.title}</div>
               <div className="ritem-sub">
-                <span>{fmtDate(r.date, lang)}</span>
+                <span>{localizedDateLabel(r, lang)}</span>
                 <span>{r.source}</span>
               </div>
             </div>

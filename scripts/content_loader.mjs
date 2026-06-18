@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
+import { makeDateLabel } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
@@ -78,6 +79,7 @@ function readPost(dirName) {
     id: dirName,
     title: { ja: ja.meta.title || "", en: en.meta.title || "" },
     date: String(common.date || ""),
+    dateLabel: makeDateLabel(common.date),
     reading: Number(common.reading || 1),
     tags: Array.isArray(common.tags) ? common.tags.map(String) : [],
     kana: String(common.kana || ""),

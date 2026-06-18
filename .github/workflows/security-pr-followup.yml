@@ -1,0 +1,33 @@
+name: Security remediation PR follow-up
+
+# Thin caller: follows up on security remediation PRs by delegating to the
+# shared reusable follow-up workflow. It never merges a PR.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  schedule:
+    # hourly at :43; off-the-hour, staggered from dependabot-pr-followup (:17).
+    # See .decisions/scheduled-workflow-cron-timing.md
+    - cron: "43 * * * *"
+  workflow_dispatch:
+
+# The repository default GITHUB_TOKEN is read-only. A reusable workflow cannot
+# request more than its caller grants, so declare the permissions the reusable
+# follow-up job needs here; otherwise the call fails at startup.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  statuses: read
+  checks: read
+
+jobs:
+  follow-up:
+    uses: ./.github/workflows/_pr-followup.yml
+    with:
+      selector: security
+      pr_number: ${{ github.event.pull_request.number || '' }}
+    secrets: inherit

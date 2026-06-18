@@ -1,2 +1,7 @@
 .op.env
 .op.env.auth
+node_modules/
+dist/
+coverage/
+.vite/
+.lighthouseci/

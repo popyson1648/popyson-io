@@ -31,9 +31,9 @@ jobs:
   refresh-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "npm"
@@ -42,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v1
+        uses: 1password/install-cli-action@v4
 
       - name: Fetch reading list from Instapaper
         # Resilient: if Instapaper/op is unavailable, keep the last committed

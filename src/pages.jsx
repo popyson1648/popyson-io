@@ -19,64 +19,9 @@ export function AboutPage() {
     return <Icon.ext width={14} height={14} />;
   };
 
-  const Career = () => (
-    <div className="about-block">
-      <h2>{t.about_career}</h2>
-      <div className="timeline">
-        {PERSON.career.map((c, i) => (
-          <div className="tl-item" key={i}>
-            <div className="tl-period">{c.period}</div>
-            <div>
-              <div className="tl-role">{L(c.role, lang)}</div>
-              <div className="tl-org">{L(c.org, lang)}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-  const Activity = () => {
-    const [open, setOpen] = useState(null);
-    return (
-      <div className="about-block">
-        <h2>{t.about_activity}</h2>
-        <div className="act-list">
-          {PERSON.activities.map((a, i) => {
-            const title = L(a, lang);
-            const expanded = open === i;
-            return (
-              <div className="act-item" key={i}>
-                <button className="act-toggle" type="button" aria-expanded={expanded}
-                        aria-controls={`activity-detail-${i}`}
-                        onClick={() => setOpen((current) => current === i ? null : i)}>
-                  <span>{title}</span>
-                  <Icon.chevron className={expanded ? "open" : ""} width={14} height={14} />
-                </button>
-                {expanded && (
-                  <div className="act-detail" id={`activity-detail-${i}`}>
-                    {t.activity_detail(title)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-  const Made = () => (
-    <div className="about-block">
-      <h2>{t.about_made}</h2>
-      <div className="made-grid">
-        {APPS.slice(0, 4).map((a) => (
-          <button className="made-card" type="button" key={a.id} onClick={() => nav("/app/" + a.id)}>
-            <div className="made-title">{a.title}</div>
-            <div className="made-sub">{L(a.tagline, lang)}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  // Tracks which activity row is expanded (null = none). Hoisted to the page
+  // body so the Activity markup can stay inline in the render output.
+  const [openActivity, setOpenActivity] = useState(null);
 
   return (
     <div className="container route-fade">
@@ -115,10 +60,58 @@ export function AboutPage() {
       </div>
 
       <div className="about-grid">
-        <Career />
-        <Activity />
+        <div className="about-block">
+          <h2>{t.about_career}</h2>
+          <div className="timeline">
+            {PERSON.career.map((c, i) => (
+              <div className="tl-item" key={i}>
+                <div className="tl-period">{c.period}</div>
+                <div>
+                  <div className="tl-role">{L(c.role, lang)}</div>
+                  <div className="tl-org">{L(c.org, lang)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="about-block">
+          <h2>{t.about_activity}</h2>
+          <div className="act-list">
+            {PERSON.activities.map((a, i) => {
+              const title = L(a, lang);
+              const expanded = openActivity === i;
+              return (
+                <div className="act-item" key={i}>
+                  <button className="act-toggle" type="button" aria-expanded={expanded}
+                          aria-controls={`activity-detail-${i}`}
+                          onClick={() => setOpenActivity((current) => current === i ? null : i)}>
+                    <span>{title}</span>
+                    <Icon.chevron className={expanded ? "open" : ""} width={14} height={14} />
+                  </button>
+                  {expanded && (
+                    <div className="act-detail" id={`activity-detail-${i}`}>
+                      {t.activity_detail(title)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
-      <div style={{ marginTop: 40 }}><Made /></div>
+      <div style={{ marginTop: 40 }}>
+        <div className="about-block">
+          <h2>{t.about_made}</h2>
+          <div className="made-grid">
+            {APPS.slice(0, 4).map((a) => (
+              <button className="made-card" type="button" key={a.id} onClick={() => nav("/app/" + a.id)}>
+                <div className="made-title">{a.title}</div>
+                <div className="made-sub">{L(a.tagline, lang)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

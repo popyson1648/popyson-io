@@ -1,0 +1,250 @@
+name: Security alert remediation
+
+# Reads GitHub security alerts, asks Claude Code to make a minimal fix, verifies
+# the result, and opens a pull request. GitHub native features remain the source
+# of truth; this workflow only handles alerts that are still open.
+#
+# Required GitHub secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN   - Claude Code OAuth token
+#   SECURITY_AUTOMATION_TOKEN - GitHub App token or fine-grained PAT with:
+#     - Dependabot alerts: read
+#     - Code scanning alerts: read
+#     - Contents: write
+#     - Workflows: write
+#     - Pull requests: write
+#     - Issues: write
+
+on:
+  schedule:
+    # daily at 07:17 JST (22:17 UTC); off-the-hour, off-peak.
+    # See .decisions/scheduled-workflow-cron-timing.md
+    - cron: "17 22 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: security-alert-remediation
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: read
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check required secrets
+        run: |
+          test -n "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+          test -n "${{ secrets.SECURITY_AUTOMATION_TOKEN }}"
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect open security alerts
+        id: alerts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          alerts_file="$RUNNER_TEMP/security-alerts.json"
+          open_prs="$(gh pr list --state open --search "label:security-alert-remediation" --json number --jq 'length')"
+
+          if [[ "$open_prs" != "0" ]]; then
+            echo "Existing security remediation PR found; follow-up workflow will handle it."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          dependabot_file="$RUNNER_TEMP/dependabot-alerts.json"
+          code_scanning_file="$RUNNER_TEMP/code-scanning-alerts.json"
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GH_REPO}/dependabot/alerts?state=open&per_page=20" \
+            > "$dependabot_file"
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GH_REPO}/code-scanning/alerts?state=open&per_page=20" \
+            > "$code_scanning_file"
+
+          node --input-type=module - "$dependabot_file" "$code_scanning_file" "$alerts_file" <<'NODE'
+          import fs from "node:fs";
+
+          const [dependabotPath, codeScanningPath, outputPath] = process.argv.slice(2);
+          const dependabot = JSON.parse(fs.readFileSync(dependabotPath, "utf8"));
+          const codeScanning = JSON.parse(fs.readFileSync(codeScanningPath, "utf8"));
+
+          const data = {
+            policy: {
+              secret_scanning: "Do not fetch or send secret scanning alert payloads to Claude.",
+              remediation: "Prefer minimal, verifiable changes. Do not dismiss alerts.",
+            },
+            dependabot: dependabot.map((alert) => ({
+              number: alert.number,
+              state: alert.state,
+              dependency: alert.dependency,
+              security_advisory: {
+                ghsa_id: alert.security_advisory?.ghsa_id,
+                cve_id: alert.security_advisory?.cve_id,
+                summary: alert.security_advisory?.summary,
+                severity: alert.security_advisory?.severity,
+                cvss: alert.security_advisory?.cvss,
+                cwes: alert.security_advisory?.cwes,
+                vulnerabilities: alert.security_advisory?.vulnerabilities,
+              },
+              security_vulnerability: alert.security_vulnerability,
+              url: alert.html_url,
+            })),
+            code_scanning: codeScanning.map((alert) => ({
+              number: alert.number,
+              state: alert.state,
+              rule: alert.rule,
+              most_recent_instance: alert.most_recent_instance,
+              url: alert.html_url,
+            })),
+          };
+
+          fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
+          console.log(JSON.stringify({
+            dependabot: data.dependabot.length,
+            code_scanning: data.code_scanning.length,
+          }));
+          NODE
+
+          if node --input-type=module - "$alerts_file" <<'NODE'
+          import fs from "node:fs";
+          const data = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          process.exit(data.dependabot.length || data.code_scanning.length ? 0 : 1);
+          NODE
+          then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "alerts<<EOF"
+              cat "$alerts_file"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "No open Dependabot or code scanning alerts."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create remediation branch
+        if: ${{ steps.alerts.outputs.should_run == 'true' }}
+        run: |
+          branch="security/alerts-${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          echo "branch=$branch" >> "$GITHUB_ENV"
+
+      - name: Remediate security alerts with Claude
+        if: ${{ steps.alerts.outputs.should_run == 'true' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are remediating GitHub security alerts for this repository.
+
+            First read AGENTS.md and follow it. Then inspect the repository before editing.
+
+            Security alert payload:
+            ${{ steps.alerts.outputs.alerts }}
+
+            Objective:
+            - Fix the open Dependabot and code scanning alerts when a safe, minimal fix is available.
+            - Prefer the smallest dependency upgrade or code change that resolves the alert.
+            - Preserve existing behavior and project structure.
+            - Keep package manifests and lockfiles consistent.
+            - Run relevant verification when you make changes.
+
+            Hard constraints:
+            - Do not fetch, print, summarize, or edit secret scanning alerts.
+            - Do not dismiss or close any security alert.
+            - Do not merge pull requests.
+            - Do not change unrelated UI/content.
+            - Do not add broad refactors.
+            - Do not weaken lint, build, accessibility, or security settings.
+            - Do not commit generated build output.
+            - If the alert cannot be fixed safely, leave a short note in the final response and make no speculative code change for that alert.
+
+            Verification command:
+            - python3 scripts/verify.py --mode ci
+          claude_args: |
+            --max-turns 30
+            --allowedTools Read,Edit,MultiEdit,Write,Bash(npm install),Bash(npm update),Bash(npm audit),Bash(npm run lint),Bash(npm run build),Bash(python3 scripts/verify.py)
+
+      - name: Normalize package lock if needed
+        if: ${{ steps.alerts.outputs.should_run == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- package.json package-lock.json; then
+            npm install --package-lock-only
+          fi
+
+      - name: Run verification
+        if: ${{ steps.alerts.outputs.should_run == 'true' }}
+        run: python3 scripts/verify.py --mode ci
+
+      - name: Open remediation pull request
+        if: ${{ steps.alerts.outputs.should_run == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "Claude produced no file changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "fix: remediate security alerts"
+          git push --set-upstream origin "$branch"
+
+          gh label create security-alert-remediation \
+            --description "Automated security alert remediation" \
+            --color "b60205" 2>/dev/null || true
+
+          body_file="$RUNNER_TEMP/security-pr-body.md"
+          {
+            echo "Automated remediation for open GitHub security alerts."
+            echo
+            echo "Claude reviewed the Dependabot and code scanning alert payloads, made the minimal available fix, and CI verification ran in this workflow."
+            echo
+            echo "Secret scanning alert payloads are intentionally excluded from this automation."
+            echo
+            echo "Verification:"
+            echo "- \`python3 scripts/verify.py --mode ci\`"
+            echo
+            echo "This PR is not auto-merged."
+          } > "$body_file"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "fix: remediate security alerts" \
+            --body-file "$body_file" \
+            --label security-alert-remediation

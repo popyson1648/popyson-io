@@ -1,0 +1,34 @@
+name: Dependabot PR follow-up
+
+# Thin caller: follows up on Dependabot update PRs by delegating to the shared
+# reusable follow-up workflow. Failing PRs get a minimal Claude fix; green PRs
+# get an `LGTM` comment. It never merges a PR.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  schedule:
+    # hourly at :17; off-the-hour, staggered from security-pr-followup (:43).
+    # See .decisions/scheduled-workflow-cron-timing.md
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+# The repository default GITHUB_TOKEN is read-only. A reusable workflow cannot
+# request more than its caller grants, so declare the permissions the reusable
+# follow-up job needs here; otherwise the call fails at startup.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  statuses: read
+  checks: read
+
+jobs:
+  follow-up:
+    uses: ./.github/workflows/_pr-followup.yml
+    with:
+      selector: dependabot
+      pr_number: ${{ github.event.pull_request.number || '' }}
+    secrets: inherit

@@ -457,9 +457,17 @@ export function Article({ id }) {
   const [tocOpen, setTocOpen] = useState(false);
   const proseRef = useRef(null);
   const copyTimers = useRef(new Map());
-  useEffect(() => { window.scrollTo(0, 0); setTocOpen(false); }, [id]);
+  // Collapse the mobile TOC when navigating to a different article. Resetting
+  // during render (vs. inside the effect) keeps it in sync without a second
+  // render pass — the React-recommended way to reset state on a prop change.
+  const [tocResetId, setTocResetId] = useState(id);
+  if (tocResetId !== id) {
+    setTocResetId(id);
+    setTocOpen(false);
+  }
+  useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
-  const body = window.ArticleBody.get(id);
+  const body = window.ArticleBody.get(id) || {};
   const localizedBody = body[lang] || body.ja || body.en || { html: "" };
   const bodyHtml = localizedBody.html || "";
   const headings = body.headings || [];

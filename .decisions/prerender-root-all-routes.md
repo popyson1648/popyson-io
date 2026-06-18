@@ -28,10 +28,10 @@ warning. Article routes keep their dedicated body injection.
 ## Context
 
 `scripts/prerender.mjs` previously baked only article bodies into `#root`; other
-routes shipped a near-empty root, hurting crawler and no-JS visibility (issue
-#32). The page components read content from `window.BlogData` / `window.I18N` and
-only touch browser APIs inside effects and handlers, so their render paths are
-safe to execute in Node behind a minimal `window` shim.
+routes shipped a near-empty root, hurting crawler and no-JS visibility (issue #32).
+The page components read content from `window.BlogData` / `window.I18N` and only
+touch browser APIs inside effects and handlers, so their render paths are safe to
+execute in Node behind a minimal `window` shim.
 
 ## Alternatives
 

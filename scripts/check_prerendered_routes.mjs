@@ -22,6 +22,7 @@ const content = loadSiteContent();
 configureMetaData(content);
 
 const PERSON = content.PERSON;
+assert.ok(Array.isArray(APPS) && APPS.length > 0, "expected APPS to be a non-empty array");
 const firstApp = APPS[0];
 
 function read(dir) {
@@ -42,6 +43,7 @@ function expectationsFor(route, lang) {
       return ['class="app-grid"', firstApp.title];
     case "appDetail": {
       const app = APPS.find((a) => a.id === route.id);
+      assert.ok(app, `missing app metadata for route id ${route.id}`);
       return ['class="adetail"', `<h1>${app.title}</h1>`];
     }
     case "reading":

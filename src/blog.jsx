@@ -24,7 +24,10 @@ function emptyFilters(initialTag = null) {
 
 async function loadPagefind(lang) {
   if (!pagefindLoadPromise) {
-    pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js");
+    pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js").catch((error) => {
+      pagefindLoadPromise = null;
+      throw error;
+    });
   }
   const pagefind = await pagefindLoadPromise;
   if (!pagefindInstances.has(lang)) {

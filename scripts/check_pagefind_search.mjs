@@ -17,6 +17,13 @@ const CONTENT_TYPES = {
   ".wasm": "application/wasm",
 };
 
+/**
+ * Starts an HTTP server serving static files from the dist directory.
+ * 
+ * Maps "/" to "/index.html" and sets appropriate Content-Type headers for served files. Responds with 404 for missing files.
+ * 
+ * @returns {Promise<http.Server>} A promise that resolves with the HTTP server instance when listening.
+ */
 function serveDist() {
   const server = createServer(async (req, res) => {
     try {
@@ -38,6 +45,14 @@ function serveDist() {
   });
 }
 
+/**
+ * Performs a language-specific search using Pagefind.
+ * @param {Object} pagefind - The Pagefind API instance.
+ * @param {string} base - The base URL of the Pagefind service.
+ * @param {string} lang - The language code to search within.
+ * @param {string} query - The search query string.
+ * @return {Object} An object with `count` (number of results) and `first` (first result data or null).
+ */
 async function searchWithLang(pagefind, base, lang, query) {
   await pagefind.destroy();
   document.documentElement.lang = lang;

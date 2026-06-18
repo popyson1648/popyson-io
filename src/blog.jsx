@@ -18,10 +18,20 @@ const CHECK_ICON_HTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="n
 let pagefindLoadPromise = null;
 let pagefindActiveLang = null;
 
+/**
+ * Creates a filter object with an optional initial tag.
+ * @param {string | null} [initialTag] - Tag to include in the filters.
+ * @returns {Object} A filter object with `tags` (array), `title` (string), and `body` (string).
+ */
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
 }
 
+/**
+ * Loads and configures Pagefind for the specified language.
+ * @param {string} lang - The language code to configure for.
+ * @return {Promise} The Pagefind instance configured for the specified language.
+ */
 async function loadPagefind(lang) {
   if (!pagefindLoadPromise) {
     pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js");
@@ -36,6 +46,11 @@ async function loadPagefind(lang) {
   return pagefind;
 }
 
+/**
+ * Extracts text content from HTML.
+ * @param {*} value - The HTML string to process.
+ * @return {string} The content with tags removed and whitespace normalized to single spaces.
+ */
 function textFromHtml(value) {
   return String(value || "")
     .replace(/<[^>]+>/g, " ")
@@ -43,10 +58,22 @@ function textFromHtml(value) {
     .trim();
 }
 
+/**
+ * Normalizes text for search comparison by applying Unicode NFKC normalization and lowercasing.
+ * @param {*} value - The value to normalize. Falsy values are treated as empty strings.
+ * @return {string} The normalized string.
+ */
 function normalizeSearchText(value) {
   return String(value || "").normalize("NFKC").toLowerCase();
 }
 
+/**
+ * Determines if a search query matches a value using case-insensitive normalization.
+ * Returns `true` if the full query or any whitespace-separated token is found in the value.
+ * @param {string} value - The text to search within.
+ * @param {string} query - The search query.
+ * @return {boolean} `true` if the query matches, `false` otherwise.
+ */
 function queryMatches(value, query) {
   const text = normalizeSearchText(value);
   const q = normalizeSearchText(query).trim();
@@ -55,12 +82,23 @@ function queryMatches(value, query) {
   return q.split(/\s+/).filter(Boolean).some((token) => text.includes(token));
 }
 
+/**
+ * Determines where in a document a search query matched.
+ * @param {Object} doc - The document with title and tags fields.
+ * @param {string} query - The search query.
+ * @return {string} One of "title", "tag", or "body" indicating the match location.
+ */
 function inferMatchLocation(doc, query) {
   if (queryMatches(doc.title, query)) return "title";
   if (queryMatches(doc.tags, query)) return "tag";
   return "body";
 }
 
+/**
+ * Extracts a post ID from a blog URL.
+ * @param {string} url - The URL to extract the post ID from.
+ * @return {string|null} The post ID if the URL matches `/blog/{id}` or `/en/blog/{id}`, null otherwise.
+ */
 function postIdFromSearchUrl(url) {
   try {
     const { pathname } = new URL(url, window.location.origin);
@@ -70,6 +108,10 @@ function postIdFromSearchUrl(url) {
   }
 }
 
+/**
+ * Searches posts using Pagefind within the specified language.
+ * @returns {Array} An array of result objects, each containing the matched post, match location, and snippet.
+ */
 async function searchPagefindPosts(query, lang, postsById, docsById, limit) {
   const pagefind = await loadPagefind(lang);
   const response = await pagefind.search(query, { filters: { lang: [lang] } });
@@ -109,6 +151,11 @@ function FilterPill({ prop, filters, setFilters, t }) {
   );
 }
 
+/**
+ * Renders a blog list page with full-text search, filtering, and sorting.
+ * Provides an interactive toolbar for searching via Pagefind, filtering by tags, title, or body,
+ * and sorting by publication date or reading order, with keyboard navigation and focus restoration.
+ */
 export function BlogList() {
   const { t, lang, nav, route } = useContext(AppCtx);
   const { POSTS, TAGS } = window.BlogData;

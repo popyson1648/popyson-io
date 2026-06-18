@@ -11,10 +11,22 @@ const DIST = join(ROOT, "dist");
 const PAGEFIND_DIR = join(DIST, "pagefind");
 const LOCALES = ["ja", "en"];
 
+/**
+ * Retrieves a localized field value with fallback to Japanese.
+ * @param {Object} field - An object containing localized values keyed by language code.
+ * @return {string} The value for the given language, the Japanese variant, or an empty string if neither is available.
+ */
 function localizedField(field, lang) {
   return field?.[lang] || field?.ja || "";
 }
 
+/**
+ * Builds searchable text content from localized post metadata and article body.
+ * @param {Object} post - The post object containing localized title, summary, and tags.
+ * @param {Object} body - The article body with a text property, or null/undefined.
+ * @param {string} lang - The language code for selecting localized fields.
+ * @returns {string} A newline-delimited string containing the post's localized title, summary, tags, and body text.
+ */
 function articleContent(post, body, lang) {
   return [
     localizedField(post.title, lang),
@@ -24,6 +36,10 @@ function articleContent(post, body, lang) {
   ].filter(Boolean).join("\n");
 }
 
+/**
+ * Builds and writes a Pagefind search index for localized blog articles.
+ * @throws {Error} If index creation, article indexing, or file writing fails.
+ */
 async function main() {
   const content = await renderArticleBodies(loadSiteContent());
   const { index, errors } = await pagefind.createIndex();

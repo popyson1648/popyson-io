@@ -69,6 +69,17 @@ function injectHead(template, m) {
   return html;
 }
 
+/**
+ * Generates prerendered article markup for a given route and language.
+ *
+ * Returns an empty string for non-article routes or when required data is missing.
+ * If a language variant is not available, falls back to Japanese.
+ *
+ * @param {Object} route - Route object with `name` and `id` properties.
+ * @param {string} lang - Language code.
+ * @param {Object} content - Content object with `POSTS` and `ARTICLE_BODIES` properties.
+ * @returns {string} The prerendered article HTML, or an empty string if not applicable.
+ */
 function renderArticleRoot(route, lang, content) {
   if (route.name !== "article") return "";
   const post = content.POSTS.find((item) => item.id === route.id);
@@ -85,6 +96,12 @@ function renderArticleRoot(route, lang, content) {
   ].join("");
 }
 
+/**
+ * Injects HTML content into the root mount container.
+ * @param {string} template - The HTML template.
+ * @param {string} rootHtml - The HTML content to inject into the root element.
+ * @return {string} The modified HTML template with the root container updated.
+ */
 function injectRoot(template, rootHtml) {
   return template.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootHtml}</div>`);
 }

@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
+import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
 import { renderArticleBody } from "./articleHtml.mjs";
 
@@ -75,10 +76,12 @@ function readPost(dirName) {
   const ja = parseFrontmatter(readFileSync(jaPath, "utf8"), jaPath);
   const en = parseFrontmatter(readFileSync(enPath, "utf8"), enPath);
   const common = { ...en.meta, ...ja.meta };
+  const date = normalizeIsoDate(common.date);
   const post = {
     id: dirName,
     title: { ja: ja.meta.title || "", en: en.meta.title || "" },
-    date: String(common.date || ""),
+    date,
+    dateLabel: makeDateLabel(date),
     reading: Number(common.reading || 1),
     tags: Array.isArray(common.tags) ? common.tags.map(String) : [],
     kana: String(common.kana || ""),
@@ -91,6 +94,28 @@ function readAbout(locale) {
   const file = join(ABOUT_DIR, `about.${locale}.toml`);
   const data = parseToml(readFileSync(file, "utf8"));
   return data.person || {};
+}
+
+export function relatedPostIds(post, posts, limit = 3) {
+  if (!post || !Array.isArray(posts)) return [];
+  const postTags = Array.isArray(post.tags) ? post.tags : [];
+  return posts
+    .filter((candidate) => candidate && candidate.id !== post.id)
+    .map((candidate) => ({
+      post: candidate,
+      score: (Array.isArray(candidate.tags) ? candidate.tags : [])
+        .filter((tag) => postTags.includes(tag)).length,
+    }))
+    .sort((a, b) => b.score - a.score || String(b.post.date || "").localeCompare(String(a.post.date || "")))
+    .slice(0, limit)
+    .map((ranked) => ranked.post.id);
+}
+
+function withRelatedIds(posts) {
+  return posts.map((post) => ({
+    ...post,
+    relatedIds: relatedPostIds(post, posts),
+  }));
 }
 
 function localizeAbout(ja, en) {
@@ -120,7 +145,7 @@ export function loadSiteContent() {
     ? readdirSync(POSTS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
     : [];
   const entries = dirs.map(readPost).sort((a, b) => b.post.date.localeCompare(a.post.date));
-  const posts = entries.map((entry) => entry.post);
+  const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
   const tags = [...new Set(posts.flatMap((post) => post.tags))];
   const person = localizeAbout(readAbout("ja"), readAbout("en"));

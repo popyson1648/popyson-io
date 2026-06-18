@@ -23,6 +23,7 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { oauthPost, requireEnv } from "./instapaper_oauth.mjs";
+import { makeDateLabel } from "../src/dateLabel.js";
 
 const OUT_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -69,12 +70,14 @@ async function listFolder({ folderId, creds }) {
 
 function normalize(bookmark, done) {
   const url = bookmark.url ?? "";
+  const date = toDate(bookmark.time);
   return {
     id: bookmark.bookmark_id ?? bookmark.hash ?? url,
     title: (bookmark.title || url || "").trim(),
     url,
     source: hostnameOf(url),
-    date: toDate(bookmark.time),
+    date,
+    dateLabel: makeDateLabel(date),
     done,
   };
 }

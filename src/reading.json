@@ -7,7 +7,11 @@
       "url": "https://zenn.dev/kenimo49/articles/code-review-6-stages-ai-human-boundary",
       "source": "zenn.dev",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2020006752,
@@ -15,7 +19,11 @@
       "url": "https://azukiazusa.dev/blog/before-implementation-interview-design-requirements-grill-me",
       "source": "azukiazusa.dev",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2020006650,
@@ -23,7 +31,11 @@
       "url": "https://speakerdeck.com/mosa_siru/don-t-build-features-dot-don-t-take-the-easy-way-out",
       "source": "speakerdeck.com",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2020002126,
@@ -31,7 +43,11 @@
       "url": "https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing",
       "source": "cloud.google.com",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2019995244,
@@ -39,7 +55,11 @@
       "url": "https://gihyo.jp/article/2026/06/open-knowledge-format",
       "source": "gihyo.jp",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2019990827,
@@ -47,7 +67,11 @@
       "url": "https://sakana.ai/marlin-release/",
       "source": "sakana.ai",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 2019990407,
@@ -55,7 +79,11 @@
       "url": "https://sakana.ai/ab-mcts/",
       "source": "sakana.ai",
       "date": "2026-06-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月15日",
+        "en": "Jun 15, 2026"
+      }
     },
     {
       "id": 1986495003,
@@ -63,7 +91,11 @@
       "url": "https://nuc.hatenadiary.org/entry/2025/11/29/",
       "source": "nuc.hatenadiary.org",
       "date": "2026-06-13",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月13日",
+        "en": "Jun 13, 2026"
+      }
     },
     {
       "id": 2019466923,
@@ -71,7 +103,11 @@
       "url": "https://heistak.github.io/your-code-displays-japanese-wrong/",
       "source": "heistak.github.io",
       "date": "2026-06-12",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月12日",
+        "en": "Jun 12, 2026"
+      }
     },
     {
       "id": 2019409309,
@@ -79,7 +115,11 @@
       "url": "https://speakerdeck.com/iwashi86/50-minute-engineering-leader",
       "source": "speakerdeck.com",
       "date": "2026-06-12",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月12日",
+        "en": "Jun 12, 2026"
+      }
     },
     {
       "id": 2018456099,
@@ -87,7 +127,11 @@
       "url": "https://www.langchain.com/blog/how-to-build-a-custom-agent-harness",
       "source": "langchain.com",
       "date": "2026-06-08",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月8日",
+        "en": "Jun 8, 2026"
+      }
     },
     {
       "id": 2018453640,
@@ -95,7 +139,11 @@
       "url": "https://www.langchain.com/blog/give-your-ai-agent-its-own-computer",
       "source": "langchain.com",
       "date": "2026-06-08",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月8日",
+        "en": "Jun 8, 2026"
+      }
     },
     {
       "id": 2018432601,
@@ -103,7 +151,11 @@
       "url": "https://wasmer.io/posts/ported-wasmer-backend-django-to-rust",
       "source": "wasmer.io",
       "date": "2026-06-08",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月8日",
+        "en": "Jun 8, 2026"
+      }
     },
     {
       "id": 2018289454,
@@ -111,7 +163,11 @@
       "url": "https://azukiazusa.dev/blog/goal-command-use-case-vitest",
       "source": "azukiazusa.dev",
       "date": "2026-06-07",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月7日",
+        "en": "Jun 7, 2026"
+      }
     },
     {
       "id": 2018155540,
@@ -119,7 +175,11 @@
       "url": "https://www.anthropic.com/institute/recursive-self-improvement",
       "source": "anthropic.com",
       "date": "2026-06-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月6日",
+        "en": "Jun 6, 2026"
+      }
     },
     {
       "id": 2018155205,
@@ -127,7 +187,11 @@
       "url": "https://code.claude.com/docs/ja/hooks",
       "source": "code.claude.com",
       "date": "2026-06-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月6日",
+        "en": "Jun 6, 2026"
+      }
     },
     {
       "id": 2018150886,
@@ -135,7 +199,11 @@
       "url": "https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills",
       "source": "claude.com",
       "date": "2026-06-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月6日",
+        "en": "Jun 6, 2026"
+      }
     },
     {
       "id": 2017374606,
@@ -143,7 +211,11 @@
       "url": "https://type.jp/et/feature/31124/",
       "source": "type.jp",
       "date": "2026-06-03",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月3日",
+        "en": "Jun 3, 2026"
+      }
     },
     {
       "id": 2016575496,
@@ -151,7 +223,11 @@
       "url": "https://support.claude.com/ja/articles/14555399-claude-code-チャンピオン-キット",
       "source": "support.claude.com",
       "date": "2026-06-01",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月1日",
+        "en": "Jun 1, 2026"
+      }
     },
     {
       "id": 2016571606,
@@ -159,7 +235,11 @@
       "url": "https://mejiro8.hatenablog.com/entry/2026/05/28/235146",
       "source": "mejiro8.hatenablog.com",
       "date": "2026-06-01",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月1日",
+        "en": "Jun 1, 2026"
+      }
     },
     {
       "id": 2016513661,
@@ -167,7 +247,11 @@
       "url": "https://tech.codmon.com/entry/2026/06/01/090000",
       "source": "tech.codmon.com",
       "date": "2026-06-01",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年6月1日",
+        "en": "Jun 1, 2026"
+      }
     },
     {
       "id": 2016495152,
@@ -175,7 +259,11 @@
       "url": "https://note.com/kajinari/n/n6494b35a4826",
       "source": "note.com",
       "date": "2026-05-31",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月31日",
+        "en": "May 31, 2026"
+      }
     },
     {
       "id": 2016361204,
@@ -183,7 +271,11 @@
       "url": "https://yusukebe.github.io/webservice-oneday/",
       "source": "yusukebe.github.io",
       "date": "2026-05-31",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月31日",
+        "en": "May 31, 2026"
+      }
     },
     {
       "id": 2015808144,
@@ -191,7 +283,11 @@
       "url": "https://www.figma.com/blog/figma-make-now-on-your-local-code/",
       "source": "figma.com",
       "date": "2026-05-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月29日",
+        "en": "May 29, 2026"
+      }
     },
     {
       "id": 2015807823,
@@ -199,7 +295,11 @@
       "url": "https://developer.chrome.com/blog/declarative-partial-updates",
       "source": "developer.chrome.com",
       "date": "2026-05-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月29日",
+        "en": "May 29, 2026"
+      }
     },
     {
       "id": 2015274857,
@@ -207,7 +307,11 @@
       "url": "https://speakerdeck.com/naoichihara/agentic-aishi-dai-niokeru-merukarinoaigabanansutogadorerushi-zhuang",
       "source": "speakerdeck.com",
       "date": "2026-05-27",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月27日",
+        "en": "May 27, 2026"
+      }
     },
     {
       "id": 2015255154,
@@ -215,7 +319,11 @@
       "url": "https://clickandmagic.com/notes/avoiding_uiux",
       "source": "clickandmagic.com",
       "date": "2026-05-27",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月27日",
+        "en": "May 27, 2026"
+      }
     },
     {
       "id": 2014924228,
@@ -223,7 +331,11 @@
       "url": "https://arxiv.org/abs/2605.23904",
       "source": "arxiv.org",
       "date": "2026-05-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月26日",
+        "en": "May 26, 2026"
+      }
     },
     {
       "id": 2014857769,
@@ -231,7 +343,11 @@
       "url": "https://github.com/sivchari/gomu",
       "source": "github.com",
       "date": "2026-05-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月26日",
+        "en": "May 26, 2026"
+      }
     },
     {
       "id": 2014857638,
@@ -239,7 +355,11 @@
       "url": "https://blog.kuniwak.com/entry/2026/05/23/143148",
       "source": "blog.kuniwak.com",
       "date": "2026-05-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月26日",
+        "en": "May 26, 2026"
+      }
     },
     {
       "id": 2014552967,
@@ -247,7 +367,11 @@
       "url": "https://findy-code.io/media/articles/event-fujiwara-260226",
       "source": "findy-code.io",
       "date": "2026-05-25",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月25日",
+        "en": "May 25, 2026"
+      }
     },
     {
       "id": 2014524072,
@@ -255,7 +379,11 @@
       "url": "https://speakerdeck.com/asa1984/real-world-effect-ts-jian-lao-napurodakutowoxing-dezu-mishang-geru",
       "source": "speakerdeck.com",
       "date": "2026-05-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月24日",
+        "en": "May 24, 2026"
+      }
     },
     {
       "id": 2014523894,
@@ -263,7 +391,11 @@
       "url": "https://zenn.dev/zhizhiarv/articles/claude-code-webfetch-haiku-summary",
       "source": "zenn.dev",
       "date": "2026-05-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月24日",
+        "en": "May 24, 2026"
+      }
     },
     {
       "id": 2014521188,
@@ -271,7 +403,11 @@
       "url": "https://alstrocrack.hatenablog.jp/entry/2026/05/23/185442",
       "source": "alstrocrack.hatenablog.jp",
       "date": "2026-05-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月24日",
+        "en": "May 24, 2026"
+      }
     },
     {
       "id": 2014439855,
@@ -279,7 +415,11 @@
       "url": "https://www.thoughtworks.com/content/dam/thoughtworks/documents/report/tw_future%20_of_software_development_retreat_%20key_takeaways.pdf",
       "source": "thoughtworks.com",
       "date": "2026-05-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月24日",
+        "en": "May 24, 2026"
+      }
     },
     {
       "id": 2013377533,
@@ -287,7 +427,11 @@
       "url": "https://gigazine.net/news/20260224-ibm-ai-casualty-anthropic-claude-code-cobol/",
       "source": "gigazine.net",
       "date": "2026-05-20",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月20日",
+        "en": "May 20, 2026"
+      }
     },
     {
       "id": 2012779258,
@@ -295,7 +439,11 @@
       "url": "https://zenn.dev/ivry/articles/data-engineer-principles",
       "source": "zenn.dev",
       "date": "2026-05-19",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月19日",
+        "en": "May 19, 2026"
+      }
     },
     {
       "id": 2012773850,
@@ -303,7 +451,11 @@
       "url": "https://dev.classmethod.jp/articles/security-on-software-development-with-generative-ai/",
       "source": "dev.classmethod.jp",
       "date": "2026-05-19",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月19日",
+        "en": "May 19, 2026"
+      }
     },
     {
       "id": 2012672643,
@@ -311,7 +463,11 @@
       "url": "https://zenn.dev/katzchang/articles/2786bf33bbed42",
       "source": "zenn.dev",
       "date": "2026-05-18",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月18日",
+        "en": "May 18, 2026"
+      }
     },
     {
       "id": 2012513633,
@@ -319,7 +475,11 @@
       "url": "https://aweb.ai/blog/ai-first-company-howto/",
       "source": "aweb.ai",
       "date": "2026-05-18",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月18日",
+        "en": "May 18, 2026"
+      }
     },
     {
       "id": 2012123138,
@@ -327,7 +487,11 @@
       "url": "https://shujisado.com/2025/12/10/copyrightability-of-ai-generated-code/",
       "source": "shujisado.com",
       "date": "2026-05-16",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月16日",
+        "en": "May 16, 2026"
+      }
     },
     {
       "id": 2012123314,
@@ -335,7 +499,11 @@
       "url": "https://shujisado.com/2025/11/25/gpl_propagation_to_ai_models/",
       "source": "shujisado.com",
       "date": "2026-05-16",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月16日",
+        "en": "May 16, 2026"
+      }
     },
     {
       "id": 2011965030,
@@ -343,7 +511,11 @@
       "url": "https://techblog.technology-doctor.com/entry/2026/05/11/144722",
       "source": "techblog.technology-doctor.com",
       "date": "2026-05-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月15日",
+        "en": "May 15, 2026"
+      }
     },
     {
       "id": 2010590273,
@@ -351,7 +523,11 @@
       "url": "https://speakerdeck.com/azukiazusa1/hurontoendonoxiang-shou-gabian-watuta-aigajia-watutawebnoxin-siiintahuesushe-ji",
       "source": "speakerdeck.com",
       "date": "2026-05-11",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月11日",
+        "en": "May 11, 2026"
+      }
     },
     {
       "id": 2010450623,
@@ -359,7 +535,11 @@
       "url": "https://note.com/genda_jp/n/n4bf35e4690f9",
       "source": "note.com",
       "date": "2026-05-11",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月11日",
+        "en": "May 11, 2026"
+      }
     },
     {
       "id": 2008991521,
@@ -367,7 +547,11 @@
       "url": "https://openai.com/index/delivering-low-latency-voice-ai-at-scale/",
       "source": "openai.com",
       "date": "2026-05-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年5月6日",
+        "en": "May 6, 2026"
+      }
     },
     {
       "id": 2007404968,
@@ -375,7 +559,11 @@
       "url": "https://gitperf.com/",
       "source": "gitperf.com",
       "date": "2026-04-30",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月30日",
+        "en": "Apr 30, 2026"
+      }
     },
     {
       "id": 2007330473,
@@ -383,7 +571,11 @@
       "url": "https://cocoda.design/kkouga/p/p98b685f43713",
       "source": "cocoda.design",
       "date": "2026-04-30",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月30日",
+        "en": "Apr 30, 2026"
+      }
     },
     {
       "id": 2004593417,
@@ -391,7 +583,11 @@
       "url": "https://aws.amazon.com/jp/builders-flash/202604/kiro-task-management/",
       "source": "aws.amazon.com",
       "date": "2026-04-21",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月21日",
+        "en": "Apr 21, 2026"
+      }
     },
     {
       "id": 2004558138,
@@ -399,7 +595,11 @@
       "url": "https://type.jp/et/feature/30854/",
       "source": "type.jp",
       "date": "2026-04-21",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月21日",
+        "en": "Apr 21, 2026"
+      }
     },
     {
       "id": 2002935170,
@@ -407,7 +607,11 @@
       "url": "https://konifar-zatsu.hatenadiary.jp/entry/2016/06/29/193911",
       "source": "konifar-zatsu.hatenadiary.jp",
       "date": "2026-04-16",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月16日",
+        "en": "Apr 16, 2026"
+      }
     },
     {
       "id": 2002935129,
@@ -415,7 +619,11 @@
       "url": "https://konifar-zatsu.hatenadiary.jp/entry/2020/03/12/104716",
       "source": "konifar-zatsu.hatenadiary.jp",
       "date": "2026-04-16",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月16日",
+        "en": "Apr 16, 2026"
+      }
     },
     {
       "id": 2002557577,
@@ -423,7 +631,11 @@
       "url": "https://www.google.com/maps?entry=gps&ftid=0x3538a75f39bf8eed%3A0x8c9056922def5a84&g_ep=CAISEjI2LjE0LjAuODkxOTAzMTgwMBgAIIgnKkgsOTQyOTc2OTksOTQyODQ1MTEsOTQyMzExODgsOTQyODA1NjgsNDcwNzE3MDQsOTQyMTg2NDEsOTQyODIxMzQsOTQyODY4NjlCAkpQ&g_st=com.marcoarment.instapaperpro.InstapaperSave&lucs=%2C94297699%2C94284511%2C94231188%2C94280568%2C47071704%2C94218641%2C94282134%2C94286869&q=%25E3%2580%2592884-0002%2B%25E5%25AE%25AE%25E5%25B4%258E%25E7%259C%258C%25E5%2585%2590%25E6%25B9%25AF%25E9%2583%25A1%25E9%25AB%2598%25E9%258D%258B%25E7%2594%25BA%25E5%258C%2597%25E9%25AB%2598%25E9%258D%258B%25EF%25BC%2595%25EF%25BC%2592%25EF%25BC%2596%25EF%25BC%2591%2B%25E3%2582%25AB%25E3%2583%2595%25E3%2582%25A7%25E3%2583%25AC%25E3%2582%25B9%25E3%2583%2588%2B%25E5%25A4%25A7%25E4%25BD%25BF%25E9%25A4%25A8&shh=CAE&skid=bed5d6de-531e-4c8e-a848-5868773b6a0a",
       "source": "google.com",
       "date": "2026-04-14",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月14日",
+        "en": "Apr 14, 2026"
+      }
     },
     {
       "id": 2002540378,
@@ -431,7 +643,11 @@
       "url": "https://k0kubun.hatenablog.com/entry/12x-salary",
       "source": "k0kubun.hatenablog.com",
       "date": "2026-04-14",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月14日",
+        "en": "Apr 14, 2026"
+      }
     },
     {
       "id": 2001547018,
@@ -439,7 +655,11 @@
       "url": "https://note.com/yasushihara/n/nf4a37718037f",
       "source": "note.com",
       "date": "2026-04-11",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月11日",
+        "en": "Apr 11, 2026"
+      }
     },
     {
       "id": 2000134603,
@@ -447,7 +667,11 @@
       "url": "https://youtube.com/watch?v=nOapM8i5jr0&si=mLv7_oDMHVzTInfi",
       "source": "youtube.com",
       "date": "2026-04-07",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月7日",
+        "en": "Apr 7, 2026"
+      }
     },
     {
       "id": 2000065386,
@@ -455,7 +679,11 @@
       "url": "https://www.yamdas.org/column/technique/oss-oshw-lowipj.html",
       "source": "yamdas.org",
       "date": "2026-04-07",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月7日",
+        "en": "Apr 7, 2026"
+      }
     },
     {
       "id": 2000065298,
@@ -463,7 +691,11 @@
       "url": "https://forest.watch.impress.co.jp/docs/news/2099555.html",
       "source": "forest.watch.impress.co.jp",
       "date": "2026-04-07",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月7日",
+        "en": "Apr 7, 2026"
+      }
     },
     {
       "id": 1998479908,
@@ -471,7 +703,11 @@
       "url": "https://speakerdeck.com/shunk031/the-landscape-of-agentic-reinforcement-learning-for-llms-a-survey",
       "source": "speakerdeck.com",
       "date": "2026-04-03",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月3日",
+        "en": "Apr 3, 2026"
+      }
     },
     {
       "id": 1997619323,
@@ -479,7 +715,11 @@
       "url": "https://x.com/suzacque/status/2039259433856106995?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
       "source": "x.com",
       "date": "2026-04-01",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年4月1日",
+        "en": "Apr 1, 2026"
+      }
     },
     {
       "id": 1996698678,
@@ -487,7 +727,11 @@
       "url": "https://zenn.dev/shio_shoppaize/articles/shogun-harness-engineering",
       "source": "zenn.dev",
       "date": "2026-03-30",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月30日",
+        "en": "Mar 30, 2026"
+      }
     },
     {
       "id": 1996697648,
@@ -495,7 +739,11 @@
       "url": "https://newsletter.pragmaticengineer.com/p/how-to-be-a-10x-engineer-interview",
       "source": "newsletter.pragmaticengineer.com",
       "date": "2026-03-30",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月30日",
+        "en": "Mar 30, 2026"
+      }
     },
     {
       "id": 1996417484,
@@ -503,7 +751,11 @@
       "url": "https://blog.lai.so/agents-sandbox/",
       "source": "blog.lai.so",
       "date": "2026-03-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月29日",
+        "en": "Mar 29, 2026"
+      }
     },
     {
       "id": 1996411292,
@@ -511,7 +763,11 @@
       "url": "https://ssrf.dev/posts/2026/03/27/personal-gha-security-tips/",
       "source": "ssrf.dev",
       "date": "2026-03-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月29日",
+        "en": "Mar 29, 2026"
+      }
     },
     {
       "id": 1996411120,
@@ -519,7 +775,11 @@
       "url": "https://fortee.jp/2026fp-matsuri/proposal/bc8c27a9-8dec-4284-9555-7c4816fb1191",
       "source": "fortee.jp",
       "date": "2026-03-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月29日",
+        "en": "Mar 29, 2026"
+      }
     },
     {
       "id": 1993793611,
@@ -527,7 +787,11 @@
       "url": "https://speakerdeck.com/notty/aitui-jin-niokeru-sheng-shou-niguang-garushi-zu-mi-no-zuo-rifang",
       "source": "speakerdeck.com",
       "date": "2026-03-22",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月22日",
+        "en": "Mar 22, 2026"
+      }
     },
     {
       "id": 1990386829,
@@ -535,7 +799,11 @@
       "url": "https://peps.python.org/pep-0827/",
       "source": "peps.python.org",
       "date": "2026-03-13",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月13日",
+        "en": "Mar 13, 2026"
+      }
     },
     {
       "id": 1952961141,
@@ -543,7 +811,11 @@
       "url": "https://zenn.dev/coconala/articles/f8e4b637f64f9a",
       "source": "zenn.dev",
       "date": "2026-03-13",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月13日",
+        "en": "Mar 13, 2026"
+      }
     },
     {
       "id": 1989106083,
@@ -551,7 +823,11 @@
       "url": "https://findy-tools.io/products/amazon-cloudfront/186/531",
       "source": "findy-tools.io",
       "date": "2026-03-09",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月9日",
+        "en": "Mar 9, 2026"
+      }
     },
     {
       "id": 1989076230,
@@ -559,7 +835,11 @@
       "url": "https://nyosegawa.github.io/posts/harness-engineering-best-practices-2026/",
       "source": "nyosegawa.github.io",
       "date": "2026-03-09",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月9日",
+        "en": "Mar 9, 2026"
+      }
     },
     {
       "id": 1987870789,
@@ -567,7 +847,11 @@
       "url": "https://zenn.dev/mametter/articles/3e8580ec034201",
       "source": "zenn.dev",
       "date": "2026-03-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月6日",
+        "en": "Mar 6, 2026"
+      }
     },
     {
       "id": 1987304352,
@@ -575,7 +859,11 @@
       "url": "https://nyosegawa.github.io/posts/skill-creator-and-orchestration-skill/",
       "source": "nyosegawa.github.io",
       "date": "2026-03-06",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月6日",
+        "en": "Mar 6, 2026"
+      }
     },
     {
       "id": 1987321370,
@@ -583,7 +871,11 @@
       "url": "https://zenn.dev/ytksato/articles/057dc7c981d304",
       "source": "zenn.dev",
       "date": "2026-03-04",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月4日",
+        "en": "Mar 4, 2026"
+      }
     },
     {
       "id": 1987315894,
@@ -591,7 +883,11 @@
       "url": "https://leodemoura.github.io/blog/2026/02/28/when-ai-writes-the-worlds-software.html",
       "source": "leodemoura.github.io",
       "date": "2026-03-04",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月4日",
+        "en": "Mar 4, 2026"
+      }
     },
     {
       "id": 1987306404,
@@ -599,7 +895,11 @@
       "url": "https://speakerdeck.com/orgachem/guidelines-for-requirements-definition-specification-writing-design-and-verification",
       "source": "speakerdeck.com",
       "date": "2026-03-04",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月4日",
+        "en": "Mar 4, 2026"
+      }
     },
     {
       "id": 1986468729,
@@ -607,7 +907,11 @@
       "url": "https://voidzero.dev/",
       "source": "voidzero.dev",
       "date": "2026-03-03",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月3日",
+        "en": "Mar 3, 2026"
+      }
     },
     {
       "id": 1986467096,
@@ -615,7 +919,11 @@
       "url": "https://www.conventionalcommits.org/ja/v1.0.0/",
       "source": "conventionalcommits.org",
       "date": "2026-03-03",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月3日",
+        "en": "Mar 3, 2026"
+      }
     },
     {
       "id": 1986208581,
@@ -623,7 +931,11 @@
       "url": "https://speakerdeck.com/lycorptech_jp/20260226a",
       "source": "speakerdeck.com",
       "date": "2026-03-02",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月2日",
+        "en": "Mar 2, 2026"
+      }
     },
     {
       "id": 1986040816,
@@ -631,7 +943,11 @@
       "url": "https://note.com/mixer_blender/n/ne7bf0211e343",
       "source": "note.com",
       "date": "2026-03-02",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年3月2日",
+        "en": "Mar 2, 2026"
+      }
     },
     {
       "id": 1985013413,
@@ -639,7 +955,11 @@
       "url": "https://plurality.net/ja/",
       "source": "plurality.net",
       "date": "2026-02-27",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月27日",
+        "en": "Feb 27, 2026"
+      }
     },
     {
       "id": 1984563179,
@@ -647,7 +967,11 @@
       "url": "https://future-architect.github.io/articles/20260220a/",
       "source": "future-architect.github.io",
       "date": "2026-02-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月26日",
+        "en": "Feb 26, 2026"
+      }
     },
     {
       "id": 1984559712,
@@ -655,7 +979,11 @@
       "url": "https://x.com/mlbear2/status/2026952319674519969?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
       "source": "x.com",
       "date": "2026-02-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月26日",
+        "en": "Feb 26, 2026"
+      }
     },
     {
       "id": 1984558615,
@@ -663,7 +991,11 @@
       "url": "https://x.com/commte/status/2026780381140472274?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
       "source": "x.com",
       "date": "2026-02-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月26日",
+        "en": "Feb 26, 2026"
+      }
     },
     {
       "id": 1984555657,
@@ -671,7 +1003,11 @@
       "url": "https://writings.stephenwolfram.com/2026/02/making-wolfram-tech-available-as-a-foundation-tool-for-llm-systems/",
       "source": "writings.stephenwolfram.com",
       "date": "2026-02-26",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月26日",
+        "en": "Feb 26, 2026"
+      }
     },
     {
       "id": 1983746714,
@@ -679,7 +1015,11 @@
       "url": "https://cocoda.design/daisukelab/p/p29292a70a20c",
       "source": "cocoda.design",
       "date": "2026-02-25",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月25日",
+        "en": "Feb 25, 2026"
+      }
     },
     {
       "id": 1982115087,
@@ -687,7 +1027,11 @@
       "url": "https://ymrl-dev.hateblo.jp/entry/2026/02/21/070756",
       "source": "ymrl-dev.hateblo.jp",
       "date": "2026-02-21",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月21日",
+        "en": "Feb 21, 2026"
+      }
     },
     {
       "id": 1981815489,
@@ -695,7 +1039,11 @@
       "url": "https://zenn.dev/atrae/articles/d3d31ad0413bf3",
       "source": "zenn.dev",
       "date": "2026-02-20",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月20日",
+        "en": "Feb 20, 2026"
+      }
     },
     {
       "id": 1981109493,
@@ -703,7 +1051,11 @@
       "url": "https://zenn.dev/moomindani/articles/5b4ee6d4f33b44",
       "source": "zenn.dev",
       "date": "2026-02-19",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月19日",
+        "en": "Feb 19, 2026"
+      }
     },
     {
       "id": 1981039355,
@@ -711,7 +1063,11 @@
       "url": "https://tech.preferred.jp/ja/blog/book_2025/",
       "source": "tech.preferred.jp",
       "date": "2026-02-19",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月19日",
+        "en": "Feb 19, 2026"
+      }
     },
     {
       "id": 1980651088,
@@ -719,7 +1075,11 @@
       "url": "https://www.itmedia.co.jp/aiplus/articles/2602/18/news110.html",
       "source": "itmedia.co.jp",
       "date": "2026-02-18",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月18日",
+        "en": "Feb 18, 2026"
+      }
     },
     {
       "id": 1979720349,
@@ -727,7 +1087,11 @@
       "url": "https://gori.me/ipad/163685",
       "source": "gori.me",
       "date": "2026-02-16",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月16日",
+        "en": "Feb 16, 2026"
+      }
     },
     {
       "id": 1978860160,
@@ -735,7 +1099,11 @@
       "url": "https://developers.cyberagent.co.jp/blog/archives/61806/",
       "source": "developers.cyberagent.co.jp",
       "date": "2026-02-14",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月14日",
+        "en": "Feb 14, 2026"
+      }
     },
     {
       "id": 1976640785,
@@ -743,7 +1111,11 @@
       "url": "https://zenn.dev/ashunar0/articles/2b6c77e2fe251d",
       "source": "zenn.dev",
       "date": "2026-02-10",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月10日",
+        "en": "Feb 10, 2026"
+      }
     },
     {
       "id": 1976639018,
@@ -751,7 +1123,11 @@
       "url": "https://note.com/olachin/n/n9706c13c8678",
       "source": "note.com",
       "date": "2026-02-10",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月10日",
+        "en": "Feb 10, 2026"
+      }
     },
     {
       "id": 1972813505,
@@ -759,7 +1135,11 @@
       "url": "https://alc.chiba-u.jp/eyr/2020/10/29/03critical.html",
       "source": "alc.chiba-u.jp",
       "date": "2026-02-04",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月4日",
+        "en": "Feb 4, 2026"
+      }
     },
     {
       "id": 1972061368,
@@ -767,7 +1147,11 @@
       "url": "https://note.com/makotoyokomichi/n/n31a35e885e41",
       "source": "note.com",
       "date": "2026-02-03",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年2月3日",
+        "en": "Feb 3, 2026"
+      }
     },
     {
       "id": 1970449865,
@@ -775,7 +1159,11 @@
       "url": "http://izanami.dev/post/2111f137-4bef-4231-9ea6-cbc3b94458e0",
       "source": "izanami.dev",
       "date": "2026-01-31",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月31日",
+        "en": "Jan 31, 2026"
+      }
     },
     {
       "id": 1970449636,
@@ -783,7 +1171,11 @@
       "url": "https://claude.com/blog/complete-guide-to-building-skills-for-claude",
       "source": "claude.com",
       "date": "2026-01-31",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月31日",
+        "en": "Jan 31, 2026"
+      }
     },
     {
       "id": 1969974931,
@@ -791,7 +1183,11 @@
       "url": "https://note.com/find_info/n/n9a0da3fffd9f",
       "source": "note.com",
       "date": "2026-01-30",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月30日",
+        "en": "Jan 30, 2026"
+      }
     },
     {
       "id": 1969241531,
@@ -799,7 +1195,11 @@
       "url": "https://zenn.dev/catnose99/articles/nani-translate",
       "source": "zenn.dev",
       "date": "2026-01-29",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月29日",
+        "en": "Jan 29, 2026"
+      }
     },
     {
       "id": 1966563530,
@@ -807,7 +1207,11 @@
       "url": "https://techblog.lycorp.co.jp/ja/20260122a",
       "source": "techblog.lycorp.co.jp",
       "date": "2026-01-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月24日",
+        "en": "Jan 24, 2026"
+      }
     },
     {
       "id": 1966563175,
@@ -815,7 +1219,11 @@
       "url": "https://openai.com/index/scaling-postgresql/",
       "source": "openai.com",
       "date": "2026-01-24",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月24日",
+        "en": "Jan 24, 2026"
+      }
     },
     {
       "id": 1965755007,
@@ -823,7 +1231,11 @@
       "url": "https://speakerdeck.com/watany/agentic-coding-workshops-20260121",
       "source": "speakerdeck.com",
       "date": "2026-01-23",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月23日",
+        "en": "Jan 23, 2026"
+      }
     },
     {
       "id": 1965295847,
@@ -831,7 +1243,11 @@
       "url": "https://ebookjapan.yahoo.co.jp/rd/shareLink/?publicationCd=A001773262",
       "source": "ebookjapan.yahoo.co.jp",
       "date": "2026-01-22",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月22日",
+        "en": "Jan 22, 2026"
+      }
     },
     {
       "id": 1962320037,
@@ -839,7 +1255,11 @@
       "url": "https://www.jiji.com/jc/v8?id=202601utsu-team",
       "source": "jiji.com",
       "date": "2026-01-17",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月17日",
+        "en": "Jan 17, 2026"
+      }
     },
     {
       "id": 1960909632,
@@ -847,7 +1267,11 @@
       "url": "https://phonicsandstuff.com/sound-letter-matching",
       "source": "phonicsandstuff.com",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1960886697,
@@ -855,7 +1279,11 @@
       "url": "https://design.google/library/gemini-ai-visual-design",
       "source": "design.google",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1960884448,
@@ -863,7 +1291,11 @@
       "url": "https://github.blog/ai-and-ml/generative-ai/what-ai-is-actually-good-for-according-to-developers/",
       "source": "github.blog",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1960882491,
@@ -871,7 +1303,11 @@
       "url": "https://syu-m-5151.hatenablog.com/entry/2026/01/12/003013",
       "source": "syu-m-5151.hatenablog.com",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1960882387,
@@ -879,7 +1315,11 @@
       "url": "https://syu-m-5151.hatenablog.com/entry/2026/01/05/090020",
       "source": "syu-m-5151.hatenablog.com",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1960843712,
@@ -887,7 +1327,11 @@
       "url": "https://x.com/thedankoe/status/2010751592346030461?s=12&t=irGI_ALoyclK0ynjtXf_Tg",
       "source": "x.com",
       "date": "2026-01-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2026年1月15日",
+        "en": "Jan 15, 2026"
+      }
     },
     {
       "id": 1952960876,
@@ -895,7 +1339,11 @@
       "url": "https://griponminds.jp/blog/web-performance-improvement-01/",
       "source": "griponminds.jp",
       "date": "2025-12-31",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月31日",
+        "en": "Dec 31, 2025"
+      }
     },
     {
       "id": 1945400793,
@@ -903,7 +1351,11 @@
       "url": "https://azukiazusa.dev/blog/await-is-not-only-for-promise",
       "source": "azukiazusa.dev",
       "date": "2025-12-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月15日",
+        "en": "Dec 15, 2025"
+      }
     },
     {
       "id": 1945398616,
@@ -911,7 +1363,11 @@
       "url": "https://comemo.nikkei.com/n/na309074e4534",
       "source": "comemo.nikkei.com",
       "date": "2025-12-15",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月15日",
+        "en": "Dec 15, 2025"
+      }
     },
     {
       "id": 1944151514,
@@ -919,7 +1375,11 @@
       "url": "https://nowokay.hatenablog.com/entry/2025/12/12/063351",
       "source": "nowokay.hatenablog.com",
       "date": "2025-12-12",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月12日",
+        "en": "Dec 12, 2025"
+      }
     },
     {
       "id": 1940960217,
@@ -927,7 +1387,11 @@
       "url": "https://www.kaggle.com/learn-guide/5-day-agents",
       "source": "kaggle.com",
       "date": "2025-12-05",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月5日",
+        "en": "Dec 5, 2025"
+      }
     },
     {
       "id": 1940939203,
@@ -935,7 +1399,11 @@
       "url": "https://zenn.dev/knowledgework/articles/c48539d2f35ecc",
       "source": "zenn.dev",
       "date": "2025-12-05",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月5日",
+        "en": "Dec 5, 2025"
+      }
     },
     {
       "id": 1940937491,
@@ -943,7 +1411,11 @@
       "url": "https://www.m3tech.blog/entry/github-auto-merge",
       "source": "m3tech.blog",
       "date": "2025-12-05",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月5日",
+        "en": "Dec 5, 2025"
+      }
     },
     {
       "id": 1940936974,
@@ -951,7 +1423,11 @@
       "url": "https://blog.stin.ink/articles/how-to-implement-a-perfect-dark-mode",
       "source": "blog.stin.ink",
       "date": "2025-12-05",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月5日",
+        "en": "Dec 5, 2025"
+      }
     },
     {
       "id": 1940912874,
@@ -959,7 +1435,11 @@
       "url": "https://qiita.com/OtakuMoyashi/items/1c1ae9507dcc75b057d2",
       "source": "qiita.com",
       "date": "2025-12-05",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月5日",
+        "en": "Dec 5, 2025"
+      }
     },
     {
       "id": 1940525200,
@@ -967,7 +1447,11 @@
       "url": "https://zenn.dev/koh_sh/articles/a1d3bc899cb6ba",
       "source": "zenn.dev",
       "date": "2025-12-04",
-      "done": false
+      "done": false,
+      "dateLabel": {
+        "ja": "2025年12月4日",
+        "en": "Dec 4, 2025"
+      }
     },
     {
       "id": 1940523906,
@@ -975,7 +1459,11 @@
       "url": "https://blog.instapaper.com/private/96972159656/tumblr_9wAYg3TlYhLs6ARGN",
       "source": "blog.instapaper.com",
       "date": "2025-12-04",
-      "done": true
+      "done": true,
+      "dateLabel": {
+        "ja": "2025年12月4日",
+        "en": "Dec 4, 2025"
+      }
     }
   ]
 }

@@ -3,7 +3,8 @@
    ============================================================ */
 import { useContext, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createColumnHelper, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
-import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, fmtDate, highlight } from "./components.jsx";
+import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
+import { localizedDateLabel } from "./dateLabel.js";
 import { sectionId } from "./headingSlug.js";
 import { createSoftmatcha2SearchIndex } from "./softmatcha2Search.js";
 
@@ -381,7 +382,7 @@ export function BlogList() {
                             <div className="sug-title">{highlight(L(p.title, lang), query)}</div>
                             {snippet && <div className="sug-snippet">{highlight(snippet, query)}</div>}
                             <div className="sug-meta">
-                              <span className="sug-date">{fmtDate(p.date, lang)}</span>
+                              <span className="sug-date">{localizedDateLabel(p, lang)}</span>
                               <span className="sug-tags" title={p.tags.map((tg) => `#${tg}`).join(" ")}>{p.tags.map((tg) => `#${tg}`).join(" ")}</span>
                               {where && where !== "title" && <span className="sug-match">{where === "tag" ? t.in_tag : t.in_title}{lang === "ja" ? "に一致" : " match"}</span>}
                             </div>
@@ -436,7 +437,7 @@ export function BlogList() {
           {list.map((p) => (
             <button className="post-index-card" type="button" key={p.id} onClick={() => nav("/blog/" + p.id)}>
               <span className="post-index-main">
-                <span className="post-index-meta">{fmtDate(p.date, lang)} · {p.reading} {t.min_read}</span>
+                <span className="post-index-meta">{localizedDateLabel(p, lang)} · {p.reading} {t.min_read}</span>
                 <span className="post-index-title">{L(p.title, lang)}</span>
                 <span className="post-index-summary">{L(p.summary, lang)}</span>
                 <span className="post-index-tags">{p.tags.map((tg) => <span key={tg}>#{tg}</span>)}</span>
@@ -508,11 +509,10 @@ export function Article({ id }) {
 
   if (!post) return <div className="container route-fade"><p>Not found.</p></div>;
 
-  const related = POSTS
-    .filter((p) => p.id !== id)
-    .map((p) => ({ p, score: p.tags.filter((tg) => post.tags.includes(tg)).length }))
-    .sort((a, b) => b.score - a.score || b.p.date.localeCompare(a.p.date))
-    .slice(0, 3).map((x) => x.p);
+  const relatedIds = Array.isArray(post.relatedIds) ? post.relatedIds : [];
+  const related = relatedIds
+    .map((relatedId) => POSTS.find((candidate) => candidate.id === relatedId))
+    .filter(Boolean);
 
   const jump = (headingId) => {
     const el = document.getElementById(sectionId(headingId));
@@ -555,7 +555,7 @@ export function Article({ id }) {
         <div className="article-head">
           <h1>{L(post.title, lang)}</h1>
           <div className="article-meta">
-            <span>{fmtDate(post.date, lang)}</span>
+            <span>{localizedDateLabel(post, lang)}</span>
             <span>{post.reading} {t.min_read}</span>
           </div>
           <div className="article-tags">{post.tags.map((tg) => (
@@ -576,7 +576,7 @@ export function Article({ id }) {
                 <Ph className="rel-thumb" />
                 <span className="rel-body">
                   <span className="rel-title">{L(p.title, lang)}</span>
-                  <span className="rel-date">{fmtDate(p.date, lang)} · {p.tags.map((tg) => "#" + tg).join(" ")}</span>
+                  <span className="rel-date">{localizedDateLabel(p, lang)} · {p.tags.map((tg) => "#" + tg).join(" ")}</span>
                 </span>
               </button>
             ))}

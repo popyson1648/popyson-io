@@ -24,7 +24,7 @@ run_in_ci = true
 
 [phases.test_unit]
 enabled = true
-command = "node scripts/check_markdown_rendering.mjs"
+command = "node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs"
 run_pre_commit = true
 run_in_ci = true
 

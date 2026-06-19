@@ -9,7 +9,7 @@ Use these rules when updating English content from Japanese source content.
 - Do not summarize.
 - Do not add facts.
 - Keep technical terms natural for software engineers.
-- Translate human-facing metadata values such as `title`, `description`, and `summary`.
+- Translate human-facing metadata values such as `title`, `description`, and `[sumup].text`.
 
 ## File Boundaries
 

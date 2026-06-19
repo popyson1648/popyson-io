@@ -1,18 +1,21 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
 import { renderArticleBody } from "./articleHtml.mjs";
+import { assertValidMetadata, dateToIsoDate } from "./metadataSchema.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
 const ABOUT_DIR = join(ROOT, "src/content/about");
+const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 const POST_ID_RE = /^\d{8}-[a-f0-9]{8}$/;
 
 function parseFrontmatter(source, filePath) {
-  const text = source.replace(/^\uFEFF/, "");
+  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   if (!text.startsWith("+++\n")) {
     throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
   }
@@ -20,7 +23,60 @@ function parseFrontmatter(source, filePath) {
   if (end === -1) throw new Error(`${filePath} is missing closing +++ frontmatter delimiter`);
   const frontmatter = text.slice(4, end);
   const body = text.slice(end + 5).replace(/^\r?\n/, "");
-  return { meta: parseToml(frontmatter), body };
+  const meta = parseToml(frontmatter);
+  assertValidMetadata(meta, filePath);
+  return { meta, body };
+}
+
+function readMetadataConfig() {
+  if (!existsSync(METADATA_CONFIG_FILE)) {
+    throw new Error(`${METADATA_CONFIG_FILE} is required`);
+  }
+  return parseToml(readFileSync(METADATA_CONFIG_FILE, "utf8"));
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function firstAddedGitDate(filePath) {
+  const relPath = relative(ROOT, filePath);
+  try {
+    const output = execFileSync(
+      "git",
+      ["log", "--diff-filter=A", "--follow", "--format=%cI", "--", relPath],
+      { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    if (!output) return "";
+    const dates = output.split(/\r?\n/).filter(Boolean);
+    return dates.at(-1)?.slice(0, 10) || "";
+  } catch {
+    return "";
+  }
+}
+
+function resolveDate(meta, filePath) {
+  const date = dateToIsoDate(meta.date);
+  if (date !== "auto") return normalizeIsoDate(date);
+  const gitDate = firstAddedGitDate(filePath);
+  if (gitDate) return normalizeIsoDate(gitDate);
+  if (process.env.CI) {
+    throw new Error(`${filePath}: date = "auto" could not be resolved from git history`);
+  }
+  return todayIsoDate();
+}
+
+function resolveSummary(meta) {
+  const sumup = meta.sumup;
+  if (!sumup || sumup.mode === "none") return "";
+  if (sumup.mode === "text") return sumup.text || "";
+  return "";
+}
+
+function resolveThumbnail(meta, config) {
+  const thumbnail = meta.thumbnail;
+  if (thumbnail?.mode === "file") return thumbnail.path;
+  return config.thumbnail?.default_path || "";
 }
 
 function extractMarkdownHeadings(markdown) {
@@ -66,7 +122,7 @@ function localizeMarkdown(jaBody, enBody) {
   return { ja: jaBody, en: enBody, headings };
 }
 
-function readPost(dirName) {
+function readPost(dirName, config) {
   if (!POST_ID_RE.test(dirName)) {
     throw new Error(`Invalid post directory name: ${dirName}`);
   }
@@ -76,7 +132,7 @@ function readPost(dirName) {
   const ja = parseFrontmatter(readFileSync(jaPath, "utf8"), jaPath);
   const en = parseFrontmatter(readFileSync(enPath, "utf8"), enPath);
   const common = { ...en.meta, ...ja.meta };
-  const date = normalizeIsoDate(common.date);
+  const date = resolveDate(common, common.date === ja.meta.date ? jaPath : enPath);
   const post = {
     id: dirName,
     title: { ja: ja.meta.title || "", en: en.meta.title || "" },
@@ -85,7 +141,8 @@ function readPost(dirName) {
     reading: Number(common.reading || 1),
     tags: Array.isArray(common.tags) ? common.tags.map(String) : [],
     kana: String(common.kana || ""),
-    summary: { ja: ja.meta.summary || "", en: en.meta.summary || "" },
+    summary: { ja: resolveSummary(ja.meta), en: resolveSummary(en.meta) },
+    thumbnail: resolveThumbnail(common, config),
   };
   return { post, body: localizeMarkdown(ja.body, en.body) };
 }
@@ -141,10 +198,11 @@ function localizeAbout(ja, en) {
 }
 
 export function loadSiteContent() {
+  const metadataConfig = readMetadataConfig();
   const dirs = existsSync(POSTS_DIR)
     ? readdirSync(POSTS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
     : [];
-  const entries = dirs.map(readPost).sort((a, b) => b.post.date.localeCompare(a.post.date));
+  const entries = dirs.map((dir) => readPost(dir, metadataConfig)).sort((a, b) => b.post.date.localeCompare(a.post.date));
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
   const tags = [...new Set(posts.flatMap((post) => post.tags))];
@@ -172,7 +230,11 @@ export function contentWatchFiles() {
   const files = [
     join(ABOUT_DIR, "about.ja.toml"),
     join(ABOUT_DIR, "about.en.toml"),
+    METADATA_CONFIG_FILE,
   ];
+  const metadataConfig = existsSync(METADATA_CONFIG_FILE) ? readMetadataConfig() : {};
+  const promptFile = metadataConfig.tag_generation?.prompt_file;
+  if (promptFile) files.push(join(ROOT, promptFile));
   if (!existsSync(POSTS_DIR)) return files;
   for (const dirent of readdirSync(POSTS_DIR, { withFileTypes: true })) {
     if (!dirent.isDirectory()) continue;

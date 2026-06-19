@@ -12,6 +12,9 @@ import tomllib
 DEFAULT_ORDER = [
     "format",
     "lint",
+    "frontmatter",
+    "metadata_generate_check",
+    "metadata_quality",
     "typecheck",
     "build",
     "test_unit",

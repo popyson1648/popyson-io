@@ -36,6 +36,8 @@ export function sign({ method, url, params, consumerSecret, tokenSecret = "" }) 
   ].join("&");
 
   const signingKey = `${rfc3986(consumerSecret)}&${rfc3986(tokenSecret)}`;
+  // HMAC-SHA1 is required by the OAuth 1.0a spec; this is a message-auth code,
+  // not a password storage hash. lgtm[js/insufficient-password-hash]
   return crypto.createHmac("sha1", signingKey).update(base).digest("base64");
 }
 

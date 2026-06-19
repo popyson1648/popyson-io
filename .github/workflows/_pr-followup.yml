@@ -275,6 +275,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Verification writes throwaway output under .tmp/ (e.g. Lighthouse);
+          # never let it into the commit. Mirrors the local .git/info/exclude rule.
+          grep -qxF '.tmp/' .git/info/exclude || echo '.tmp/' >> .git/info/exclude
+
           pr_number="${{ steps.pr.outputs.number }}"
 
           if ! git diff --quiet; then

@@ -156,16 +156,47 @@ mode = "none"
     "New body.",
     "",
   ].join("\r\n");
-  const resolvedAutoDate = await resolveMetadata({
-    filePath: join(tempDir, "uncommitted.md"),
-    source: autoDateSource,
-    config,
-    provider: async () => {
-      throw new Error("provider should not be called");
-    },
-  });
-  assert.equal(resolvedAutoDate.meta.date, new Date().toISOString().slice(0, 10));
-  assert.equal(resolvedAutoDate.meta.thumbnail.path, "/default.png");
+  const originalCi = process.env.CI;
+  delete process.env.CI;
+  try {
+    const resolvedAutoDate = await resolveMetadata({
+      filePath: join(tempDir, "uncommitted.md"),
+      source: autoDateSource,
+      config,
+      provider: async () => {
+        throw new Error("provider should not be called");
+      },
+    });
+    assert.equal(resolvedAutoDate.meta.date, new Date().toISOString().slice(0, 10));
+    assert.equal(resolvedAutoDate.meta.thumbnail.path, "/default.png");
+  } finally {
+    if (originalCi === undefined) {
+      delete process.env.CI;
+    } else {
+      process.env.CI = originalCi;
+    }
+  }
+
+  process.env.CI = "true";
+  try {
+    await assert.rejects(
+      () => resolveMetadata({
+        filePath: join(tempDir, "uncommitted.md"),
+        source: autoDateSource,
+        config,
+        provider: async () => {
+          throw new Error("provider should not be called");
+        },
+      }),
+      /date = "auto" could not be resolved from git history/,
+    );
+  } finally {
+    if (originalCi === undefined) {
+      delete process.env.CI;
+    } else {
+      process.env.CI = originalCi;
+    }
+  }
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

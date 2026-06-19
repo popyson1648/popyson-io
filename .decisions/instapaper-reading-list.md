@@ -25,9 +25,10 @@ hand-edited content:
   `.op.env.auth` hold only `op://` references (no secret values), used by both
   local runs and CI.
 - A GitHub Actions workflow (`.github/workflows/reading-refresh.yml`) refreshes
-  the snapshot on a schedule, commits it when changed, builds, and deploys to
-  Cloudflare Pages via Direct Upload (`wrangler pages deploy`). Everything runs
-  in CI; Cloudflare's own Git integration is intentionally not used.
+  the snapshot hourly, commits it when changed, and on scheduled runs builds and
+  deploys to Cloudflare Pages via Direct Upload (`wrangler pages deploy`) only
+  when the snapshot changed; manual/push runs always deploy. Everything runs in
+  CI; Cloudflare's own Git integration is intentionally not used.
 - The reading list UI is read-only: the per-item checkbox/toggle was removed and
   the tabs are limited to 未読 / 読了.
 
@@ -54,7 +55,10 @@ provides local-dev parity and a fallback when the API is unavailable.
 ## Consequences
 
 - The reading list updates only when the workflow runs (scheduled/dispatch/push),
-  not live per visitor.
+  not live per visitor. Scheduled polling is hourly, so a change in Instapaper
+  reaches the live site within roughly an hour. Hourly runs with no change end
+  after the fetch (no build/deploy), so deploy history reflects real changes
+  only.
 - Requires GitHub secrets `OP_SERVICE_ACCOUNT_TOKEN` (1Password service account
   with read access to the Development vault), `CLOUDFLARE_API_TOKEN`,
   `CLOUDFLARE_ACCOUNT_ID`, and variable `CLOUDFLARE_PAGES_PROJECT`.

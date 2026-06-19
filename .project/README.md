@@ -11,6 +11,7 @@ It includes localized About, Blog, Works, Reading, and RSS pages.
 - App shell, route parsing, theme state, and runtime metadata: `src/app.jsx`
 - Shared UI helpers and top-level components: `src/components.jsx`
 - Blog list and article rendering: `src/blog.jsx`
+- Article metadata format: `.project/metadata.md`
 - Other pages: `src/pages.jsx`
 - Project structure details: `.project/structure.md`
 
@@ -35,6 +36,7 @@ python3 scripts/verify.py --mode edit
 
 - `.project/structure.md`: source layout and important modules.
 - `.project/build.md`: setup, build, run, preview, and reading-list workflow.
+- `.project/metadata.md`: Markdown front matter fields and validation.
 - `.project/security-automation.md`: security alert settings, automation secrets, and remediation workflow.
 - `.project/testing.md`: verification phases and when to run them.
 - `.project/verification.toml`: verification command source of truth.

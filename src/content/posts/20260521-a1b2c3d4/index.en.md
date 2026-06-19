@@ -2,9 +2,17 @@
 title = "Type-Driven CLI Design"
 date = "2026-05-21"
 reading = 8
-tags = ["CLI", "型", "DX"]
+tags = [ "CLI", "型", "DX" ]
 kana = "かたでみちびくしーえるあい"
-summary = "When subcommands and arguments are expressed as types, help, completion and validation all grow from one place. Notes on deleting hand-written branches."
+
+[sumup]
+mode = "text"
+text = "When subcommands and arguments are expressed as types, help, completion and validation all grow from one place. Notes on deleting hand-written branches."
+
+[thumbnail]
+mode = "file"
+path = "/provisional_ogp_image.png"
+generated = true
 +++
 
 Hand-written argument parsing feels good for the first few lines. The trouble comes after. Every new flag adds a branch, and help text drifts from implementation. Here I trace a design that treats types as the source of truth and derives the rest.

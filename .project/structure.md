@@ -19,9 +19,18 @@
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
 - `src/content/posts/<post-id>/index.{ja,en}.md`: per-locale blog post Markdown. The stable `post-id` comes from the directory name.
+- `src/content/metadata.toml`: article metadata defaults and Gemini provider/model settings.
+- `src/content/prompts/tag-generation.md`: system instruction used by automatic tag generation.
+- `src/content/prompts/summary-generation.md`: system instruction used by automatic summary generation.
 - `src/content/about/about.{ja,en}.toml`: per-locale About page content.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, and generates search plain text.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
+- `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
+- `scripts/check_frontmatter.mjs`: metadata lint for every article Markdown file.
+- `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check.
+- `scripts/check_metadata_quality.mjs`: static quality checks for generated tags and summaries.
+- `scripts/check_metadata_schema.mjs`: schema unit checks for valid and invalid metadata examples.
+- `scripts/check_generate_metadata.mjs`: metadata generation unit checks with a mock provider.
 - `scripts/new_post.mjs`: creates a new post directory with a collision-free `YYYYMMDD-xxxxxxxx` post ID. Run it with `npm run new:post`.
 - `src/apps.js`: Works (APPS) metadata; Node-importable and shared by the browser and prerenderer.
 - `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings.
@@ -50,3 +59,4 @@
 - `npm run build` runs `vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs` and produces a multi-file `dist/` (route directories + `sitemap.xml` + `robots.txt` + `pagefind/`). Routing, links, metadata, and search indexes are path/locale based — see `.decisions/ogp-path-routing.md`.
 - Cloudflare Pages relies on its default SPA fallback (no top-level `404.html`, no `_redirects` catch-all) so prerendered files are not shadowed.
 - Search uses the generated Pagefind static index; keep `scripts/build_pagefind.mjs` and `scripts/check_pagefind_search.mjs` aligned when indexed fields change.
+- Article Markdown must use the front matter shape documented in `.project/metadata.md`; the `frontmatter` verification phase fails on legacy or invalid metadata.

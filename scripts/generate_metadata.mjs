@@ -10,7 +10,7 @@ const POSTS_DIR = join(ROOT, "src/content/posts");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 
 function parseFrontmatter(source, filePath) {
-  const text = source.replace(/^\uFEFF/, "");
+  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   if (!text.startsWith("+++\n")) {
     throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
   }
@@ -44,13 +44,17 @@ function postMarkdownFiles() {
 
 function firstAddedGitDate(filePath) {
   const relPath = relative(ROOT, filePath);
-  const output = execFileSync(
-    "git",
-    ["log", "--diff-filter=A", "--follow", "--format=%cI", "--", relPath],
-    { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
-  ).trim();
-  if (!output) return "";
-  return output.split(/\r?\n/).filter(Boolean).at(-1)?.slice(0, 10) || "";
+  try {
+    const output = execFileSync(
+      "git",
+      ["log", "--diff-filter=A", "--follow", "--format=%cI", "--", relPath],
+      { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    if (!output) return "";
+    return output.split(/\r?\n/).filter(Boolean).at(-1)?.slice(0, 10) || "";
+  } catch {
+    return "";
+  }
 }
 
 function normalizeTags(tags) {
@@ -85,8 +89,16 @@ function mergeTags(existingTags, generatedTags, count) {
   return tags;
 }
 
-function stripMarkup(text) {
-  return String(text || "").replace(/<[^>]*>/g, "").replace(/[*_`#>\[\]{}]/g, "").trim();
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function hasDisallowedMarkup(text) {
+  const value = String(text || "");
+  return /<\/?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?>/u.test(value)
+    || /!?\[[^\]]+\]\([^)]+\)/u.test(value)
+    || /`[^`]+`/u.test(value)
+    || /(?:\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/u.test(value);
 }
 
 function isLikelyJapanese(text) {
@@ -117,7 +129,7 @@ export function evaluateMetadata(meta, { filePath = "metadata", locale = "en", c
     if (summary.length > maxSummaryChars) {
       errors.push(`${filePath}: sumup.text: must be at most ${maxSummaryChars} characters`);
     }
-    if (summary !== stripMarkup(summary)) {
+    if (hasDisallowedMarkup(summary)) {
       errors.push(`${filePath}: sumup.text: must not contain Markdown or HTML markup`);
     }
     if (locale === "ja" && !isLikelyJapanese(summary)) {
@@ -268,8 +280,13 @@ export async function resolveMetadata({ filePath, source, config, knownTags = []
   let changed = false;
 
   if (dateToIsoDate(meta.date) === "auto") {
-    const gitDate = firstAddedGitDate(filePath);
-    if (!gitDate) throw new Error(`${filePath}: date = "auto" could not be resolved from git history`);
+    let gitDate = firstAddedGitDate(filePath);
+    if (!gitDate) {
+      if (process.env.CI) {
+        throw new Error(`${filePath}: date = "auto" could not be resolved from git history`);
+      }
+      gitDate = todayIsoDate();
+    }
     meta.date = gitDate;
     changed = true;
   }

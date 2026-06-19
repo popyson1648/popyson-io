@@ -21,8 +21,9 @@ function markdownFiles() {
 }
 
 function frontmatter(source) {
-  const end = source.indexOf("\n+++", 4);
-  return parseToml(source.slice(4, end));
+  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const end = text.indexOf("\n+++", 4);
+  return parseToml(text.slice(4, end));
 }
 
 function validatePromptFile(configPath, field) {

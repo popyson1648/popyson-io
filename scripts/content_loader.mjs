@@ -15,7 +15,7 @@ const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 const POST_ID_RE = /^\d{8}-[a-f0-9]{8}$/;
 
 function parseFrontmatter(source, filePath) {
-  const text = source.replace(/^\uFEFF/, "");
+  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   if (!text.startsWith("+++\n")) {
     throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
   }

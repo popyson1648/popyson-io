@@ -5,7 +5,7 @@ import { postsDir } from "./content_loader.mjs";
 import { validateMetadata } from "./metadataSchema.mjs";
 
 function parseFrontmatter(source) {
-  const text = source.replace(/^\uFEFF/, "");
+  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   if (!text.startsWith("+++\n")) {
     return { errors: [{ field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" }] };
   }

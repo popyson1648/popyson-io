@@ -80,6 +80,22 @@ mode = "none"
   assert.match(result.output, /本文を書く。/);
   assert.deepEqual(evaluateMetadata(result.meta, { filePath, locale: "ja", config }), []);
 
+  assert.deepEqual(
+    evaluateMetadata({
+      tags: ["csharp"],
+      sumup: { mode: "text", text: "C# examples use user_id and #id selectors." },
+    }, { filePath, locale: "en", config }),
+    [],
+  );
+
+  assert.deepEqual(
+    evaluateMetadata({
+      tags: [],
+      sumup: { mode: "text", text: "Read [the guide](https://example.com)." },
+    }, { filePath, locale: "en", config }),
+    [`${filePath}: sumup.text: must not contain Markdown or HTML markup`],
+  );
+
   const previews = previewPrompts({
     filePath,
     source,
@@ -123,6 +139,33 @@ mode = "none"
     pendingMetadataReasons(parseToml(source.slice(4, source.indexOf("\n+++", 4)))),
     ["auto_tags", 'sumup.mode = "auto"', 'thumbnail.mode = "none"'],
   );
+
+  const autoDateSource = [
+    "+++",
+    'title = "New post"',
+    'date = "auto"',
+    'tags = ["draft"]',
+    "",
+    "[sumup]",
+    'mode = "none"',
+    "",
+    "[thumbnail]",
+    'mode = "none"',
+    "+++",
+    "",
+    "New body.",
+    "",
+  ].join("\r\n");
+  const resolvedAutoDate = await resolveMetadata({
+    filePath: join(tempDir, "uncommitted.md"),
+    source: autoDateSource,
+    config,
+    provider: async () => {
+      throw new Error("provider should not be called");
+    },
+  });
+  assert.equal(resolvedAutoDate.meta.date, new Date().toISOString().slice(0, 10));
+  assert.equal(resolvedAutoDate.meta.thumbnail.path, "/default.png");
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

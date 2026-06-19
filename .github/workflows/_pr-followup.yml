@@ -221,6 +221,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Pass the ephemeral, repo-scoped GITHUB_TOKEN explicitly so the action
+          # does not fall back to OIDC (which needs id-token: write and the Claude
+          # GitHub App).
+          github_token: ${{ github.token }}
           prompt: |
             You are maintaining an automated GitHub maintenance pull request
             (either a security remediation PR or a dependency update PR).

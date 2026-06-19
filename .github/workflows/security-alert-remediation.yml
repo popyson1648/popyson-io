@@ -144,6 +144,9 @@ jobs:
             {
               echo "alerts<<EOF"
               cat "$alerts_file"
+              # JSON.stringify writes no trailing newline; force one so the
+              # closing EOF delimiter lands on its own line.
+              echo
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
           else

@@ -60,13 +60,17 @@ jobs:
           # A PR matches the selector when:
           #   security   -> it carries the security-alert-remediation label
           #   dependabot -> it is authored by app/dependabot or labeled dependencies
-          match_filter='
+          # The filter is a jq program ($sel is a jq variable); a quoted heredoc
+          # keeps it literal without the shell trying to expand it.
+          match_filter="$(cat <<'JQ'
             if $sel == "security" then
               (([.labels[].name] | index("security-alert-remediation")) != null)
             elif $sel == "dependabot" then
               ((.author.login == "app/dependabot")
                 or (([.labels[].name] | index("dependencies")) != null))
-            else false end'
+            else false end
+          JQ
+          )"
 
           number=""
           if [[ -n "${EVENT_PR}" ]]; then
@@ -103,9 +107,11 @@ jobs:
             exit 0
           fi
 
-          echo "should_run=true" >> "$GITHUB_OUTPUT"
-          echo "number=$number" >> "$GITHUB_OUTPUT"
-          echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
+          {
+            echo "should_run=true"
+            echo "number=$number"
+            echo "head_ref=$head_ref"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v6
         if: ${{ steps.pr.outputs.should_run == 'true' }}
@@ -204,6 +210,9 @@ jobs:
           {
             echo "json<<EOF"
             cat "$context_file"
+            # JSON.stringify writes no trailing newline; force one so the
+            # closing EOF delimiter lands on its own line.
+            echo
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -273,7 +282,13 @@ jobs:
             exit 0
           fi
 
-          failed_checks="$(gh pr view "$pr_number" --json statusCheckRollup --jq '[.statusCheckRollup[] | select((.conclusion // "") as $c | $c != "" and $c != "SUCCESS" and $c != "SKIPPED" and $c != "NEUTRAL")] | length')"
+          # The check filter is a jq program ($c is a jq variable); a quoted
+          # heredoc keeps it literal without the shell trying to expand it.
+          checks_filter="$(cat <<'JQ'
+          [.statusCheckRollup[] | select((.conclusion // "") as $c | $c != "" and $c != "SUCCESS" and $c != "SKIPPED" and $c != "NEUTRAL")] | length
+          JQ
+          )"
+          failed_checks="$(gh pr view "$pr_number" --json statusCheckRollup --jq "$checks_filter")"
           pending_checks="$(gh pr view "$pr_number" --json statusCheckRollup --jq '[.statusCheckRollup[] | select((.status // "") != "COMPLETED")] | length')"
           review_decision="$(gh pr view "$pr_number" --json reviewDecision --jq '.reviewDecision // ""')"
 

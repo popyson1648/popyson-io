@@ -11,6 +11,16 @@ command = "npm run lint"
 run_pre_commit = true
 run_in_ci = true
 
+[phases.actionlint]
+enabled = true
+command = "actionlint"
+run_on_edit = false
+run_pre_commit = false
+run_pre_push = true
+# CI runs actionlint through a dedicated ci.yml step, so the other workflows
+# that call `verify.py --mode ci` do not need the actionlint binary installed.
+run_in_ci = false
+
 [phases.typecheck]
 enabled = false
 command = ""

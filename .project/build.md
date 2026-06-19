@@ -21,6 +21,19 @@ npm run build
 The production build runs Vite, prerenders route HTML, then generates Pagefind
 custom-record indexes under `dist/pagefind/`.
 
+## Article metadata generation
+
+New posts may contain `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, or
+`[thumbnail] mode = "none"`. Resolve and write those values before committing:
+
+```sh
+npm run metadata:generate:op
+```
+
+This command reads `GEMINI_API_KEY` from `.op.env` through 1Password when AI tag
+or summary generation is needed. CI runs `node scripts/generate_metadata.mjs
+--check`, which is a static check and does not call the AI provider.
+
 ## Run
 
 ```sh
@@ -59,4 +72,7 @@ schedule, builds, and deploys to Cloudflare Pages via Direct Upload
 ## Common Failures
 
 - If dependency commands fail before installing packages, run `npm ci`.
+- If metadata generation fails with `GEMINI_API_KEY is required`, add the key to
+  `.op.env` locally or to the GitHub Actions secret named `GEMINI_API_KEY` for
+  generation workflows.
 - Lighthouse uses a local static server through LHCI and requires Chrome/Chromium.

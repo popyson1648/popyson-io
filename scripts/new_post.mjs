@@ -30,11 +30,18 @@ function markdownTemplate(locale) {
   const summary = locale === "ja" ? "記事の概要を書く。" : "Write a short summary.";
   return `+++
 title = "${title}"
-date = "${new Date().toISOString().slice(0, 10)}"
+date = "auto"
 reading = 1
 tags = []
+auto_tags = {}
 kana = ""
-summary = "${summary}"
+
+[sumup]
+mode = "text"
+text = "${summary}"
+
+[thumbnail]
+mode = "none"
 +++
 
 ## ${locale === "ja" ? "見出し" : "Heading"}

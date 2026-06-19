@@ -1,0 +1,16 @@
+[tag_generation]
+default_count = 3
+max_tag_chars = 32
+max_total_tags = 8
+prompt_file = "src/content/prompts/tag-generation.md"
+provider = "gemini"
+model = "gemini-2.5-flash"
+
+[summary_generation]
+prompt_file = "src/content/prompts/summary-generation.md"
+max_chars = 180
+provider = "gemini"
+model = "gemini-2.5-flash"
+
+[thumbnail]
+default_path = "/provisional_ogp_image.png"

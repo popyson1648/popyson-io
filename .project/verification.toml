@@ -11,6 +11,24 @@ command = "npm run lint"
 run_pre_commit = true
 run_in_ci = true
 
+[phases.frontmatter]
+enabled = true
+command = "node scripts/check_frontmatter.mjs"
+run_pre_commit = true
+run_in_ci = true
+
+[phases.metadata_generate_check]
+enabled = true
+command = "node scripts/generate_metadata.mjs --check"
+run_pre_commit = true
+run_in_ci = true
+
+[phases.metadata_quality]
+enabled = true
+command = "node scripts/check_metadata_quality.mjs"
+run_pre_commit = true
+run_in_ci = true
+
 [phases.typecheck]
 enabled = false
 command = ""
@@ -24,7 +42,7 @@ run_in_ci = true
 
 [phases.test_unit]
 enabled = true
-command = "npm run build && node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs && node scripts/check_pagefind_search.mjs && node scripts/check_prerendered_routes.mjs"
+command = "npm run build && node scripts/check_metadata_schema.mjs && node scripts/check_generate_metadata.mjs && node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs && node scripts/check_pagefind_search.mjs && node scripts/check_prerendered_routes.mjs"
 run_pre_commit = true
 run_in_ci = true
 

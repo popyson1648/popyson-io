@@ -221,10 +221,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Verification writes throwaway output under .tmp/ (e.g. Lighthouse);
-          # never let it into the commit. Mirrors the local .git/info/exclude rule.
-          grep -qxF '.tmp/' .git/info/exclude || echo '.tmp/' >> .git/info/exclude
-
           if git diff --quiet; then
             echo "Claude produced no file changes."
             exit 0
@@ -232,6 +228,11 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Verification writes throwaway output under .tmp/ (e.g. Lighthouse);
+          # keep it out of the commit: exclude untracked copies and drop any
+          # already-tracked ones before staging.
+          grep -qxF '.tmp/' .git/info/exclude || echo '.tmp/' >> .git/info/exclude
+          git rm -r --cached --quiet --ignore-unmatch .tmp
           git add .
           git commit -m "fix: remediate security alerts"
           git push --set-upstream origin "$branch"

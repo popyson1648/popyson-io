@@ -166,6 +166,11 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Pass the ephemeral, repo-scoped GITHUB_TOKEN explicitly so the action
+          # does not fall back to OIDC (which needs id-token: write and the Claude
+          # GitHub App). Branch push and PR creation below still use the elevated
+          # SECURITY_AUTOMATION_TOKEN.
+          github_token: ${{ github.token }}
           prompt: |
             You are remediating GitHub security alerts for this repository.
 

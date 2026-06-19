@@ -12,6 +12,7 @@ import tomllib
 DEFAULT_ORDER = [
     "format",
     "lint",
+    "actionlint",
     "typecheck",
     "build",
     "test_unit",

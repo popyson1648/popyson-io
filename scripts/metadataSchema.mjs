@@ -99,13 +99,16 @@ export function validateMetadata(meta) {
       addError(errors, "thumbnail", "must be a table");
     } else {
       const mode = meta.thumbnail.mode;
-      if (mode !== undefined && !["none", "file"].includes(mode)) {
-        addError(errors, "thumbnail.mode", "must be one of none, file");
+      if (mode !== undefined && !["none", "file", "auto"].includes(mode)) {
+        addError(errors, "thumbnail.mode", "must be one of none, file, auto");
       }
       if (mode === "file" && !("path" in meta.thumbnail)) {
         addError(errors, "thumbnail.path", "is required when thumbnail.mode is file");
       } else if (mode === "file" && typeof meta.thumbnail.path !== "string") {
         addError(errors, "thumbnail.path", "must be a string");
+      }
+      if ("concept" in meta.thumbnail && typeof meta.thumbnail.concept !== "string") {
+        addError(errors, "thumbnail.concept", "must be a string");
       }
       if ("generated" in meta.thumbnail && typeof meta.thumbnail.generated !== "boolean") {
         addError(errors, "thumbnail.generated", "must be a boolean");

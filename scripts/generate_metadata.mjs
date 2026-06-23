@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stringify as stringifyToml } from "smol-toml";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
@@ -196,6 +196,38 @@ function summarySchema() {
   };
 }
 
+const RETRYABLE_STATUS = new Set([429, 500, 503]);
+
+function sleep(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+
+/**
+ * Fetch with exponential backoff on transient provider failures so the
+ * automation workflow does not flake. Retries both transient HTTP responses
+ * (rate limits, overloaded/unavailable) and thrown network/timeout errors, and
+ * bounds each attempt with a timeout so a request cannot hang forever.
+ * Non-retryable responses and the final attempt are returned/thrown as-is.
+ */
+async function fetchWithRetry(url, init, { attempts = 4, baseDelayMs = 1000, timeoutMs = 120000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const isLastAttempt = attempt === attempts - 1;
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      if (response.ok || !RETRYABLE_STATUS.has(response.status) || isLastAttempt) {
+        return response;
+      }
+      await response.text().catch(() => "");
+    } catch (error) {
+      lastError = error;
+      if (isLastAttempt) throw error;
+    }
+    await sleep(baseDelayMs * 2 ** attempt);
+  }
+  throw lastError;
+}
+
 function requireGeminiKey() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -216,20 +248,20 @@ export async function geminiGenerateJson({
     generationConfig: {
       temperature: 0,
       candidateCount: 1,
-      maxOutputTokens: 512,
-      responseFormat: {
-        text: {
-          mimeType: "application/json",
-          schema,
-        },
-      },
+      // gemini-2.5-flash spends output tokens on "thinking" by default, which can
+      // truncate the JSON answer. These are deterministic extraction tasks, so
+      // disable thinking and keep a comfortable budget for the JSON itself.
+      maxOutputTokens: 2048,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: "application/json",
+      responseSchema: schema,
     },
   };
   if (systemInstruction.trim()) {
     requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+  const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -243,9 +275,55 @@ export async function geminiGenerateJson({
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
-  if (!text) throw new Error("Gemini API returned no text content");
-  return JSON.parse(text);
+  const candidate = data.candidates?.[0];
+  const finishReason = candidate?.finishReason || "unknown";
+  const text = candidate?.content?.parts?.map((part) => part.text || "").join("").trim();
+  if (!text) {
+    throw new Error(`Gemini API returned no text content (finishReason: ${finishReason})`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Gemini API returned non-JSON content (finishReason: ${finishReason}): ${text.slice(0, 200)}`);
+  }
+}
+
+function requireOpenaiKey() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is required for thumbnail image generation");
+  }
+  return apiKey;
+}
+
+/**
+ * Generate a single image and return the decoded PNG bytes. gpt-image models
+ * always respond with base64 PNG data at data[0].b64_json.
+ */
+export async function openaiGenerateImage({
+  apiKey = requireOpenaiKey(),
+  model,
+  prompt,
+  size,
+  quality,
+}) {
+  const response = await fetchWithRetry("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, prompt, size, quality, n: 1 }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI image API request failed: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error("OpenAI image API returned no image data");
+  return Buffer.from(b64, "base64");
 }
 
 function allKnownTags(files) {
@@ -262,7 +340,8 @@ export function hasPendingMetadata(meta) {
     || Boolean(meta.auto_tags)
     || meta.sumup?.mode === "auto"
     || !meta.thumbnail
-    || meta.thumbnail?.mode === "none";
+    || meta.thumbnail?.mode === "none"
+    || meta.thumbnail?.mode === "auto";
 }
 
 function autoTagCount(meta, config) {
@@ -284,6 +363,53 @@ function summaryGenerationRequest({ filePath, meta, body, config }) {
     systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
     schema: summarySchema(),
     prompt: buildSummaryPrompt({ filePath, meta, body, config }),
+  };
+}
+
+function conceptSchema() {
+  return {
+    type: "object",
+    properties: {
+      concept: { type: "string" },
+    },
+    required: ["concept"],
+  };
+}
+
+function buildConceptPrompt({ summary }) {
+  return [
+    "Article summary:",
+    summary,
+  ].join("\n");
+}
+
+function conceptModel(config) {
+  return config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash";
+}
+
+function conceptGenerationRequest({ config, summary }) {
+  return {
+    model: conceptModel(config),
+    systemInstruction: readPromptFile(config.thumbnail_generation?.concept_prompt_file),
+    schema: conceptSchema(),
+    prompt: buildConceptPrompt({ summary }),
+  };
+}
+
+function buildThumbnailPrompt({ concept, config }) {
+  const template = readPromptFile(config.thumbnail_generation?.prompt_file);
+  if (!template.trim()) {
+    throw new Error("thumbnail_generation.prompt_file is required for thumbnail generation");
+  }
+  return template.replaceAll("{CONCEPT}", concept);
+}
+
+function thumbnailGenerationRequest({ config, prompt }) {
+  return {
+    model: config.thumbnail_generation?.model || "gpt-image-2",
+    size: config.thumbnail_generation?.size || "1024x1024",
+    quality: config.thumbnail_generation?.quality || "medium",
+    prompt,
   };
 }
 
@@ -332,11 +458,66 @@ async function resolveAutoSummary(meta, { filePath, body, config, provider }) {
 }
 
 function resolveDefaultThumbnail(meta, { filePath, config }) {
+  // Reached after resolveAutoThumbnail, so "auto" is already rewritten to
+  // "file". Only a missing table or mode "none" falls back to the default path.
   if (meta.thumbnail && meta.thumbnail.mode !== "none") return false;
 
   const defaultPath = config.thumbnail?.default_path;
   if (!defaultPath) throw new Error(`${filePath}: thumbnail.default_path is required`);
   meta.thumbnail = { mode: "file", path: defaultPath, generated: true };
+  return true;
+}
+
+function postIdFromPath(filePath) {
+  return basename(dirname(filePath));
+}
+
+/**
+ * The thumbnail concept always derives from the Japanese summary so a post gets
+ * one deterministic image shared by both locales. When the current file is the
+ * Japanese sibling its resolved in-memory summary is used; otherwise the
+ * already-resolved ja file is read from disk.
+ */
+function readJaSummary(filePath, meta) {
+  const jaPath = join(dirname(filePath), "index.ja.md");
+  let jaMeta = meta;
+  if (filePath !== jaPath) {
+    if (!existsSync(jaPath)) return "";
+    jaMeta = parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath).meta;
+  }
+  return jaMeta.sumup?.mode === "text" ? String(jaMeta.sumup.text || "").trim() : "";
+}
+
+async function resolveThumbnailConcept(meta, { filePath, config, provider }) {
+  const explicit = typeof meta.thumbnail?.concept === "string" ? meta.thumbnail.concept.trim() : "";
+  if (explicit) return explicit;
+
+  const summary = readJaSummary(filePath, meta);
+  if (!summary) {
+    throw new Error(`${filePath}: thumbnail concept needs a resolved Japanese summary or an explicit [thumbnail].concept`);
+  }
+  const result = await provider(conceptGenerationRequest({ config, summary }));
+  const concept = String(result.concept || "").trim();
+  if (!concept) throw new Error(`${filePath}: thumbnail concept generation returned an empty concept`);
+  return concept;
+}
+
+async function resolveAutoThumbnail(meta, { filePath, config, provider, imageProvider }) {
+  if (meta.thumbnail?.mode !== "auto") return false;
+
+  const postId = postIdFromPath(filePath);
+  const publicRef = `/thumbnails/${postId}.png`;
+  const targetPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+
+  if (!existsSync(targetPath)) {
+    const concept = await resolveThumbnailConcept(meta, { filePath, config, provider });
+    const prompt = buildThumbnailPrompt({ concept, config });
+    const bytes = await imageProvider(thumbnailGenerationRequest({ config, prompt }));
+    mkdirSync(dirname(targetPath), { recursive: true });
+    writeFileSync(targetPath, bytes);
+  }
+
+  meta.thumbnail = { mode: "file", path: publicRef, generated: true };
   return true;
 }
 
@@ -348,14 +529,22 @@ function assertResolvedMetadata(meta, { filePath, config }) {
   }
 }
 
-export async function resolveMetadata({ filePath, source, config, knownTags = [], provider = geminiGenerateJson }) {
+export async function resolveMetadata({
+  filePath,
+  source,
+  config,
+  knownTags = [],
+  provider = geminiGenerateJson,
+  imageProvider = openaiGenerateImage,
+}) {
   const parsed = parseMarkdownFrontmatter(source, filePath);
   const meta = structuredClone(parsed.meta);
-  const context = { filePath, body: parsed.body, config, knownTags, provider };
+  const context = { filePath, body: parsed.body, config, knownTags, provider, imageProvider };
   const changed = [
     resolveAutoDate(meta, filePath),
     await resolveAutoTags(meta, context),
     await resolveAutoSummary(meta, context),
+    await resolveAutoThumbnail(meta, context),
     resolveDefaultThumbnail(meta, context),
   ].some(Boolean);
 
@@ -387,6 +576,28 @@ export function previewPrompts({ filePath, source, config, knownTags = [] }) {
       request,
     }));
   }
+  if (parsed.meta.thumbnail?.mode === "auto") {
+    const explicit = typeof parsed.meta.thumbnail.concept === "string"
+      ? parsed.meta.thumbnail.concept.trim()
+      : "";
+    if (!explicit) {
+      const summary = parsed.meta.sumup?.mode === "text"
+        ? String(parsed.meta.sumup.text || "").trim()
+        : "{resolved Japanese summary}";
+      previews.push(previewItemFromRequest({
+        filePath,
+        kind: "thumbnail-concept",
+        request: conceptGenerationRequest({ config, summary }),
+      }));
+    }
+    previews.push({
+      filePath,
+      kind: "thumbnail",
+      model: config.thumbnail_generation?.model || "gpt-image-2",
+      systemInstruction: "",
+      prompt: buildThumbnailPrompt({ concept: explicit || "{CONCEPT}", config }),
+    });
+  }
   return previews;
 }
 
@@ -397,6 +608,7 @@ export function pendingMetadataReasons(meta) {
   if (meta.sumup?.mode === "auto") reasons.push('sumup.mode = "auto"');
   if (!meta.thumbnail) reasons.push("thumbnail is missing");
   if (meta.thumbnail?.mode === "none") reasons.push('thumbnail.mode = "none"');
+  if (meta.thumbnail?.mode === "auto") reasons.push('thumbnail.mode = "auto"');
   return reasons;
 }
 
@@ -406,7 +618,12 @@ function unresolvedMetadataMessage(items) {
     .join("\n");
 }
 
-export async function runGenerateMetadata({ check = false, preview = false, provider = geminiGenerateJson } = {}) {
+export async function runGenerateMetadata({
+  check = false,
+  preview = false,
+  provider = geminiGenerateJson,
+  imageProvider = openaiGenerateImage,
+} = {}) {
   const config = readMetadataConfig();
   const files = postMarkdownFiles();
   const knownTags = allKnownTags(files);
@@ -447,7 +664,7 @@ export async function runGenerateMetadata({ check = false, preview = false, prov
 
   for (const filePath of files) {
     const source = readFileSync(filePath, "utf8");
-    const result = await resolveMetadata({ filePath, source, config, knownTags, provider });
+    const result = await resolveMetadata({ filePath, source, config, knownTags, provider, imageProvider });
     if (!result.changed || result.output === source) continue;
     changedFiles.push(filePath);
     if (!check) writeFileSync(filePath, result.output);

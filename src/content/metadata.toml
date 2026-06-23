@@ -14,3 +14,11 @@ model = "gemini-2.5-flash"
 
 [thumbnail]
 default_path = "/provisional_ogp_image.png"
+
+[thumbnail_generation]
+provider = "openai"
+model = "gpt-image-2"
+size = "1024x1024"
+quality = "medium"
+prompt_file = "src/content/prompts/thumbnail-generation.md"
+concept_prompt_file = "src/content/prompts/thumbnail-concept.md"

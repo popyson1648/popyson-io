@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { evaluateMetadata, pendingMetadataReasons, previewPrompts, resolveMetadata } from "./generate_metadata.mjs";
+
+const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 
 const config = {
   tag_generation: {
@@ -17,6 +20,14 @@ const config = {
   },
   thumbnail: {
     default_path: "/default.png",
+  },
+  thumbnail_generation: {
+    provider: "openai",
+    model: "gpt-image-2",
+    size: "1024x1024",
+    quality: "medium",
+    prompt_file: "src/content/prompts/thumbnail-generation.md",
+    concept_prompt_file: "src/content/prompts/thumbnail-concept.md",
   },
 };
 
@@ -197,6 +208,146 @@ mode = "none"
       process.env.CI = originalCi;
     }
   }
+
+  // Thumbnail mode "auto" generates one image per post id, derives the concept
+  // from the Japanese summary, and rewrites the field to a resolved file entry.
+  const thumbPostId = "29991231-deadbeef";
+  const thumbDir = join(tempDir, thumbPostId);
+  mkdirSync(thumbDir, { recursive: true });
+  const thumbJaPath = join(thumbDir, "index.ja.md");
+  const generatedThumbPath = join(ROOT, "public", "thumbnails", `${thumbPostId}.png`);
+  const thumbSource = [
+    "+++",
+    'title = "サムネ記事"',
+    'date = "2026-06-20"',
+    'tags = ["js"]',
+    "",
+    "[sumup]",
+    'mode = "text"',
+    'text = "型でCLIコマンドを表現する設計の記事。"',
+    "",
+    "[thumbnail]",
+    'mode = "auto"',
+    "+++",
+    "",
+    "本文。",
+    "",
+  ].join("\n");
+  writeFileSync(thumbJaPath, thumbSource);
+  // Remove any stale output from an interrupted prior run so the first-run
+  // generation assertions stay deterministic.
+  rmSync(generatedThumbPath, { force: true });
+  try {
+    const imageCalls = [];
+    const conceptCalls = [];
+    const thumbResult = await resolveMetadata({
+      filePath: thumbJaPath,
+      source: thumbSource,
+      config,
+      provider: async (request) => {
+        conceptCalls.push(request);
+        assert.ok(request.schema.required.includes("concept"));
+        return { concept: "a labeled keycap" };
+      },
+      imageProvider: async (request) => {
+        imageCalls.push(request);
+        return Buffer.from("fake-png-bytes");
+      },
+    });
+
+    assert.equal(thumbResult.changed, true);
+    assert.equal(conceptCalls.length, 1);
+    assert.match(conceptCalls[0].prompt, /型でCLIコマンドを表現する設計の記事。/);
+    assert.equal(imageCalls.length, 1);
+    assert.equal(imageCalls[0].model, "gpt-image-2");
+    assert.equal(imageCalls[0].size, "1024x1024");
+    assert.equal(imageCalls[0].quality, "medium");
+    assert.match(imageCalls[0].prompt, /a labeled keycap/);
+    assert.doesNotMatch(imageCalls[0].prompt, /\{CONCEPT\}/);
+    assert.deepEqual(thumbResult.meta.thumbnail, {
+      mode: "file",
+      path: `/thumbnails/${thumbPostId}.png`,
+      generated: true,
+    });
+    assert.ok(existsSync(generatedThumbPath));
+
+    // A second run is idempotent: the existing image is reused without another
+    // image-provider or concept call.
+    const idempotentCalls = [];
+    const idempotentResult = await resolveMetadata({
+      filePath: thumbJaPath,
+      source: thumbSource,
+      config,
+      provider: async () => {
+        throw new Error("concept provider should not be called when the image exists");
+      },
+      imageProvider: async (request) => {
+        idempotentCalls.push(request);
+        return Buffer.from("unused");
+      },
+    });
+    assert.equal(idempotentCalls.length, 0);
+    assert.equal(idempotentResult.meta.thumbnail.path, `/thumbnails/${thumbPostId}.png`);
+  } finally {
+    rmSync(generatedThumbPath, { force: true });
+  }
+
+  // An explicit [thumbnail].concept skips the Gemini concept call and feeds the
+  // concept straight into the image prompt.
+  const explicitPostId = "29991231-cafebabe";
+  const explicitDir = join(tempDir, explicitPostId);
+  mkdirSync(explicitDir, { recursive: true });
+  const explicitJaPath = join(explicitDir, "index.ja.md");
+  const explicitGeneratedPath = join(ROOT, "public", "thumbnails", `${explicitPostId}.png`);
+  const explicitSource = [
+    "+++",
+    'title = "明示コンセプト"',
+    'date = "2026-06-21"',
+    'tags = ["js"]',
+    "",
+    "[sumup]",
+    'mode = "text"',
+    'text = "要約テキスト。"',
+    "",
+    "[thumbnail]",
+    'mode = "auto"',
+    'concept = "a compass"',
+    "+++",
+    "",
+    "本文。",
+    "",
+  ].join("\n");
+  writeFileSync(explicitJaPath, explicitSource);
+  rmSync(explicitGeneratedPath, { force: true });
+  try {
+    const explicitImageCalls = [];
+    const explicitResult = await resolveMetadata({
+      filePath: explicitJaPath,
+      source: explicitSource,
+      config,
+      provider: async () => {
+        throw new Error("concept provider should not be called with an explicit concept");
+      },
+      imageProvider: async (request) => {
+        explicitImageCalls.push(request);
+        return Buffer.from("fake-png-bytes");
+      },
+    });
+    assert.equal(explicitImageCalls.length, 1);
+    assert.match(explicitImageCalls[0].prompt, /a compass/);
+    assert.equal(explicitResult.meta.thumbnail.path, `/thumbnails/${explicitPostId}.png`);
+  } finally {
+    rmSync(explicitGeneratedPath, { force: true });
+  }
+
+  const thumbPreviews = previewPrompts({
+    filePath: thumbJaPath,
+    source: thumbSource,
+    config,
+    knownTags: [],
+  });
+  assert.deepEqual(thumbPreviews.map((item) => item.kind), ["thumbnail-concept", "thumbnail"]);
+  assert.match(thumbPreviews[1].prompt, /\{CONCEPT\}/);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

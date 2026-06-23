@@ -7,7 +7,7 @@
 - `.project/`: short contributor-facing project documentation.
 - `.plans/`: task plans.
 - `.decisions/`: accepted project decisions.
-- `.github/workflows/`: CI, translation, site deploy (`deploy.yml`), scheduled Instapaper reading refresh (`reading-refresh.yml`), secret scanning, and security remediation automation.
+- `.github/workflows/`: CI, translation, metadata generation (`generate-metadata.yml`), site deploy (`deploy.yml`), scheduled Instapaper reading refresh (`reading-refresh.yml`), secret scanning, and security remediation automation.
 
 ## Important Modules
 
@@ -19,15 +19,18 @@
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
 - `src/content/posts/<post-id>/index.{ja,en}.md`: per-locale blog post Markdown. The stable `post-id` comes from the directory name.
-- `src/content/metadata.toml`: article metadata defaults and Gemini provider/model settings.
+- `src/content/metadata.toml`: article metadata defaults plus Gemini (tags/summary) and OpenAI (`[thumbnail_generation]`) provider/model settings.
 - `src/content/prompts/tag-generation.md`: system instruction used by automatic tag generation.
 - `src/content/prompts/summary-generation.md`: system instruction used by automatic summary generation.
+- `src/content/prompts/thumbnail-concept.md`: system instruction that derives the thumbnail concept from the Japanese summary.
+- `src/content/prompts/thumbnail-generation.md`: OpenAI image prompt with a `{CONCEPT}` placeholder for auto thumbnails.
+- `public/thumbnails/<post-id>.png`: generated article thumbnails (one per post id, shared by both locales).
 - `src/content/about/about.{ja,en}.toml`: per-locale About page content.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, and generates search plain text.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
 - `scripts/check_frontmatter.mjs`: metadata lint for every article Markdown file.
-- `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check.
+- `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, `[thumbnail] mode = "auto"` (OpenAI image generation into `public/thumbnails/`), and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check.
 - `scripts/check_metadata_quality.mjs`: static quality checks for generated tags and summaries.
 - `scripts/check_metadata_schema.mjs`: schema unit checks for valid and invalid metadata examples.
 - `scripts/check_generate_metadata.mjs`: metadata generation unit checks with a mock provider.

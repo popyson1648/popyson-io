@@ -43,7 +43,7 @@ jobs:
           test -n "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
           test -n "${{ secrets.SECURITY_AUTOMATION_TOKEN }}"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
           fetch-depth: 0

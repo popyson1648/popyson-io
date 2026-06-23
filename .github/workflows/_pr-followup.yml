@@ -113,7 +113,7 @@ jobs:
             echo "head_ref=$head_ref"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ steps.pr.outputs.should_run == 'true' }}
         with:
           token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
@@ -225,6 +225,14 @@ jobs:
           # does not fall back to OIDC (which needs id-token: write and the Claude
           # GitHub App).
           github_token: ${{ github.token }}
+          # This job is triggered by pull_request_review events, and those reviews
+          # come from CodeRabbit (a bot), not a human. Without an allow-list the
+          # action aborts with "Workflow initiated by non-human actor". Names are
+          # matched case-insensitively with the [bot] suffix stripped. CodeRabbit
+          # is the only review bot enabled on this repo; avoid '*' since this is a
+          # public repo and '*' would let any external App invoke the action with
+          # a prompt it controls.
+          allowed_bots: "coderabbitai"
           prompt: |
             You are maintaining an automated GitHub maintenance pull request
             (either a security remediation PR or a dependency update PR).

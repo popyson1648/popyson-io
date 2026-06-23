@@ -21,14 +21,16 @@ hand-edited content:
   "読了" (`done: true`).
 - A Node script (`scripts/fetch_instapaper.mjs`) calls the Instapaper Full API
   and writes a snapshot to `src/reading.json`, which the SPA imports.
-- Secrets are accessed through 1Password (`op`). The committed `.op.env` /
-  `.op.env.auth` hold only `op://` references (no secret values), used by both
-  local runs and CI.
-- A GitHub Actions workflow (`.github/workflows/reading-refresh.yml`) refreshes
-  the snapshot hourly, commits it when changed, and on scheduled runs builds and
-  deploys to Cloudflare Pages via Direct Upload (`wrangler pages deploy`) only
-  when the snapshot changed; manual/push runs always deploy. Everything runs in
-  CI; Cloudflare's own Git integration is intentionally not used.
+- Local runs access secrets through 1Password (`op`); the `.op.env*.example`
+  templates hold only `op://` references (no secret values). CI reads the
+  Instapaper credentials directly from GitHub secrets — see
+  [ci-instapaper-secrets-direct.md](ci-instapaper-secrets-direct.md).
+- Deployment is split across two workflows that both deploy to Cloudflare Pages
+  via Direct Upload (`wrangler pages deploy`); Cloudflare's own Git integration
+  is intentionally not used. `reading-refresh.yml` (hourly) refreshes the reading
+  list, and `deploy.yml` (on push to main) ships blog/about/code. They are
+  decoupled so an Instapaper outage never blocks a content deploy — see
+  [split-reading-and-site-deploy.md](split-reading-and-site-deploy.md).
 - The reading list UI is read-only: the per-item checkbox/toggle was removed and
   the tabs are limited to 未読 / 読了.
 
@@ -54,13 +56,14 @@ provides local-dev parity and a fallback when the API is unavailable.
 
 ## Consequences
 
-- The reading list updates only when the workflow runs (scheduled/dispatch/push),
-  not live per visitor. Scheduled polling is hourly, so a change in Instapaper
-  reaches the live site within roughly an hour. Hourly runs with no change end
-  after the fetch (no build/deploy), so deploy history reflects real changes
-  only.
-- Requires GitHub secrets `OP_SERVICE_ACCOUNT_TOKEN` (1Password service account
-  with read access to the Development vault), `CLOUDFLARE_API_TOKEN`,
+- The reading list updates only when a workflow runs, not live per visitor.
+  Scheduled polling is hourly, so a change in Instapaper reaches the live site
+  within roughly an hour. The committed `src/reading.json` is a static
+  fallback/seed (it is not auto-updated); live freshness comes from the hourly
+  redeploy.
+- Requires GitHub secrets `INSTAPAPER_CONSUMER_KEY`,
+  `INSTAPAPER_CONSUMER_SECRET`, `INSTAPAPER_OAUTH_TOKEN`,
+  `INSTAPAPER_OAUTH_TOKEN_SECRET`, `CLOUDFLARE_API_TOKEN`,
   `CLOUDFLARE_ACCOUNT_ID`, and variable `CLOUDFLARE_PAGES_PROJECT`.
 - OAuth signing is implemented in-repo (`scripts/instapaper_oauth.mjs`) with no
   new runtime dependencies.

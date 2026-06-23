@@ -49,6 +49,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # This workflow only deploys (wrangler); it never pushes back to the
+          # repo, so do not persist the checkout credentials.
+          persist-credentials: false
 
       - uses: actions/setup-node@v6
         with:

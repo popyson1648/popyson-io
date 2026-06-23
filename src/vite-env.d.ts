@@ -80,6 +80,6 @@ interface Window {
   ArticleBody: {
     byId: Record<string, ArticleBodyEntry>;
     fallback: ArticleBodyEntry;
-    get(id: string): ArticleBodyEntry | Array<Record<string, any>> | undefined;
+    get(id: string): ArticleBodyEntry;
   };
 }

@@ -21,9 +21,10 @@ hand-edited content:
   "読了" (`done: true`).
 - A Node script (`scripts/fetch_instapaper.mjs`) calls the Instapaper Full API
   and writes a snapshot to `src/reading.json`, which the SPA imports.
-- Secrets are accessed through 1Password (`op`). The committed `.op.env` /
-  `.op.env.auth` hold only `op://` references (no secret values), used by both
-  local runs and CI.
+- Local runs access secrets through 1Password (`op`); the `.op.env*.example`
+  templates hold only `op://` references (no secret values). CI reads the
+  Instapaper credentials directly from GitHub secrets — see
+  [ci-instapaper-secrets-direct.md](ci-instapaper-secrets-direct.md).
 - A GitHub Actions workflow (`.github/workflows/reading-refresh.yml`) refreshes
   the snapshot hourly, commits it when changed, and on scheduled runs builds and
   deploys to Cloudflare Pages via Direct Upload (`wrangler pages deploy`) only
@@ -59,8 +60,9 @@ provides local-dev parity and a fallback when the API is unavailable.
   reaches the live site within roughly an hour. Hourly runs with no change end
   after the fetch (no build/deploy), so deploy history reflects real changes
   only.
-- Requires GitHub secrets `OP_SERVICE_ACCOUNT_TOKEN` (1Password service account
-  with read access to the Development vault), `CLOUDFLARE_API_TOKEN`,
+- Requires GitHub secrets `INSTAPAPER_CONSUMER_KEY`,
+  `INSTAPAPER_CONSUMER_SECRET`, `INSTAPAPER_OAUTH_TOKEN`,
+  `INSTAPAPER_OAUTH_TOKEN_SECRET`, `CLOUDFLARE_API_TOKEN`,
   `CLOUDFLARE_ACCOUNT_ID`, and variable `CLOUDFLARE_PAGES_PROJECT`.
 - OAuth signing is implemented in-repo (`scripts/instapaper_oauth.mjs`) with no
   new runtime dependencies.

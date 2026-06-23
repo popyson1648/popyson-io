@@ -234,6 +234,9 @@ mode = "none"
     "",
   ].join("\n");
   writeFileSync(thumbJaPath, thumbSource);
+  // Remove any stale output from an interrupted prior run so the first-run
+  // generation assertions stay deterministic.
+  rmSync(generatedThumbPath, { force: true });
   try {
     const imageCalls = [];
     const conceptCalls = [];
@@ -315,6 +318,7 @@ mode = "none"
     "",
   ].join("\n");
   writeFileSync(explicitJaPath, explicitSource);
+  rmSync(explicitGeneratedPath, { force: true });
   try {
     const explicitImageCalls = [];
     const explicitResult = await resolveMetadata({

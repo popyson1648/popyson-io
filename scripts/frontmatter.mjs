@@ -9,7 +9,7 @@ import { assertValidMetadata } from "./metadataSchema.mjs";
  * @property {string[]} [tags]
  * @property {{ count?: number }} [auto_tags]
  * @property {{ mode?: "auto" | "none" | "text", text?: string, generated?: boolean }} [sumup]
- * @property {{ mode?: "none" | "file", path?: string, generated?: boolean }} [thumbnail]
+ * @property {{ mode?: "none" | "file" | "auto", path?: string, concept?: string, generated?: boolean }} [thumbnail]
  * @property {number} [reading]
  * @property {string} [kana]
  */

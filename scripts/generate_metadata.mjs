@@ -203,20 +203,29 @@ function sleep(ms) {
 }
 
 /**
- * Fetch with exponential backoff on transient provider errors (rate limits and
- * overloaded/unavailable responses) so the automation workflow does not flake.
- * Non-retryable responses and the final attempt are returned as-is for the
- * caller to handle.
+ * Fetch with exponential backoff on transient provider failures so the
+ * automation workflow does not flake. Retries both transient HTTP responses
+ * (rate limits, overloaded/unavailable) and thrown network/timeout errors, and
+ * bounds each attempt with a timeout so a request cannot hang forever.
+ * Non-retryable responses and the final attempt are returned/thrown as-is.
  */
-async function fetchWithRetry(url, init, { attempts = 4, baseDelayMs = 1000 } = {}) {
-  for (let attempt = 0; ; attempt += 1) {
-    const response = await fetch(url, init);
-    if (response.ok || !RETRYABLE_STATUS.has(response.status) || attempt >= attempts - 1) {
-      return response;
+async function fetchWithRetry(url, init, { attempts = 4, baseDelayMs = 1000, timeoutMs = 120000 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const isLastAttempt = attempt === attempts - 1;
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      if (response.ok || !RETRYABLE_STATUS.has(response.status) || isLastAttempt) {
+        return response;
+      }
+      await response.text().catch(() => "");
+    } catch (error) {
+      lastError = error;
+      if (isLastAttempt) throw error;
     }
-    await response.text().catch(() => "");
     await sleep(baseDelayMs * 2 ** attempt);
   }
+  throw lastError;
 }
 
 function requireGeminiKey() {

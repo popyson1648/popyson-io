@@ -49,6 +49,29 @@ function validateProvider(sectionName, section) {
   }
 }
 
+function validateThumbnailGeneration() {
+  const section = config.thumbnail_generation;
+  if (!section) {
+    failures.push("src/content/metadata.toml: thumbnail_generation: section is required");
+    return;
+  }
+  validatePromptFile(section.prompt_file, "thumbnail_generation.prompt_file");
+  validatePromptFile(section.concept_prompt_file, "thumbnail_generation.concept_prompt_file");
+  if (!["openai", "gemini"].includes(section.provider)) {
+    failures.push('src/content/metadata.toml: thumbnail_generation.provider: must be "openai" or "gemini"');
+  }
+  if (typeof section.model !== "string" || section.model.trim() === "") {
+    failures.push("src/content/metadata.toml: thumbnail_generation.model: must be a non-empty string");
+  }
+  if (typeof section.size !== "string" || !/^\d+x\d+$/.test(section.size)) {
+    failures.push("src/content/metadata.toml: thumbnail_generation.size: must be WIDTHxHEIGHT");
+  }
+  const allowedQuality = ["low", "medium", "high", "auto"];
+  if (!allowedQuality.includes(section.quality)) {
+    failures.push(`src/content/metadata.toml: thumbnail_generation.quality: must be one of ${allowedQuality.join(", ")}`);
+  }
+}
+
 function validateConfig() {
   validatePromptFile(config.tag_generation?.prompt_file, "tag_generation.prompt_file");
   validatePromptFile(config.summary_generation?.prompt_file, "summary_generation.prompt_file");
@@ -59,6 +82,7 @@ function validateConfig() {
   } else if (!existsSync(join(ROOT, "public", config.thumbnail.default_path.slice(1)))) {
     failures.push("src/content/metadata.toml: thumbnail.default_path: public file does not exist");
   }
+  validateThumbnailGeneration();
 }
 
 function validateTags(meta, filePath) {
@@ -87,7 +111,7 @@ function validateResolvedMetadata(meta, filePath) {
   if (meta.sumup?.mode === "auto") {
     failures.push(`${filePath}: sumup.mode: must be generated before verification`);
   }
-  if (!meta.thumbnail || meta.thumbnail.mode === "none") {
+  if (!meta.thumbnail || meta.thumbnail.mode === "none" || meta.thumbnail.mode === "auto") {
     failures.push(`${filePath}: thumbnail: must be generated before verification`);
   }
 }

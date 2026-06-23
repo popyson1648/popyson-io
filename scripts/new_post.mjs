@@ -41,7 +41,7 @@ mode = "text"
 text = "${summary}"
 
 [thumbnail]
-mode = "none"
+mode = "auto"
 +++
 
 ## ${locale === "ja" ? "見出し" : "Heading"}

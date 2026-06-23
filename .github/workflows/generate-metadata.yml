@@ -1,0 +1,95 @@
+name: Generate metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/content/posts/**"
+      - "src/content/metadata.toml"
+      - "src/content/prompts/**"
+  workflow_dispatch:
+
+concurrency:
+  group: generate-metadata-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: ${{ !contains(github.event.head_commit.message, '[skip metadata]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate metadata
+        env:
+          # Text metadata (tags, summary, thumbnail concept) uses the free-tier
+          # Gemini key; thumbnail image generation uses the billing-enabled
+          # OpenAI key. CI injects both secrets directly instead of via op.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run metadata:generate
+
+      - name: Run verification
+        run: python3 scripts/verify.py --mode ci
+
+      - name: Commit generated metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t changed_files < <(
+            {
+              git diff --name-only HEAD
+              git ls-files --others --exclude-standard
+            } | sort -u
+          )
+
+          if [[ "${#changed_files[@]}" -eq 0 ]]; then
+            echo "No metadata changes to commit."
+            exit 0
+          fi
+
+          # Metadata generation may only touch article frontmatter and the
+          # generated thumbnail images. Anything else is a bug, so fail loudly.
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              src/content/posts/*|public/thumbnails/*) ;;
+              *)
+                echo "Disallowed metadata change: $file" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/content/posts public/thumbnails
+
+          if git diff --cached --quiet; then
+            echo "No staged metadata changes to commit."
+            exit 0
+          fi
+
+          # [skip translate] keeps the translation workflow from re-running on the
+          # frontmatter edits; [skip metadata] keeps this workflow from looping on
+          # its own push.
+          git commit -m "chore: generate article metadata [skip metadata][skip translate]"
+          git pull --rebase origin main
+          git push

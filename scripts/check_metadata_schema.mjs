@@ -39,6 +39,19 @@ mode = "none"
 `,
   `
 title = "Post"
+date = "auto"
+tags = []
+auto_tags = {}
+
+[sumup]
+mode = "auto"
+
+[thumbnail]
+mode = "auto"
+concept = "a labeled keycap"
+`,
+  `
+title = "Post"
 date = 2026-02-07
 `,
 ];
@@ -59,6 +72,7 @@ const invalidCases = [
   [`title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"`, "sumup.text"],
   [`title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"\ntext = "x"\ngenerated = "yes"`, "sumup.generated"],
   [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "remote"`, "thumbnail.mode"],
+  [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "auto"\nconcept = 5`, "thumbnail.concept"],
   [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"`, "thumbnail.path"],
   [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"`, "thumbnail.generated"],
   [`title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"`, "summary"],

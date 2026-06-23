@@ -19,8 +19,8 @@ name: Reading list refresh & deploy
 #   CLOUDFLARE_PAGES_PROJECT       - Cloudflare Pages project name
 #
 # CI reads the Instapaper credentials straight from GitHub secrets. Local
-# development resolves the same values from 1Password instead:
-#   npm run reading:fetch:op   (op run --env-file=.op.env -- ...)
+# development populates the same INSTAPAPER_* variables on its own; see
+# .project/build.md (Reading list).
 
 on:
   schedule:

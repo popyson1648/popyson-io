@@ -24,6 +24,7 @@ function emptyFilters(initialTag = null) {
 
 async function loadPagefind(lang) {
   if (!pagefindLoadPromise) {
+    // @ts-expect-error Pagefind is generated under /pagefind at build time; Vite keeps this absolute URL external.
     pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js").catch((error) => {
       pagefindLoadPromise = null;
       throw error;
@@ -313,7 +314,7 @@ export function BlogList() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
-  const list = table.getRowModel().rows.map((row) => row.original.raw);
+  const list = table.getRowModel().rows.map((row) => /** @type {{ raw: Post }} */ (row.original).raw);
 
   const activeProps = [];
   if (filters.tags.length) activeProps.push("tags");
@@ -565,9 +566,10 @@ export function Article({ id }) {
   }
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
-  const body = window.ArticleBody.get(id) || {};
+  const rawBody = window.ArticleBody.get(id) || {};
+  const body = Array.isArray(rawBody) ? {} : rawBody;
   const localizedBody = body[lang] || body.ja || body.en || { html: "" };
-  const bodyHtml = localizedBody.html || "";
+  const bodyHtml = typeof localizedBody === "string" ? "" : localizedBody.html || "";
   const headings = body.headings || [];
 
   useEffect(() => {

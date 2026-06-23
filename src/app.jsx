@@ -6,6 +6,7 @@ import { AppCtx, Footer, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage } from "./pages.jsx";
 import { Article, BlogList } from "./blog.jsx";
 import { headModel, localized } from "./meta.js";
+import { parseRoute } from "./routing.js";
 
 const RISOGRAPH_DEFAULTS = {
   bgNoiseOpacity: 30,
@@ -39,27 +40,6 @@ function createNoiseUrl(frequency) {
 function createFilterId(prefix, distortion, roughness) {
   const safeRoughness = String(roughness).replace(".", "-");
   return `${prefix}-${distortion}-${safeRoughness}`;
-}
-
-// Path-based routing. Language lives in the URL: Japanese (default) has no
-// prefix, English is served under "/en". The leading locale segment is
-// stripped here and carried on the route as `lang`.
-function parseRoute(pathname, search) {
-  let path = pathname || "/";
-  let lang = "ja";
-  if (/^\/en(\/|$)/.test(path)) { lang = "en"; path = path.slice(3) || "/"; }
-  const query = new URLSearchParams(search || "");
-  const parts = path.split("/").filter(Boolean); // ["blog","id"]
-  const seg = parts[0] || "";
-  let route;
-  if (seg === "")             route = { name: "about" };
-  else if (seg === "about")   route = { name: "about" };
-  else if (seg === "blog")    route = parts[1] ? { name: "article", id: parts[1] } : { name: "blog", tag: query.get("tag") || null };
-  else if (seg === "app")     route = parts[1] ? { name: "appDetail", id: parts[1] } : { name: "app" };
-  else if (seg === "reading") route = { name: "reading" };
-  else if (seg === "rss")     route = { name: "rss" };
-  else                        route = { name: "about" };
-  return { ...route, lang };
 }
 
 // Upsert <head> tags so the live tab + JS-executing crawlers stay correct
@@ -160,10 +140,10 @@ export default function App() {
     root.style.setProperty("--text-noise-url", "none");
     root.style.setProperty("--grain-light", circleNoiseUrl);
     root.style.setProperty("--grain-dark", circleNoiseUrl);
-    root.style.setProperty("--bg-noise-opacity", riso.bgNoiseOpacity / 100);
+    root.style.setProperty("--bg-noise-opacity", String(riso.bgNoiseOpacity / 100));
     root.style.setProperty("--bg-edge-filter", `url(#${bgFilterId})`);
-    root.style.setProperty("--grain-circle-opacity", riso.circleOpacity / 100);
-    root.style.setProperty("--grain-noise-opacity", riso.circleNoiseOpacity / 100);
+    root.style.setProperty("--grain-circle-opacity", String(riso.circleOpacity / 100));
+    root.style.setProperty("--grain-noise-opacity", String(riso.circleNoiseOpacity / 100));
     root.style.setProperty("--circle-edge-filter", `url(#${circleFilterId})`);
     root.style.setProperty("--text-edge-filter", "none");
     root.style.setProperty("--text-ink-opacity", "0%");

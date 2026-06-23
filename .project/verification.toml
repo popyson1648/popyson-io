@@ -40,9 +40,10 @@ run_pre_commit = true
 run_in_ci = true
 
 [phases.typecheck]
-enabled = false
-command = ""
-reason = "No TypeScript typecheck is configured for this JavaScript project."
+enabled = true
+command = "npm run typecheck"
+run_pre_commit = true
+run_in_ci = true
 
 [phases.build]
 enabled = true
@@ -52,7 +53,7 @@ run_in_ci = true
 
 [phases.test_unit]
 enabled = true
-command = "npm run build && node scripts/check_metadata_schema.mjs && node scripts/check_generate_metadata.mjs && node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs && node scripts/check_pagefind_search.mjs && node scripts/check_prerendered_routes.mjs"
+command = "npm run build && node scripts/check_core_helpers.mjs && node scripts/check_metadata_schema.mjs && node scripts/check_metadata_edges.mjs && node scripts/check_generate_metadata.mjs && node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs && node scripts/check_pagefind_search.mjs && node scripts/check_prerendered_routes.mjs"
 run_pre_commit = true
 run_in_ci = true
 

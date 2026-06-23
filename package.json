@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "metadata:generate": "node scripts/generate_metadata.mjs",
     "metadata:generate:op": "op run --env-file=.op.env -- node scripts/generate_metadata.mjs",
     "metadata:preview-prompts": "node scripts/generate_metadata.mjs --preview-prompts",
@@ -24,6 +25,9 @@
   },
   "devDependencies": {
     "@shikijs/rehype": "^4.2.0",
+    "@types/node": "^22.19.21",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -37,6 +41,7 @@
     "remark-rehype": "^11.1.2",
     "shiki": "^4.2.0",
     "smol-toml": "^1.7.0",
+    "typescript": "^6.0.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
     "vite": "^8.0.16"

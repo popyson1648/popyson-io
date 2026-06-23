@@ -51,8 +51,11 @@ const server = await serveDist();
 const { port } = server.address();
 const base = `http://127.0.0.1:${port}`;
 
-globalThis.location = { href: `${base}/`, origin: base };
-globalThis.document = {
+globalThis.location = /** @type {Location} */ ({
+  href: `${base}/`,
+  origin: base,
+});
+globalThis.document = /** @type {Document} */ ({
   currentScript: null,
   documentElement: { lang: "ja" },
   querySelector(selector) {
@@ -60,7 +63,7 @@ globalThis.document = {
       ? { getAttribute: () => this.documentElement.lang }
       : null;
   },
-};
+});
 
 try {
   const pagefind = await import(`file://${join(DIST, "pagefind/pagefind.js")}?ts=${Date.now()}`);

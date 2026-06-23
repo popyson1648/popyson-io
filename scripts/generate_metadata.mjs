@@ -2,34 +2,21 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+import { stringify as stringifyToml } from "smol-toml";
+import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
+import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { assertValidMetadata, dateToIsoDate } from "./metadataSchema.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 
-function parseFrontmatter(source, filePath) {
-  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  if (!text.startsWith("+++\n")) {
-    throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
-  }
-  const end = text.indexOf("\n+++", 4);
-  if (end === -1) throw new Error(`${filePath} is missing closing +++ frontmatter delimiter`);
-  const meta = parseToml(text.slice(4, end));
-  assertValidMetadata(meta, filePath);
-  return {
-    meta,
-    body: text.slice(end + 5).replace(/^\r?\n/, ""),
-  };
-}
-
 function serializeMarkdown(meta, body) {
   return `+++\n${stringifyToml(meta).trimEnd()}\n+++\n\n${body}`;
 }
 
 function readMetadataConfig() {
-  return parseToml(readFileSync(METADATA_CONFIG_FILE, "utf8"));
+  return parseMetadataConfig(readFileSync(METADATA_CONFIG_FILE, "utf8"));
 }
 
 function postMarkdownFiles() {
@@ -105,6 +92,10 @@ function isLikelyJapanese(text) {
   return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(text);
 }
 
+/**
+ * @param {import("./frontmatter.mjs").MarkdownMetadata} meta
+ * @param {{ filePath?: string, locale?: string, config?: import("./metadataConfig.mjs").MetadataConfig }} [options]
+ */
 export function evaluateMetadata(meta, { filePath = "metadata", locale = "en", config = {} } = {}) {
   const errors = [];
   const tags = normalizeTags(meta.tags);
@@ -260,7 +251,7 @@ export async function geminiGenerateJson({
 function allKnownTags(files) {
   const tags = [];
   for (const file of files) {
-    const parsed = parseFrontmatter(readFileSync(file, "utf8"), file);
+    const parsed = parseMarkdownFrontmatter(readFileSync(file, "utf8"), file);
     tags.push(...normalizeTags(parsed.meta.tags));
   }
   return normalizeTags(tags).sort((a, b) => a.localeCompare(b));
@@ -274,61 +265,101 @@ export function hasPendingMetadata(meta) {
     || meta.thumbnail?.mode === "none";
 }
 
-export async function resolveMetadata({ filePath, source, config, knownTags = [], provider = geminiGenerateJson }) {
-  const parsed = parseFrontmatter(source, filePath);
-  const meta = structuredClone(parsed.meta);
-  let changed = false;
+function autoTagCount(meta, config) {
+  return meta.auto_tags.count || config.tag_generation?.default_count || 3;
+}
 
-  if (dateToIsoDate(meta.date) === "auto") {
-    let gitDate = firstAddedGitDate(filePath);
-    if (!gitDate) {
-      if (process.env.CI) {
-        throw new Error(`${filePath}: date = "auto" could not be resolved from git history`);
-      }
-      gitDate = todayIsoDate();
+function tagGenerationRequest({ filePath, meta, body, config, knownTags, count }) {
+  return {
+    model: config.tag_generation?.model || "gemini-2.5-flash",
+    systemInstruction: readPromptFile(config.tag_generation?.prompt_file),
+    schema: tagSchema(),
+    prompt: buildTagPrompt({ filePath, meta, body, config, knownTags, count }),
+  };
+}
+
+function summaryGenerationRequest({ filePath, meta, body, config }) {
+  return {
+    model: config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash",
+    systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
+    schema: summarySchema(),
+    prompt: buildSummaryPrompt({ filePath, meta, body, config }),
+  };
+}
+
+function previewItemFromRequest({ filePath, kind, request }) {
+  return {
+    filePath,
+    kind,
+    model: request.model,
+    systemInstruction: request.systemInstruction,
+    prompt: request.prompt,
+  };
+}
+
+function resolveAutoDate(meta, filePath) {
+  if (dateToIsoDate(meta.date) !== "auto") return false;
+
+  let gitDate = firstAddedGitDate(filePath);
+  if (!gitDate) {
+    if (process.env.CI) {
+      throw new Error(`${filePath}: date = "auto" could not be resolved from git history`);
     }
-    meta.date = gitDate;
-    changed = true;
+    gitDate = todayIsoDate();
   }
+  meta.date = gitDate;
+  return true;
+}
 
-  if (meta.auto_tags) {
-    const count = meta.auto_tags.count || config.tag_generation?.default_count || 3;
-    const result = await provider({
-      model: config.tag_generation?.model || "gemini-2.5-flash",
-      systemInstruction: readPromptFile(config.tag_generation?.prompt_file),
-      schema: tagSchema(),
-      prompt: buildTagPrompt({ filePath, meta, body: parsed.body, config, knownTags, count }),
-    });
-    meta.tags = mergeTags(meta.tags || [], result.tags || [], count);
-    delete meta.auto_tags;
-    changed = true;
-  }
+async function resolveAutoTags(meta, { filePath, body, config, knownTags, provider }) {
+  if (!meta.auto_tags) return false;
 
-  if (meta.sumup?.mode === "auto") {
-    const result = await provider({
-      model: config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash",
-      systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
-      schema: summarySchema(),
-      prompt: buildSummaryPrompt({ filePath, meta, body: parsed.body, config }),
-    });
-    const summary = String(result.summary || "").trim();
-    if (!summary) throw new Error(`${filePath}: AI summary generation returned an empty summary`);
-    meta.sumup = { mode: "text", text: summary, generated: true };
-    changed = true;
-  }
+  const count = autoTagCount(meta, config);
+  const result = await provider(tagGenerationRequest({ filePath, meta, body, config, knownTags, count }));
+  meta.tags = mergeTags(meta.tags || [], result.tags || [], count);
+  delete meta.auto_tags;
+  return true;
+}
 
-  if (!meta.thumbnail || meta.thumbnail.mode === "none") {
-    const defaultPath = config.thumbnail?.default_path;
-    if (!defaultPath) throw new Error(`${filePath}: thumbnail.default_path is required`);
-    meta.thumbnail = { mode: "file", path: defaultPath, generated: true };
-    changed = true;
-  }
+async function resolveAutoSummary(meta, { filePath, body, config, provider }) {
+  if (meta.sumup?.mode !== "auto") return false;
 
+  const result = await provider(summaryGenerationRequest({ filePath, meta, body, config }));
+  const summary = String(result.summary || "").trim();
+  if (!summary) throw new Error(`${filePath}: AI summary generation returned an empty summary`);
+  meta.sumup = { mode: "text", text: summary, generated: true };
+  return true;
+}
+
+function resolveDefaultThumbnail(meta, { filePath, config }) {
+  if (meta.thumbnail && meta.thumbnail.mode !== "none") return false;
+
+  const defaultPath = config.thumbnail?.default_path;
+  if (!defaultPath) throw new Error(`${filePath}: thumbnail.default_path is required`);
+  meta.thumbnail = { mode: "file", path: defaultPath, generated: true };
+  return true;
+}
+
+function assertResolvedMetadata(meta, { filePath, config }) {
   assertValidMetadata(meta, filePath);
   const evaluationErrors = evaluateMetadata(meta, { filePath, locale: localeFromPath(filePath), config });
   if (evaluationErrors.length > 0) {
     throw new Error(evaluationErrors.join("\n"));
   }
+}
+
+export async function resolveMetadata({ filePath, source, config, knownTags = [], provider = geminiGenerateJson }) {
+  const parsed = parseMarkdownFrontmatter(source, filePath);
+  const meta = structuredClone(parsed.meta);
+  const context = { filePath, body: parsed.body, config, knownTags, provider };
+  const changed = [
+    resolveAutoDate(meta, filePath),
+    await resolveAutoTags(meta, context),
+    await resolveAutoSummary(meta, context),
+    resolveDefaultThumbnail(meta, context),
+  ].some(Boolean);
+
+  assertResolvedMetadata(meta, { filePath, config });
   return {
     changed,
     output: serializeMarkdown(meta, parsed.body),
@@ -337,26 +368,24 @@ export async function resolveMetadata({ filePath, source, config, knownTags = []
 }
 
 export function previewPrompts({ filePath, source, config, knownTags = [] }) {
-  const parsed = parseFrontmatter(source, filePath);
+  const parsed = parseMarkdownFrontmatter(source, filePath);
   const previews = [];
   if (parsed.meta.auto_tags) {
-    const count = parsed.meta.auto_tags.count || config.tag_generation?.default_count || 3;
-    previews.push({
+    const count = autoTagCount(parsed.meta, config);
+    const request = tagGenerationRequest({ filePath, meta: parsed.meta, body: parsed.body, config, knownTags, count });
+    previews.push(previewItemFromRequest({
       filePath,
       kind: "tags",
-      model: config.tag_generation?.model || "gemini-2.5-flash",
-      systemInstruction: readPromptFile(config.tag_generation?.prompt_file),
-      prompt: buildTagPrompt({ filePath, meta: parsed.meta, body: parsed.body, config, knownTags, count }),
-    });
+      request,
+    }));
   }
   if (parsed.meta.sumup?.mode === "auto") {
-    previews.push({
+    const request = summaryGenerationRequest({ filePath, meta: parsed.meta, body: parsed.body, config });
+    previews.push(previewItemFromRequest({
       filePath,
       kind: "summary",
-      model: config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash",
-      systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
-      prompt: buildSummaryPrompt({ filePath, meta: parsed.meta, body: parsed.body, config }),
-    });
+      request,
+    }));
   }
   return previews;
 }
@@ -406,7 +435,7 @@ export async function runGenerateMetadata({ check = false, preview = false, prov
   if (check) {
     const unresolved = [];
     for (const filePath of files) {
-      const parsed = parseFrontmatter(readFileSync(filePath, "utf8"), filePath);
+      const parsed = parseMarkdownFrontmatter(readFileSync(filePath, "utf8"), filePath);
       const reasons = pendingMetadataReasons(parsed.meta);
       if (reasons.length > 0) unresolved.push({ filePath, reasons });
     }

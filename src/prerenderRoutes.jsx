@@ -30,7 +30,9 @@ let globalsReady = null;
 async function ensureGlobals() {
   if (!globalsReady) {
     globalsReady = (async () => {
-      if (typeof globalThis.window === "undefined") globalThis.window = globalThis;
+      if (typeof globalThis.window === "undefined") {
+        globalThis.window = /** @type {Window & typeof globalThis} */ (/** @type {unknown} */ (globalThis));
+      }
       await import("./i18n.js"); // -> window.I18N
       await import("./data.js"); // -> window.BlogData
       await import("./articleBody.js"); // -> window.ArticleBody

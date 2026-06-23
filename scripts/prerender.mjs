@@ -25,7 +25,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createServer } from "vite";
+import { createRunnableDevEnvironment, createServer, DevEnvironment } from "vite";
 
 import { loadSiteContent, renderArticleBodies } from "./content_loader.mjs";
 import { SITE, allRoutes, configureMetaData, headModel } from "../src/meta.js";
@@ -135,7 +135,23 @@ function buildRobots() {
 // in middleware mode purely as a module transformer (no requests are served).
 async function withRouteRenderer(run) {
   const vite = await createServer({
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, hmr: false },
+    environments: {
+      client: {
+        dev: {
+          createEnvironment(name, config) {
+            return new DevEnvironment(name, config, { hot: false });
+          },
+        },
+      },
+      ssr: {
+        dev: {
+          createEnvironment(name, config) {
+            return createRunnableDevEnvironment(name, config, { hot: false });
+          },
+        },
+      },
+    },
     appType: "custom",
     logLevel: "warn",
   });

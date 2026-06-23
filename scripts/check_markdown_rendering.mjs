@@ -13,6 +13,12 @@ function assertNoClientMarkdownStack(html) {
   assert.doesNotMatch(html, /react-markdown|micromark/i);
 }
 
+function assertIncludesAll(value, needles) {
+  for (const needle of needles) {
+    assert.match(value, needle);
+  }
+}
+
 assert.equal(sectionId(slugifyHeading("Feature Set", new Map())), "sec-feature-set");
 assert.equal(sectionId(""), "");
 
@@ -23,6 +29,23 @@ assert.doesNotMatch(plain, /<b>/);
 const calloutPlain = markdownToPlainText(":::warning[Supported Markdown]\nUse it.\n:::");
 assert.match(calloutPlain, /Supported Markdown/);
 assert.doesNotMatch(calloutPlain, /warning/);
+
+const richPlain = markdownToPlainText([
+  "Intro",
+  "",
+  "```js",
+  "secretImplementation()",
+  "```",
+  "",
+  "![Alt Text](/image.png)",
+  "[Guide](/guide)",
+  "",
+  ":::tip[Tip Title]",
+  "Body text.",
+  ":::",
+].join("\n"));
+assert.equal(richPlain, "Intro Alt Text Guide Tip Title Body text.");
+assert.doesNotMatch(richPlain, /secretImplementation/);
 
 const validHtml = await renderArticleHtml(validMarkdownFixture, { copyLabel: "Copy code" });
 assertNoClientMarkdownStack(validHtml);
@@ -42,6 +65,19 @@ assert.match(validHtml, /--shiki-light:/);
 assert.match(validHtml, /--shiki-dark:/);
 assert.match(validHtml, /indented code/);
 
+const duplicateHeadingHtml = await renderArticleHtml([
+  "## Feature Set",
+  "",
+  "## Feature Set",
+  "",
+  "## 型で導く CLI 設計",
+].join("\n"), { copyLabel: "Copy code" });
+assertIncludesAll(duplicateHeadingHtml, [
+  /<h2 id="sec-feature-set">Feature Set<\/h2>/,
+  /<h2 id="sec-feature-set-2">Feature Set<\/h2>/,
+  /<h2 id="sec-型で導く-cli-設計">型で導く CLI 設計<\/h2>/,
+]);
+
 const calloutHtml = await renderArticleHtml(calloutMarkdownFixture, { copyLabel: "Copy code" });
 for (const type of ["note", "tip", "info", "danger"]) {
   assert.match(calloutHtml, new RegExp(`class="msg msg-${type}"`));
@@ -52,6 +88,17 @@ assert.match(calloutHtml, /<div class="msg-title">Supported Markdown<\/div>/);
 assert.match(calloutHtml, /<strong>bold<\/strong>/);
 assert.match(calloutHtml, /class="code-lang">ts<\/span>/);
 
+const attributeTitleCalloutHtml = await renderArticleHtml(":::note{title=\"From attribute\"}\nContent.\n:::");
+assertIncludesAll(attributeTitleCalloutHtml, [
+  /class="msg msg-note"/,
+  /<div class="msg-title">From attribute<\/div>/,
+  /<p>Content\.<\/p>/,
+]);
+
+const plainCodeHtml = await renderArticleHtml("```\nplain code\n```", { copyLabel: "Copy code" });
+assert.match(plainCodeHtml, /class="code-lang">text<\/span>/);
+assert.match(plainCodeHtml, /aria-label="Copy code"/);
+
 const malformedHtml = await renderArticleHtml(malformedMarkdownFixture, { copyLabel: "Copy code" });
 assert.match(malformedHtml, /Paragraph with/);
 assert.match(malformedHtml, /unterminated code block/);
@@ -61,5 +108,24 @@ assert.doesNotMatch(unsafeHtml, /<strong>raw html/);
 assert.match(unsafeHtml, /raw html must stay inert/);
 assert.doesNotMatch(unsafeHtml, /javascript:/i);
 assert.doesNotMatch(unsafeHtml, /<img/i);
+
+const urlSafetyHtml = await renderArticleHtml([
+  "[mail](mailto:test@example.com)",
+  "[relative](../guide)",
+  "[hash](#section)",
+  "[bad](vbscript:alert(1))",
+  "![relative image](./image.png)",
+  "![bad image](data:text/html;base64,PHNjcmlwdD4=)",
+].join("\n"));
+assertIncludesAll(urlSafetyHtml, [
+  /<a href="mailto:test@example.com">mail<\/a>/,
+  /<a href="\.\.\/guide">relative<\/a>/,
+  /<a href="#section">hash<\/a>/,
+  /bad/,
+  /<img src="\.\/image\.png" alt="relative image" loading="lazy">/,
+]);
+assert.doesNotMatch(urlSafetyHtml, /vbscript:/i);
+assert.doesNotMatch(urlSafetyHtml, /data:text\/html/i);
+assert.doesNotMatch(urlSafetyHtml, /bad image/);
 
 console.log("markdown rendering fixtures passed");

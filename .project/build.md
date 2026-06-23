@@ -65,9 +65,25 @@ npm run instapaper:auth:op
 npm run reading:fetch:op
 ```
 
-In CI, `.github/workflows/reading-refresh.yml` refreshes the snapshot on a
-schedule, builds, and deploys to Cloudflare Pages via Direct Upload
-(`wrangler pages deploy`). See `.decisions/instapaper-reading-list.md`.
+`npm run reading:fetch:op` overwrites the local `src/reading.json`. In CI the
+snapshot is never committed back; the committed file is only a fallback/seed.
+See the Deploy section below.
+
+## Deploy
+
+The site is deployed to Cloudflare Pages via Direct Upload (`wrangler pages
+deploy`) from two decoupled workflows; Cloudflare's Git integration is not used.
+
+- `.github/workflows/deploy.yml` — on push to `main` (and `workflow_dispatch`).
+  Builds and deploys blog/about/code. It does a best-effort Instapaper fetch and
+  falls back to the committed `src/reading.json` if it fails, so a content deploy
+  never depends on Instapaper.
+- `.github/workflows/reading-refresh.yml` — hourly (and `workflow_dispatch`).
+  Refreshes the reading list; it builds and deploys only when the fetch
+  succeeds, otherwise the last successful deployment keeps serving.
+
+See `.decisions/instapaper-reading-list.md` and
+`.decisions/split-reading-and-site-deploy.md`.
 
 ## Common Failures
 

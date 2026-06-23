@@ -7,7 +7,7 @@
 - `.project/`: short contributor-facing project documentation.
 - `.plans/`: task plans.
 - `.decisions/`: accepted project decisions.
-- `.github/workflows/`: CI, translation, scheduled Instapaper refresh + Cloudflare Pages deploy, secret scanning, and security remediation automation.
+- `.github/workflows/`: CI, translation, site deploy (`deploy.yml`), scheduled Instapaper reading refresh (`reading-refresh.yml`), secret scanning, and security remediation automation.
 
 ## Important Modules
 

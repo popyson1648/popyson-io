@@ -1,12 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { parse as parseToml } from "smol-toml";
 import { evaluateMetadata } from "./generate_metadata.mjs";
 import { postsDir, rootDir } from "./content_loader.mjs";
+import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
+import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { dateToIsoDate } from "./metadataSchema.mjs";
 
 const ROOT = rootDir();
-const config = parseToml(readFileSync(join(ROOT, "src/content/metadata.toml"), "utf8"));
+const config = parseMetadataConfig(readFileSync(join(ROOT, "src/content/metadata.toml"), "utf8"));
 const failures = [];
 
 function markdownFiles() {
@@ -21,9 +22,7 @@ function markdownFiles() {
 }
 
 function frontmatter(source) {
-  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  const end = text.indexOf("\n+++", 4);
-  return parseToml(text.slice(4, end));
+  return parseMarkdownFrontmatter(source, "frontmatter", { validate: false }).meta;
 }
 
 function validatePromptFile(configPath, field) {

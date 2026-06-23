@@ -10,6 +10,7 @@ import { visit } from "unist-util-visit";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 
 const CALLOUT_TYPES = new Set(["note", "tip", "info", "warning", "danger"]);
+const articleProcessors = new Map();
 
 function calloutVariant(type) {
   return type === "warning" ? "warn" : type;
@@ -71,28 +72,27 @@ function remarkHeadingIds() {
   };
 }
 
+function isLocalMarkdownUrl(value) {
+  return value.startsWith("#")
+    || value.startsWith("/")
+    || value.startsWith("./")
+    || value.startsWith("../");
+}
+
+function hasAllowedMarkdownProtocol(value) {
+  try {
+    const parsed = new URL(value, "https://popyson.com");
+    return parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "mailto:";
+  } catch {
+    return false;
+  }
+}
+
 function safeMarkdownUrl(url) {
   const value = String(url || "").trim();
   if (!value) return "";
-  if (
-    value.startsWith("#") ||
-    value.startsWith("/") ||
-    value.startsWith("./") ||
-    value.startsWith("../")
-  ) {
-    return value;
-  }
-
-  try {
-    const parsed = new URL(value, "https://popyson.com");
-    if (parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "mailto:") {
-      return value;
-    }
-  } catch {
-    return "";
-  }
-
-  return "";
+  if (isLocalMarkdownUrl(value)) return value;
+  return hasAllowedMarkdownProtocol(value) ? value : "";
 }
 
 function replaceChild(parent, index, nodes) {
@@ -176,55 +176,62 @@ function copyIcon(kind = "copy") {
   };
 }
 
-function rehypeCodeToolbar(copyLabel) {
-  return (tree) => {
-    const transformChildren = (parent) => {
-      if (!Array.isArray(parent.children)) return;
-      for (let index = 0; index < parent.children.length; index += 1) {
-        const node = parent.children[index];
-        if (node.type !== "element") continue;
-        if (node.tagName !== "pre") {
-          transformChildren(node);
-          continue;
-        }
-      const code = node.children?.find((child) => child.type === "element" && child.tagName === "code");
-      const lang = getLanguage(code);
-      const replacement = {
+function findCodeNode(preNode) {
+  return preNode.children?.find((child) => child.type === "element" && child.tagName === "code");
+}
+
+function codeToolbarNode(preNode, copyLabel) {
+  const lang = getLanguage(findCodeNode(preNode));
+  return {
+    type: "element",
+    tagName: "div",
+    properties: { className: ["code"], dataCfChange: "ch-code-block" },
+    children: [
+      {
         type: "element",
         tagName: "div",
-        properties: { className: ["code"], dataCfChange: "ch-code-block" },
+        properties: { className: ["code-bar"] },
         children: [
+          { type: "element", tagName: "span", properties: { className: ["code-lang"] }, children: [{ type: "text", value: lang }] },
           {
             type: "element",
-            tagName: "div",
-            properties: { className: ["code-bar"] },
-            children: [
-              { type: "element", tagName: "span", properties: { className: ["code-lang"] }, children: [{ type: "text", value: lang }] },
-              {
-                type: "element",
-                tagName: "button",
-                properties: {
-                  className: ["btn", "btn-ghost", "code-copy"],
-                  type: "button",
-                  ariaLabel: copyLabel,
-                  style: "padding: 2px 6px",
-                },
-                children: [copyIcon("copy")],
-              },
-            ],
-          },
-          {
-            type: "element",
-            tagName: "div",
-            properties: { className: ["code-highlight"] },
-            children: [node],
+            tagName: "button",
+            properties: {
+              className: ["btn", "btn-ghost", "code-copy"],
+              type: "button",
+              ariaLabel: copyLabel,
+              style: "padding: 2px 6px",
+            },
+            children: [copyIcon("copy")],
           },
         ],
-      };
-        parent.children.splice(index, 1, replacement);
-      }
-    };
-    transformChildren(tree);
+      },
+      {
+        type: "element",
+        tagName: "div",
+        properties: { className: ["code-highlight"] },
+        children: [preNode],
+      },
+    ],
+  };
+}
+
+function transformCodeBlocks(parent, copyLabel) {
+  if (!Array.isArray(parent.children)) return;
+  for (let index = 0; index < parent.children.length; index += 1) {
+    const node = parent.children[index];
+    if (node.type !== "element") continue;
+    if (node.tagName !== "pre") {
+      transformCodeBlocks(node, copyLabel);
+      continue;
+    }
+    parent.children.splice(index, 1, codeToolbarNode(node, copyLabel));
+  }
+}
+
+function rehypeCodeToolbar(copyLabel) {
+  return (tree) => {
+    transformCodeBlocks(tree, copyLabel);
   };
 }
 
@@ -243,25 +250,32 @@ export function markdownToPlainText(markdown) {
     .trim();
 }
 
+function articleProcessor(copyLabel) {
+  if (!articleProcessors.has(copyLabel)) {
+    articleProcessors.set(copyLabel, unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkDirective)
+      .use(remarkCallouts)
+      .use(remarkHeadingIds)
+      .use(remarkRehype)
+      .use(rehypeSafeUrls)
+      .use(rehypeCalloutBody)
+      .use(rehypeCodeToolbar, copyLabel)
+      .use(rehypeShiki, {
+        themes: {
+          light: "github-light",
+          dark: "github-dark",
+        },
+        defaultColor: false,
+      })
+      .use(rehypeStringify));
+  }
+  return articleProcessors.get(copyLabel);
+}
+
 export async function renderArticleHtml(markdown, { copyLabel = "Copy code" } = {}) {
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkDirective)
-    .use(remarkCallouts)
-    .use(remarkHeadingIds)
-    .use(remarkRehype)
-    .use(rehypeSafeUrls)
-    .use(rehypeCalloutBody)
-    .use(rehypeCodeToolbar, copyLabel)
-    .use(rehypeShiki, {
-      themes: {
-        light: "github-light",
-        dark: "github-dark",
-      },
-      defaultColor: false,
-    })
-    .use(rehypeStringify)
+  const file = await articleProcessor(copyLabel)
     .process(String(markdown || ""));
   return String(file);
 }

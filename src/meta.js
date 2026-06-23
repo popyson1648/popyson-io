@@ -27,6 +27,7 @@ export const SITE = {
 };
 
 const L = (field, lang) => (field && field[lang]) || (field && field.ja) || "";
+const ROUTE_LOCALES = ["ja", "en"];
 let configuredPosts = [];
 
 export function configureMetaData({ POSTS = [] } = {}) {
@@ -141,12 +142,8 @@ export function headModel(route, lang) {
   };
 }
 
-/**
- * Every route to prerender, for both locales. `dir` is the output directory
- * under dist/ (""/"about"/"blog/<id>"/... and the "en/"-prefixed mirror).
- */
-export function allRoutes() {
-  const base = [
+function baseRouteEntries() {
+  return [
     { dir: "",      route: { name: "about" } },   // home (About is the landing)
     { dir: "about", route: { name: "about" } },   // alias, canonicals to "/"
     { dir: "blog",  route: { name: "blog" } },
@@ -156,12 +153,25 @@ export function allRoutes() {
     { dir: "reading", route: { name: "reading" } },
     { dir: "rss",     route: { name: "rss" } },
   ];
-  const out = [];
-  for (const entry of base) {
-    for (const lang of ["ja", "en"]) {
-      const dir = lang === "en" ? (entry.dir ? `en/${entry.dir}` : "en") : entry.dir;
-      out.push({ dir, route: entry.route, lang });
-    }
-  }
-  return out;
+}
+
+function outputDirForLocale(dir, lang) {
+  if (lang !== "en") return dir;
+  return dir ? `en/${dir}` : "en";
+}
+
+function localizedRouteEntries(entries) {
+  return entries.flatMap((entry) => ROUTE_LOCALES.map((lang) => ({
+    dir: outputDirForLocale(entry.dir, lang),
+    route: entry.route,
+    lang,
+  })));
+}
+
+/**
+ * Every route to prerender, for both locales. `dir` is the output directory
+ * under dist/ (""/"about"/"blog/<id>"/... and the "en/"-prefixed mirror).
+ */
+export function allRoutes() {
+  return localizedRouteEntries(baseRouteEntries());
 }

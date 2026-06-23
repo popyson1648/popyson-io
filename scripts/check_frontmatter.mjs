@@ -1,24 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse as parseToml } from "smol-toml";
 import { postsDir } from "./content_loader.mjs";
+import { parseFrontmatterForCheck } from "./frontmatter.mjs";
 import { validateMetadata } from "./metadataSchema.mjs";
-
-function parseFrontmatter(source) {
-  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  if (!text.startsWith("+++\n")) {
-    return { errors: [{ field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" }] };
-  }
-  const end = text.indexOf("\n+++", 4);
-  if (end === -1) {
-    return { errors: [{ field: "frontmatter", reason: "is missing closing +++ delimiter" }] };
-  }
-  try {
-    return { meta: parseToml(text.slice(4, end)), errors: [] };
-  } catch (error) {
-    return { errors: [{ field: "frontmatter", reason: `is not valid TOML: ${error.message}` }] };
-  }
-}
 
 function postMarkdownFiles() {
   const dir = postsDir();
@@ -34,7 +18,7 @@ function postMarkdownFiles() {
 const failures = [];
 
 for (const file of postMarkdownFiles()) {
-  const parsed = parseFrontmatter(readFileSync(file, "utf8"));
+  const parsed = parseFrontmatterForCheck(readFileSync(file, "utf8"));
   const errors = parsed.errors.length > 0 ? parsed.errors : validateMetadata(parsed.meta);
   for (const error of errors) {
     failures.push(`${file}: ${error.field}: ${error.reason}`);

@@ -18,9 +18,9 @@ export function bodyText(id, lang) {
   const body = window.ArticleBody.get(id);
   if (body && !Array.isArray(body)) {
     const localizedBody = body[lang] || body.ja || body.en || {};
-    return String(localizedBody.text || "").toLowerCase();
+    return String(typeof localizedBody === "string" ? localizedBody : localizedBody.text || "").toLowerCase();
   }
-  const blocks = body || [];
+  const blocks = Array.isArray(body) ? body : [];
   const parts = [];
   for (const b of blocks) {
     if (b.kind === "p" || b.kind === "h2" || b.kind === "msg") parts.push(L({ ja: b.ja, en: b.en }, lang));
@@ -60,7 +60,7 @@ export const Icon = {
 };
 
 /* ---------- placeholder thumbnail (× box) ---------- */
-export function Ph({ className = "", style, label }) {
+export function Ph({ className = "", style = undefined, label = "" }) {
   return (
     <div className={"ph " + className} style={style} aria-hidden="true">
       <svg className="ph-x" viewBox="0 0 100 100" preserveAspectRatio="none"
@@ -80,7 +80,7 @@ export function Ph({ className = "", style, label }) {
 }
 
 /* ---------- tag / chip ---------- */
-export function Chip({ children, on, onClick, isStatic }) {
+export function Chip({ children, on = false, onClick = undefined, isStatic = false }) {
   if (isStatic) {
     return <span className={"chip static" + (on ? " on" : "")}>{children}</span>;
   }
@@ -175,7 +175,7 @@ export function Footer() {
 }
 
 /* ---------- page header ---------- */
-export function PageHead({ title, sub }) {
+export function PageHead({ title, sub = "" }) {
   return (
     <div className="page-head">
       <h1>{title}</h1>

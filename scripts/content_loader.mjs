@@ -6,7 +6,9 @@ import { parse as parseToml } from "smol-toml";
 import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
 import { renderArticleBody } from "./articleHtml.mjs";
-import { assertValidMetadata, dateToIsoDate } from "./metadataSchema.mjs";
+import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
+import { parseMetadataConfig } from "./metadataConfig.mjs";
+import { dateToIsoDate } from "./metadataSchema.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
@@ -14,25 +16,11 @@ const ABOUT_DIR = join(ROOT, "src/content/about");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 const POST_ID_RE = /^\d{8}-[a-f0-9]{8}$/;
 
-function parseFrontmatter(source, filePath) {
-  const text = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  if (!text.startsWith("+++\n")) {
-    throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
-  }
-  const end = text.indexOf("\n+++", 4);
-  if (end === -1) throw new Error(`${filePath} is missing closing +++ frontmatter delimiter`);
-  const frontmatter = text.slice(4, end);
-  const body = text.slice(end + 5).replace(/^\r?\n/, "");
-  const meta = parseToml(frontmatter);
-  assertValidMetadata(meta, filePath);
-  return { meta, body };
-}
-
 function readMetadataConfig() {
   if (!existsSync(METADATA_CONFIG_FILE)) {
     throw new Error(`${METADATA_CONFIG_FILE} is required`);
   }
-  return parseToml(readFileSync(METADATA_CONFIG_FILE, "utf8"));
+  return parseMetadataConfig(readFileSync(METADATA_CONFIG_FILE, "utf8"));
 }
 
 function todayIsoDate() {
@@ -129,8 +117,8 @@ function readPost(dirName, config) {
   const dir = join(POSTS_DIR, dirName);
   const jaPath = join(dir, "index.ja.md");
   const enPath = join(dir, "index.en.md");
-  const ja = parseFrontmatter(readFileSync(jaPath, "utf8"), jaPath);
-  const en = parseFrontmatter(readFileSync(enPath, "utf8"), enPath);
+  const ja = parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath);
+  const en = parseMarkdownFrontmatter(readFileSync(enPath, "utf8"), enPath);
   const common = { ...en.meta, ...ja.meta };
   const date = resolveDate(common, common.date === ja.meta.date ? jaPath : enPath);
   const post = {
@@ -151,6 +139,28 @@ function readAbout(locale) {
   const file = join(ABOUT_DIR, `about.${locale}.toml`);
   const data = parseToml(readFileSync(file, "utf8"));
   return data.person || {};
+}
+
+function postDirectories() {
+  if (!existsSync(POSTS_DIR)) return [];
+  return readdirSync(POSTS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+}
+
+function readPostEntries(config) {
+  return postDirectories()
+    .map((dir) => readPost(dir, config))
+    .sort((a, b) => b.post.date.localeCompare(a.post.date));
+}
+
+function articleBodiesFromEntries(entries) {
+  return Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
+}
+
+function uniqueTags(posts) {
+  return [...new Set(posts.flatMap((post) => post.tags))];
 }
 
 export function relatedPostIds(post, posts, limit = 3) {
@@ -199,13 +209,10 @@ function localizeAbout(ja, en) {
 
 export function loadSiteContent() {
   const metadataConfig = readMetadataConfig();
-  const dirs = existsSync(POSTS_DIR)
-    ? readdirSync(POSTS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
-    : [];
-  const entries = dirs.map((dir) => readPost(dir, metadataConfig)).sort((a, b) => b.post.date.localeCompare(a.post.date));
+  const entries = readPostEntries(metadataConfig);
   const posts = withRelatedIds(entries.map((entry) => entry.post));
-  const articleBodies = Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
-  const tags = [...new Set(posts.flatMap((post) => post.tags))];
+  const articleBodies = articleBodiesFromEntries(entries);
+  const tags = uniqueTags(posts);
   const person = localizeAbout(readAbout("ja"), readAbout("en"));
   return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person };
 }

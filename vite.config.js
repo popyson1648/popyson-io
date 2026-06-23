@@ -85,41 +85,52 @@ function generateThemeCss() {
   return blocks.join("\n\n") + "\n";
 }
 
-// Two jobs:
-//   1. `import "virtual:theme.css"` -> CSS generated from theme.toml at
-//      build/dev time, so colors ship in the bundled (and prerendered) CSS.
-//   2. `import "virtual:site-content"` -> generated post/about content.
-//   3. `import x from "./*.toml"` -> the parsed object as an ES module.
-function tomlContent() {
+// `import "virtual:theme.css"` -> CSS generated from theme.toml at
+// build/dev time, so colors ship in the bundled (and prerendered) CSS.
+function themeCssPlugin() {
   return {
-    name: "toml-content",
+    name: "theme-css",
     resolveId(id) {
       if (id === VIRTUAL_THEME_ID) return RESOLVED_THEME_ID;
+      return null;
+    },
+    load(id) {
+      if (id !== RESOLVED_THEME_ID) return null;
+      // Tell Vite the virtual CSS depends on theme.toml (it is not otherwise
+      // in the module graph), so edits invalidate this module and trigger HMR.
+      this.addWatchFile(THEME_TOML);
+      return generateThemeCss();
+    },
+  };
+}
+
+// `import "virtual:site-content"` -> generated post/about content.
+function siteContentPlugin() {
+  return {
+    name: "site-content",
+    resolveId(id) {
       if (id === VIRTUAL_SITE_CONTENT_ID) return RESOLVED_SITE_CONTENT_ID;
       return null;
     },
     async load(id) {
-      if (id === RESOLVED_THEME_ID) {
-        // Tell Vite the virtual CSS depends on theme.toml (it is not otherwise
-        // in the module graph), so edits invalidate this module and trigger HMR.
-        this.addWatchFile(THEME_TOML);
-        return generateThemeCss();
-      }
-      if (id === RESOLVED_SITE_CONTENT_ID) {
-        for (const file of contentWatchFiles()) this.addWatchFile(file);
-        const content = await renderArticleBodies(loadSiteContent());
-        return Object.entries(content)
-          .map(([key, value]) => `export const ${key} = ${JSON.stringify(value)};`)
-          .join("\n") + "\n";
-      }
-      return null;
+      if (id !== RESOLVED_SITE_CONTENT_ID) return null;
+      for (const file of contentWatchFiles()) this.addWatchFile(file);
+      const content = await renderArticleBodies(loadSiteContent());
+      return Object.entries(content)
+        .map(([key, value]) => `export const ${key} = ${JSON.stringify(value)};`)
+        .join("\n") + "\n";
     },
+  };
+}
+
+// `import x from "./*.toml"` -> the parsed object as an ES module.
+function tomlImportPlugin() {
+  return {
+    name: "toml-import",
     transform(_code, id) {
-      if (id.endsWith(".toml")) {
-        const data = parseToml(readFileSync(id, "utf8"));
-        return { code: `export default ${JSON.stringify(data)};`, map: null };
-      }
-      return null;
+      if (!id.endsWith(".toml")) return null;
+      const data = parseToml(readFileSync(id, "utf8"));
+      return { code: `export default ${JSON.stringify(data)};`, map: null };
     },
   };
 }
@@ -135,5 +146,5 @@ function rssFeed() {
 }
 
 export default defineConfig({
-  plugins: [react(), tomlContent(), rssFeed()],
+  plugins: [react(), themeCssPlugin(), siteContentPlugin(), tomlImportPlugin(), rssFeed()],
 });

@@ -9,13 +9,18 @@ name: Reading list refresh & deploy
 # (workflow_dispatch) and push runs always build + deploy so code changes ship.
 #
 # Required GitHub secrets:
-#   OP_SERVICE_ACCOUNT_TOKEN  - 1Password service account (reads Development vault)
-#   CLOUDFLARE_API_TOKEN      - Cloudflare API token (Account > Cloudflare Pages > Edit)
-#   CLOUDFLARE_ACCOUNT_ID     - Cloudflare account id
+#   INSTAPAPER_CONSUMER_KEY        - Instapaper Full API consumer key
+#   INSTAPAPER_CONSUMER_SECRET     - Instapaper Full API consumer secret
+#   INSTAPAPER_OAUTH_TOKEN         - Instapaper OAuth token
+#   INSTAPAPER_OAUTH_TOKEN_SECRET  - Instapaper OAuth token secret
+#   CLOUDFLARE_API_TOKEN           - Cloudflare API token (Account > Cloudflare Pages > Edit)
+#   CLOUDFLARE_ACCOUNT_ID          - Cloudflare account id
 # Required GitHub variable:
-#   CLOUDFLARE_PAGES_PROJECT  - Cloudflare Pages project name
+#   CLOUDFLARE_PAGES_PROJECT       - Cloudflare Pages project name
 #
-# The op:// references live in .op.env (no secrets there).
+# CI reads the Instapaper credentials straight from GitHub secrets. Local
+# development resolves the same values from 1Password instead:
+#   npm run reading:fetch:op   (op run --env-file=.op.env -- ...)
 
 on:
   schedule:
@@ -45,17 +50,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v4
+      - name: Verify Instapaper secrets are present
+        # Hard-fail on missing configuration so a misconfigured workflow cannot
+        # pass silently: the fetch step below swallows errors on purpose, so a
+        # missing secret would otherwise look like "no change" forever.
+        env:
+          INSTAPAPER_CONSUMER_KEY: ${{ secrets.INSTAPAPER_CONSUMER_KEY }}
+          INSTAPAPER_CONSUMER_SECRET: ${{ secrets.INSTAPAPER_CONSUMER_SECRET }}
+          INSTAPAPER_OAUTH_TOKEN: ${{ secrets.INSTAPAPER_OAUTH_TOKEN }}
+          INSTAPAPER_OAUTH_TOKEN_SECRET: ${{ secrets.INSTAPAPER_OAUTH_TOKEN_SECRET }}
+        run: |
+          missing=0
+          for var in INSTAPAPER_CONSUMER_KEY INSTAPAPER_CONSUMER_SECRET \
+                     INSTAPAPER_OAUTH_TOKEN INSTAPAPER_OAUTH_TOKEN_SECRET; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Required secret $var is not set"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
 
       - name: Fetch reading list from Instapaper
-        # Resilient: if Instapaper/op is unavailable, keep the last committed
+        # Resilient: if Instapaper is unavailable, keep the last committed
         # snapshot. A scheduled run then sees no change and skips redeploy; the
-        # live site already serves that last snapshot.
+        # live site already serves that last snapshot. Missing credentials are
+        # caught by the guard step above, so only transient failures land here.
         continue-on-error: true
         env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-        run: op run --env-file=.op.env -- npm run reading:fetch
+          INSTAPAPER_CONSUMER_KEY: ${{ secrets.INSTAPAPER_CONSUMER_KEY }}
+          INSTAPAPER_CONSUMER_SECRET: ${{ secrets.INSTAPAPER_CONSUMER_SECRET }}
+          INSTAPAPER_OAUTH_TOKEN: ${{ secrets.INSTAPAPER_OAUTH_TOKEN }}
+          INSTAPAPER_OAUTH_TOKEN_SECRET: ${{ secrets.INSTAPAPER_OAUTH_TOKEN_SECRET }}
+        run: npm run reading:fetch
 
       - name: Commit snapshot if changed
         id: commit

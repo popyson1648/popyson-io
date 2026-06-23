@@ -1,0 +1,75 @@
+name: Site deploy
+
+# Builds the site and deploys it to Cloudflare Pages via Direct Upload
+# (wrangler). This workflow ships blog/about/code changes and is intentionally
+# decoupled from the reading list: refreshing the reading list happens in
+# reading-refresh.yml on a schedule.
+#
+# Reading data is baked into the build, so this workflow does a best-effort
+# Instapaper fetch to embed the current snapshot. That fetch is non-blocking:
+#   - Fetch succeeds -> deploy with the fresh snapshot.
+#   - Fetch fails    -> deploy with the committed src/reading.json fallback.
+# Either way the site (blog/about/code) always ships, so an Instapaper outage
+# never blocks a content deploy.
+#
+# Required GitHub secrets:
+#   INSTAPAPER_CONSUMER_KEY        - Instapaper Full API consumer key
+#   INSTAPAPER_CONSUMER_SECRET     - Instapaper Full API consumer secret
+#   INSTAPAPER_OAUTH_TOKEN         - Instapaper OAuth token
+#   INSTAPAPER_OAUTH_TOKEN_SECRET  - Instapaper OAuth token secret
+#   CLOUDFLARE_API_TOKEN           - Cloudflare API token (Account > Cloudflare Pages > Edit)
+#   CLOUDFLARE_ACCOUNT_ID          - Cloudflare account id
+# Required GitHub variable:
+#   CLOUDFLARE_PAGES_PROJECT       - Cloudflare Pages project name
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Shared with reading-refresh.yml so site deploys and reading refreshes never
+  # race to upload to Cloudflare Pages at the same time.
+  group: cloudflare-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh reading list (best-effort)
+        # Non-blocking: on any failure (outage or missing secrets) we keep the
+        # committed src/reading.json and still deploy, so content always ships.
+        continue-on-error: true
+        env:
+          INSTAPAPER_CONSUMER_KEY: ${{ secrets.INSTAPAPER_CONSUMER_KEY }}
+          INSTAPAPER_CONSUMER_SECRET: ${{ secrets.INSTAPAPER_CONSUMER_SECRET }}
+          INSTAPAPER_OAUTH_TOKEN: ${{ secrets.INSTAPAPER_OAUTH_TOKEN }}
+          INSTAPAPER_OAUTH_TOKEN_SECRET: ${{ secrets.INSTAPAPER_OAUTH_TOKEN_SECRET }}
+        run: npm run reading:fetch
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          # Ensure the Direct Upload project exists (no-op if it already does).
+          npx wrangler pages project create "$PROJECT" --production-branch=main 2>/dev/null || true
+          npx wrangler pages deploy dist --project-name="$PROJECT" --branch=main --commit-dirty=true

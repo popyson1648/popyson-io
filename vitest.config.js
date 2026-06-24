@@ -12,6 +12,11 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
+      // The first renderArticleHtml call lazily initializes Shiki (WASM grammars
+      // + themes), which can exceed Vitest's 5s default on cold CI runners.
+      // Inherited by every project via `extends: true`; high enough to absorb the
+      // cold start while still catching a genuine hang.
+      testTimeout: 20000,
       projects: [
         {
           extends: true,

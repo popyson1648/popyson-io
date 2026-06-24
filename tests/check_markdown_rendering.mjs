@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { markdownToPlainText, renderArticleHtml } from "./articleHtml.mjs";
+import { markdownToPlainText, renderArticleHtml } from "../scripts/articleHtml.mjs";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 import {
   calloutMarkdownFixture,

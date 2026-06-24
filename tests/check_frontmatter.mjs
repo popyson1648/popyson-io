@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { postsDir } from "./content_loader.mjs";
-import { parseFrontmatterForCheck } from "./frontmatter.mjs";
-import { validateMetadata } from "./metadataSchema.mjs";
+import { postsDir } from "../scripts/content_loader.mjs";
+import { parseFrontmatterForCheck } from "../scripts/frontmatter.mjs";
+import { validateMetadata } from "../scripts/metadataSchema.mjs";
 
 function postMarkdownFiles() {
   const dir = postsDir();

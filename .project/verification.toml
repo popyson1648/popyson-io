@@ -23,7 +23,7 @@ run_in_ci = false
 
 [phases.frontmatter]
 enabled = true
-command = "node scripts/check_frontmatter.mjs"
+command = "node tests/check_frontmatter.mjs"
 run_pre_commit = true
 run_in_ci = true
 
@@ -35,7 +35,7 @@ run_in_ci = true
 
 [phases.metadata_quality]
 enabled = true
-command = "node scripts/check_metadata_quality.mjs"
+command = "node tests/check_metadata_quality.mjs"
 run_pre_commit = true
 run_in_ci = true
 
@@ -53,7 +53,7 @@ run_in_ci = true
 
 [phases.test_unit]
 enabled = true
-command = "npm run build && node scripts/check_core_helpers.mjs && node scripts/check_metadata_schema.mjs && node scripts/check_metadata_edges.mjs && node scripts/check_generate_metadata.mjs && node scripts/check_markdown_rendering.mjs && node scripts/check_content_loader.mjs && node scripts/check_pagefind_search.mjs && node scripts/check_prerendered_routes.mjs"
+command = "npm run build && node tests/check_core_helpers.mjs && node tests/check_metadata_schema.mjs && node tests/check_metadata_edges.mjs && node tests/check_generate_metadata.mjs && node tests/check_markdown_rendering.mjs && node tests/check_content_loader.mjs && node tests/check_pagefind_search.mjs && node tests/check_prerendered_routes.mjs"
 run_pre_commit = true
 run_in_ci = true
 
@@ -75,7 +75,7 @@ command = ""
 
 [phases.accessibility]
 enabled = true
-command = "python3 scripts/check_accessibility_static.py"
+command = "python3 tests/check_accessibility_static.py"
 run_on_edit = true
 run_pre_commit = true
 run_in_ci = true

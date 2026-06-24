@@ -1,10 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { evaluateMetadata } from "./generate_metadata.mjs";
-import { postsDir, rootDir } from "./content_loader.mjs";
-import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
-import { parseMetadataConfig } from "./metadataConfig.mjs";
-import { dateToIsoDate } from "./metadataSchema.mjs";
+import { evaluateMetadata } from "../scripts/generate_metadata.mjs";
+import { postsDir, rootDir } from "../scripts/content_loader.mjs";
+import { parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
+import { parseMetadataConfig } from "../scripts/metadataConfig.mjs";
+import { dateToIsoDate } from "../scripts/metadataSchema.mjs";
 
 const ROOT = rootDir();
 const config = parseMetadataConfig(readFileSync(join(ROOT, "src/content/metadata.toml"), "utf8"));

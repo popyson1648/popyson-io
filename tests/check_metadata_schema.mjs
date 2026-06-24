@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { parse as parseToml } from "smol-toml";
-import { validateMetadata } from "./metadataSchema.mjs";
+import { validateMetadata } from "../scripts/metadataSchema.mjs";
 
 function errorsFor(toml) {
   return validateMetadata(parseToml(toml)).map((error) => error.field);

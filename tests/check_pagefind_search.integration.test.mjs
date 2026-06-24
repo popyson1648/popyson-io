@@ -1,8 +1,7 @@
-import assert from "node:assert/strict";
-import { test } from "vitest";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 const DIST = resolve("dist");
 const CONTENT_TYPES = {
@@ -48,40 +47,46 @@ async function searchWithLang(pagefind, base, lang, query) {
   return { count: response.results.length, first };
 }
 
-test("pagefindSearch_findsLocalizedArticlesInBuiltDist", async () => {
-const server = await serveDist();
-const { port } = server.address();
-const base = `http://127.0.0.1:${port}`;
+describe("Pagefind search over the built dist/", () => {
+  let server;
+  let base;
+  let pagefind;
 
-globalThis.location = /** @type {Location} */ ({
-  href: `${base}/`,
-  origin: base,
-});
-globalThis.document = /** @type {Document} */ ({
-  currentScript: null,
-  documentElement: { lang: "ja" },
-  querySelector(selector) {
-    return selector === "html"
-      ? { getAttribute: () => this.documentElement.lang }
-      : null;
-  },
-});
+  beforeAll(async () => {
+    server = await serveDist();
+    base = `http://127.0.0.1:${server.address().port}`;
 
-try {
-  const pagefind = await import(`file://${join(DIST, "pagefind/pagefind.js")}?ts=${Date.now()}`);
-  const ja = await searchWithLang(pagefind, base, "ja", "サブコマンド");
-  const en = await searchWithLang(pagefind, base, "en", "subcommands");
+    globalThis.location = /** @type {Location} */ ({ href: `${base}/`, origin: base });
+    globalThis.document = /** @type {Document} */ ({
+      currentScript: null,
+      documentElement: { lang: "ja" },
+      querySelector(selector) {
+        return selector === "html"
+          ? { getAttribute: () => this.documentElement.lang }
+          : null;
+      },
+    });
 
-  assert.equal(ja.count, 1, "Japanese query should find one Japanese article");
-  assert.equal(ja.first?.url, `${base}/blog/20260521-a1b2c3d4/`);
-  assert.equal(ja.first?.meta?.title, "型で導く CLI 設計");
+    pagefind = await import(`file://${join(DIST, "pagefind/pagefind.js")}?ts=${Date.now()}`);
+  });
 
-  assert.equal(en.count, 1, "English query should find one English article");
-  assert.equal(en.first?.url, `${base}/en/blog/20260521-a1b2c3d4/`);
-  assert.equal(en.first?.meta?.title, "Type-Driven CLI Design");
+  afterAll(() => {
+    server?.close();
+  });
 
-  await pagefind.destroy();
-} finally {
-  server.close();
-}
+  test("finds the Japanese article for a Japanese query", async () => {
+    const ja = await searchWithLang(pagefind, base, "ja", "サブコマンド");
+
+    expect(ja.count).toBe(1);
+    expect(ja.first?.url).toBe(`${base}/blog/20260521-a1b2c3d4/`);
+    expect(ja.first?.meta?.title).toBe("型で導く CLI 設計");
+  });
+
+  test("finds the English article for an English query", async () => {
+    const en = await searchWithLang(pagefind, base, "en", "subcommands");
+
+    expect(en.count).toBe(1);
+    expect(en.first?.url).toBe(`${base}/en/blog/20260521-a1b2c3d4/`);
+    expect(en.first?.meta?.title).toBe("Type-Driven CLI Design");
+  });
 });

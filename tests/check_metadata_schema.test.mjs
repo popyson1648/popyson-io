@@ -1,6 +1,5 @@
-import assert from "node:assert/strict";
 import { parse as parseToml } from "smol-toml";
-import { test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { validateMetadata } from "../scripts/metadataSchema.mjs";
 
 function errorsFor(toml) {
@@ -57,32 +56,30 @@ date = 2026-02-07
 `,
 ];
 
-test("validateMetadata_whenMetadataIsValid_returnsNoErrors", () => {
-  for (const validCase of validCases) {
-    assert.deepEqual(validateMetadata(parseToml(validCase)), []);
-  }
-});
-
 const invalidCases = [
-  [`date = "2026-02-07"`, "title"],
-  [`title = ""\ndate = "2026-02-07"`, "title"],
-  [`title = "Post"`, "date"],
-  [`title = "Post"\ndate = "soon"`, "date"],
-  [`title = "Post"\ndate = "2026-02-07"\ntags = "js, react"`, "tags"],
-  [`title = "Post"\ndate = "2026-02-07"\ntags = ["js", 1]`, "tags"],
-  [`title = "Post"\ndate = "2026-02-07"\nauto_tags = { count = 0 }`, "auto_tags.count"],
-  [`title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "brief"`, "sumup.mode"],
-  [`title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"`, "sumup.text"],
-  [`title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"\ntext = "x"\ngenerated = "yes"`, "sumup.generated"],
-  [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "remote"`, "thumbnail.mode"],
-  [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "auto"\nconcept = 5`, "thumbnail.concept"],
-  [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"`, "thumbnail.path"],
-  [`title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"`, "thumbnail.generated"],
-  [`title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"`, "summary"],
+  { field: "title", toml: `date = "2026-02-07"` },
+  { field: "title", toml: `title = ""\ndate = "2026-02-07"` },
+  { field: "date", toml: `title = "Post"` },
+  { field: "date", toml: `title = "Post"\ndate = "soon"` },
+  { field: "tags", toml: `title = "Post"\ndate = "2026-02-07"\ntags = "js, react"` },
+  { field: "tags", toml: `title = "Post"\ndate = "2026-02-07"\ntags = ["js", 1]` },
+  { field: "auto_tags.count", toml: `title = "Post"\ndate = "2026-02-07"\nauto_tags = { count = 0 }` },
+  { field: "sumup.mode", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "brief"` },
+  { field: "sumup.text", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"` },
+  { field: "sumup.generated", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"\ntext = "x"\ngenerated = "yes"` },
+  { field: "thumbnail.mode", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "remote"` },
+  { field: "thumbnail.concept", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "auto"\nconcept = 5` },
+  { field: "thumbnail.path", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"` },
+  { field: "thumbnail.generated", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"` },
+  { field: "summary", toml: `title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"` },
 ];
 
-test("validateMetadata_whenMetadataIsInvalid_reportsExpectedFieldError", () => {
-  for (const [toml, expectedField] of invalidCases) {
-    assert.ok(errorsFor(toml).includes(expectedField), `expected ${expectedField} error for:\n${toml}`);
-  }
+describe("validateMetadata", () => {
+  test.each(validCases)("accepts valid metadata case %#", (toml) => {
+    expect(validateMetadata(parseToml(toml))).toEqual([]);
+  });
+
+  test.each(invalidCases)("reports a $field error", ({ toml, field }) => {
+    expect(errorsFor(toml)).toContain(field);
+  });
 });

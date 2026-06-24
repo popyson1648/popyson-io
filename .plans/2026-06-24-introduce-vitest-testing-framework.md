@@ -48,10 +48,14 @@ ability to test React components — which the current approach cannot do.
 - Vitest Browser Mode (real-browser Playwright). happy-dom is enough at
   this site's scale; revisit only if a test needs real browser behavior.
 - CI coverage thresholds / gates. Measure first.
-- Rewriting assertions from `node:assert` to `expect()` wholesale. Only
-  the minimal wrapping needed for discovery/reporting.
 - The Python a11y test (`check_accessibility_static.py`) and Lighthouse —
   they stay as their own phases.
+
+> Update: the specs were fully rewritten in idiomatic Vitest style
+> (`expect` API, `describe`, `test.each`, `beforeAll`/`afterAll`) rather than
+> minimally wrapped. The minimal-wrap version is preserved on the
+> `introduce-vitest` branch; the idiomatic rewrite lives on
+> `introduce-vitest-idiomatic`. See `.decisions/testing-framework-vitest.md`.
 
 ## Assumptions
 

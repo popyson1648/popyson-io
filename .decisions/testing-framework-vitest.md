@@ -55,14 +55,18 @@ ESLint for linting.
 
 Vitest is the current best-practice runner for Vite + React projects: it shares
 `vite.config.js` (no duplicate config), handles ESM/JSX/TS natively, and unlocks
-React component tests, coverage, watch mode, and per-test reporting. The existing
-`node:assert` specs run unchanged under it, so migration was low-risk.
+React component tests, coverage, watch mode, and per-test reporting. The specs
+were rewritten in idiomatic Vitest style (`describe`/`test`, the `expect` API,
+`test.each` for table-driven cases, `beforeAll`/`afterAll` for fixtures) so each
+case reports independently rather than aborting a serial chain on the first
+failure.
 
 ## Consequences
 
 - New dev dependencies: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`,
   `@testing-library/jest-dom`, `@testing-library/user-event`, `happy-dom`.
-- Test files renamed to `*.test.mjs` / `*.integration.test.mjs` / `*.test.jsx`.
+- Test files renamed to `*.test.mjs` / `*.integration.test.mjs` / `*.test.jsx`
+  and converted from `node:assert` scripts to the `expect` API.
 - The separate `frontmatter` and `metadata_quality` verification phases are
   folded into the `unit` project (`test_unit`).
 - `package.json` gains `test`, `test:watch`, `test:unit`, `test:component`,

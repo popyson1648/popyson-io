@@ -71,8 +71,10 @@ failure.
   folded into the `unit` project (`test_unit`).
 - `package.json` gains `test`, `test:watch`, `test:unit`, `test:component`,
   `test:integration`, and `coverage` scripts.
-- `.pre-commit-config.yaml` and `.github/workflows/ci.yml` are unchanged: both
-  drive `scripts/verify.py`, which is config-driven from `.project/verification.toml`.
+- `.pre-commit-config.yaml` (and the `.template/` copy) were updated for the
+  verify-mode rename (`pre-commit` → `standard`); `.github/workflows/ci.yml` is
+  unchanged. Both still drive `scripts/verify.py`, which is config-driven from
+  `.project/verification.toml`.
 
 ## Revisit Conditions
 

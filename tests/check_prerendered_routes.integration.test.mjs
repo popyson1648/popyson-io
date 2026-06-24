@@ -22,7 +22,13 @@ const content = loadSiteContent();
 configureMetaData(content);
 
 const PERSON = content.PERSON;
-const firstApp = APPS[0];
+
+// Routes that carry an assertable body here; article routes (the default case)
+// are covered by check_markdown_rendering. Used to build `cases` without touching
+// APPS at module-eval time, so an empty APPS surfaces as a clean test failure
+// (via the guard below and the per-case assertions) rather than a crash while
+// constructing the case list.
+const ROUTES_WITH_EXPECTATIONS = new Set(["about", "blog", "app", "appDetail", "reading", "rss"]);
 
 function read(dir) {
   const file = join(dir ? join(DIST, dir) : DIST, "index.html");
@@ -38,8 +44,11 @@ function expectationsFor(route, lang) {
       return ['class="about-top"', PERSON.name[lang]];
     case "blog":
       return ['class="post-index"', "post-index-title"];
-    case "app":
+    case "app": {
+      const firstApp = APPS[0];
+      expect(firstApp, "missing app metadata for the app index route").toBeTruthy();
       return ['class="app-grid"', firstApp.title];
+    }
     case "appDetail": {
       const app = APPS.find((a) => a.id === route.id);
       expect(app, `missing app metadata for route id ${route.id}`).toBeTruthy();
@@ -54,9 +63,7 @@ function expectationsFor(route, lang) {
   }
 }
 
-const cases = allRoutes()
-  .map(({ dir, route, lang }) => ({ dir, route, lang, expectations: expectationsFor(route, lang) }))
-  .filter((entry) => entry.expectations);
+const cases = allRoutes().filter(({ route }) => ROUTES_WITH_EXPECTATIONS.has(route.name));
 
 describe("prerendered routes", () => {
   test("APPS metadata is a non-empty array", () => {
@@ -68,7 +75,9 @@ describe("prerendered routes", () => {
     expect(cases.length).toBeGreaterThan(0);
   });
 
-  test.each(cases)("$dir ($route.name, $lang) bakes its primary body into #root", ({ dir, expectations }) => {
+  test.each(cases)("$dir ($route.name, $lang) bakes its primary body into #root", ({ dir, route, lang }) => {
+    const expectations = expectationsFor(route, lang);
+    expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
     const html = read(dir);
     for (const needle of expectations) {
       expect(html).toContain(needle);

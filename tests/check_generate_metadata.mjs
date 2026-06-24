@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
-import { evaluateMetadata, pendingMetadataReasons, previewPrompts, resolveMetadata } from "./generate_metadata.mjs";
+import { evaluateMetadata, pendingMetadataReasons, previewPrompts, resolveMetadata } from "../scripts/generate_metadata.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 

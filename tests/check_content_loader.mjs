@@ -8,7 +8,7 @@ import {
   postIdPattern,
   relatedPostIds,
   rootDir,
-} from "./content_loader.mjs";
+} from "../scripts/content_loader.mjs";
 
 const posts = [
   { id: "newest-two-tags", date: "2026-05-04", tags: ["react", "perf"] },

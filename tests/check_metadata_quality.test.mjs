@@ -1,5 +1,7 @@
+import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { test } from "vitest";
 import { evaluateMetadata } from "../scripts/generate_metadata.mjs";
 import { postsDir, rootDir } from "../scripts/content_loader.mjs";
 import { parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
@@ -150,28 +152,25 @@ function validateLocalePairs(filesByDir) {
   }
 }
 
-validateConfig();
+test("checkedInMetadata_passesQualityRulesConfigAndLocaleParity", () => {
+  validateConfig();
 
-const filesByDir = new Map();
+  const filesByDir = new Map();
 
-for (const filePath of markdownFiles()) {
-  const meta = frontmatter(readFileSync(filePath, "utf8"));
-  const locale = filePath.endsWith(".ja.md") ? "ja" : "en";
-  const dir = dirname(filePath);
-  if (!filesByDir.has(dir)) filesByDir.set(dir, {});
-  filesByDir.get(dir)[locale] = { filePath, meta };
+  for (const filePath of markdownFiles()) {
+    const meta = frontmatter(readFileSync(filePath, "utf8"));
+    const locale = filePath.endsWith(".ja.md") ? "ja" : "en";
+    const dir = dirname(filePath);
+    if (!filesByDir.has(dir)) filesByDir.set(dir, {});
+    filesByDir.get(dir)[locale] = { filePath, meta };
 
-  failures.push(...evaluateMetadata(meta, { filePath, locale, config }));
-  validateTags(meta, filePath);
-  validateResolvedMetadata(meta, filePath);
-  validateThumbnail(meta, filePath);
-}
+    failures.push(...evaluateMetadata(meta, { filePath, locale, config }));
+    validateTags(meta, filePath);
+    validateResolvedMetadata(meta, filePath);
+    validateThumbnail(meta, filePath);
+  }
 
-validateLocalePairs(filesByDir);
+  validateLocalePairs(filesByDir);
 
-if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
-}
-
-console.log("metadata quality checks passed");
+  assert.deepEqual(failures, [], failures.join("\n"));
+});

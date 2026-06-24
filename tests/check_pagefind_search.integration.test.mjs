@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { test } from "vitest";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
@@ -47,6 +48,7 @@ async function searchWithLang(pagefind, base, lang, query) {
   return { count: response.results.length, first };
 }
 
+test("pagefindSearch_findsLocalizedArticlesInBuiltDist", async () => {
 const server = await serveDist();
 const { port } = server.address();
 const base = `http://127.0.0.1:${port}`;
@@ -79,7 +81,7 @@ try {
   assert.equal(en.first?.meta?.title, "Type-Driven CLI Design");
 
   await pagefind.destroy();
-  console.log("pagefind search checks passed");
 } finally {
   server.close();
 }
+});

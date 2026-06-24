@@ -8,6 +8,7 @@
    focuses on the React-rendered routes added for issue #32.
    ============================================================ */
 import assert from "node:assert/strict";
+import { test } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +23,6 @@ const content = loadSiteContent();
 configureMetaData(content);
 
 const PERSON = content.PERSON;
-assert.ok(Array.isArray(APPS) && APPS.length > 0, "expected APPS to be a non-empty array");
 const firstApp = APPS[0];
 
 function read(dir) {
@@ -55,19 +55,22 @@ function expectationsFor(route, lang) {
   }
 }
 
-let checked = 0;
-for (const { dir, route, lang } of allRoutes()) {
-  const expectations = expectationsFor(route, lang);
-  if (!expectations) continue;
-  const html = read(dir);
-  for (const needle of expectations) {
-    assert.ok(
-      html.includes(needle),
-      `prerendered "${dir || "/"}" (${route.name}, ${lang}) is missing: ${needle}`,
-    );
-  }
-  checked += 1;
-}
+test("prerenderedRoutes_bakePrimaryBodyIntoRootForEveryRoute", () => {
+  assert.ok(Array.isArray(APPS) && APPS.length > 0, "expected APPS to be a non-empty array");
 
-assert.ok(checked > 0, "expected at least one non-article route to validate");
-console.log(`prerendered route checks passed (${checked} routes)`);
+  let checked = 0;
+  for (const { dir, route, lang } of allRoutes()) {
+    const expectations = expectationsFor(route, lang);
+    if (!expectations) continue;
+    const html = read(dir);
+    for (const needle of expectations) {
+      assert.ok(
+        html.includes(needle),
+        `prerendered "${dir || "/"}" (${route.name}, ${lang}) is missing: ${needle}`,
+      );
+    }
+    checked += 1;
+  }
+
+  assert.ok(checked > 0, "expected at least one non-article route to validate");
+});

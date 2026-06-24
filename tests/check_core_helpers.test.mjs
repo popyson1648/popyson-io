@@ -1,18 +1,10 @@
 import assert from "node:assert/strict";
+import { test } from "vitest";
 
 import { makeDateLabel, normalizeIsoDate, localizedDateLabel } from "../src/dateLabel.js";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 import { allRoutes, configureMetaData, headModel, localized, routeToPath, SITE } from "../src/meta.js";
 import { parseRoute } from "../src/routing.js";
-
-function test(name, fn) {
-  try {
-    fn();
-  } catch (error) {
-    error.message = `${name}: ${error.message}`;
-    throw error;
-  }
-}
 
 test("slugifyHeading_whenEnglishHeadingContainsPunctuation_returnsStableLowercaseSlug", () => {
   const seen = new Map();
@@ -228,5 +220,3 @@ test("allRoutes_whenPostsAreConfigured_expandsPostsAppsAndLocales", () => {
   assert.ok(keys.includes("ja:app/linewatch:appDetail:linewatch"));
   assert.ok(keys.includes("en:en/app/linewatch:appDetail:linewatch"));
 });
-
-console.log("core helper checks passed");

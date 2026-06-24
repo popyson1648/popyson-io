@@ -9,6 +9,12 @@
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit --project component",
+    "test:watch": "vitest --project unit --project component",
+    "test:unit": "vitest run --project unit",
+    "test:component": "vitest run --project component",
+    "test:integration": "npm run build && vitest run --project integration",
+    "coverage": "vitest run --project unit --project component --coverage",
     "metadata:generate": "node scripts/generate_metadata.mjs",
     "metadata:generate:op": "op run --env-file=.op.env -- node scripts/generate_metadata.mjs",
     "metadata:preview-prompts": "node scripts/generate_metadata.mjs --preview-prompts",
@@ -25,13 +31,18 @@
   },
   "devDependencies": {
     "@shikijs/rehype": "^4.2.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.19.21",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
+    "happy-dom": "^20.10.6",
     "lighthouse": "^13.4.0",
     "pagefind": "^1.5.2",
     "rehype-stringify": "^10.0.1",
@@ -44,6 +55,7 @@
     "typescript": "^6.0.3",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
   }
 }

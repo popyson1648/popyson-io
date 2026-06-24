@@ -5,30 +5,7 @@ import { tmpdir } from "node:os";
 import { evaluateMetadata, hasPendingMetadata, pendingMetadataReasons, resolveMetadata } from "../scripts/generate_metadata.mjs";
 import { parseFrontmatterForCheck, parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
 import { assertValidMetadata, dateToIsoDate, validateMetadata } from "../scripts/metadataSchema.mjs";
-
-function test(name, fn) {
-  try {
-    awaitIfNeeded(fn());
-  } catch (error) {
-    error.message = `${name}: ${error.message}`;
-    throw error;
-  }
-}
-
-async function asyncTest(name, fn) {
-  try {
-    await fn();
-  } catch (error) {
-    error.message = `${name}: ${error.message}`;
-    throw error;
-  }
-}
-
-function awaitIfNeeded(value) {
-  if (value && typeof value.then === "function") {
-    throw new Error("use asyncTest for async checks");
-  }
-}
+import { test } from "vitest";
 
 const config = {
   tag_generation: {
@@ -158,7 +135,7 @@ test("pendingMetadataReasons_whenGeneratedFieldsRemain_returnsStableHumanReasons
   assert.deepEqual(reasons, ['date = "auto"', "auto_tags", 'sumup.mode = "auto"', 'thumbnail.mode = "none"']);
 });
 
-await asyncTest("resolveMetadata_whenMetadataIsAlreadyResolved_returnsUnchangedWithoutProvider", async () => {
+test("resolveMetadata_whenMetadataIsAlreadyResolved_returnsUnchangedWithoutProvider", async () => {
   const filePath = join(tmpdir(), "resolved.en.md");
   const source = [
     "+++",
@@ -194,7 +171,7 @@ await asyncTest("resolveMetadata_whenMetadataIsAlreadyResolved_returnsUnchangedW
   assert.match(result.output, /Body\./);
 });
 
-await asyncTest("resolveMetadata_whenGeneratedTagsDoNotContainEnoughUsableValues_throwsReadableError", async () => {
+test("resolveMetadata_whenGeneratedTagsDoNotContainEnoughUsableValues_throwsReadableError", async () => {
   const source = [
     "+++",
     'title = "Needs tags"',
@@ -225,5 +202,3 @@ await asyncTest("resolveMetadata_whenGeneratedTagsDoNotContainEnoughUsableValues
     /AI metadata generation returned 0 usable tags, expected 2/,
   );
 });
-
-console.log("metadata edge checks passed");

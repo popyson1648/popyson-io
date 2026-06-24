@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { parse as parseToml } from "smol-toml";
+import { test } from "vitest";
 import { validateMetadata } from "../scripts/metadataSchema.mjs";
 
 function errorsFor(toml) {
@@ -56,9 +57,11 @@ date = 2026-02-07
 `,
 ];
 
-for (const validCase of validCases) {
-  assert.deepEqual(validateMetadata(parseToml(validCase)), []);
-}
+test("validateMetadata_whenMetadataIsValid_returnsNoErrors", () => {
+  for (const validCase of validCases) {
+    assert.deepEqual(validateMetadata(parseToml(validCase)), []);
+  }
+});
 
 const invalidCases = [
   [`date = "2026-02-07"`, "title"],
@@ -78,8 +81,8 @@ const invalidCases = [
   [`title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"`, "summary"],
 ];
 
-for (const [toml, expectedField] of invalidCases) {
-  assert.ok(errorsFor(toml).includes(expectedField), `expected ${expectedField} error for:\n${toml}`);
-}
-
-console.log("metadata schema checks passed");
+test("validateMetadata_whenMetadataIsInvalid_reportsExpectedFieldError", () => {
+  for (const [toml, expectedField] of invalidCases) {
+    assert.ok(errorsFor(toml).includes(expectedField), `expected ${expectedField} error for:\n${toml}`);
+  }
+});

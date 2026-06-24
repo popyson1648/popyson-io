@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
+import { test } from "vitest";
 import { evaluateMetadata, pendingMetadataReasons, previewPrompts, resolveMetadata } from "../scripts/generate_metadata.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
@@ -31,6 +32,7 @@ const config = {
   },
 };
 
+test("resolveMetadata_endToEnd_generatesTagsSummaryThumbnailAndStaysIdempotent", async () => {
 const tempDir = mkdtempSync(join(tmpdir(), "metadata-generation-"));
 
 try {
@@ -351,5 +353,4 @@ mode = "none"
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }
-
-console.log("metadata generation checks passed");
+});

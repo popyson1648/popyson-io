@@ -1,5 +1,7 @@
+import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { test } from "vitest";
 import { postsDir } from "../scripts/content_loader.mjs";
 import { parseFrontmatterForCheck } from "../scripts/frontmatter.mjs";
 import { validateMetadata } from "../scripts/metadataSchema.mjs";
@@ -15,19 +17,16 @@ function postMarkdownFiles() {
     ]);
 }
 
-const failures = [];
+test("checkedInPostFrontmatter_parsesAndValidatesAgainstMetadataSchema", () => {
+  const failures = [];
 
-for (const file of postMarkdownFiles()) {
-  const parsed = parseFrontmatterForCheck(readFileSync(file, "utf8"));
-  const errors = parsed.errors.length > 0 ? parsed.errors : validateMetadata(parsed.meta);
-  for (const error of errors) {
-    failures.push(`${file}: ${error.field}: ${error.reason}`);
+  for (const file of postMarkdownFiles()) {
+    const parsed = parseFrontmatterForCheck(readFileSync(file, "utf8"));
+    const errors = parsed.errors.length > 0 ? parsed.errors : validateMetadata(parsed.meta);
+    for (const error of errors) {
+      failures.push(`${file}: ${error.field}: ${error.reason}`);
+    }
   }
-}
 
-if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
-}
-
-console.log("frontmatter metadata checks passed");
+  assert.deepEqual(failures, [], failures.join("\n"));
+});

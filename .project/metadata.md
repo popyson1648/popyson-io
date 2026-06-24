@@ -129,7 +129,7 @@ in the UI is a separate task.
 Run:
 
 ```sh
-node scripts/check_frontmatter.mjs
+node tests/check_frontmatter.mjs
 ```
 
 To generate or refresh metadata:

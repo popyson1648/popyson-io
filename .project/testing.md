@@ -1,5 +1,7 @@
 # Testing
 
+Test and check scripts live under `tests/` (`check_*.mjs`, `check_*.py`, and their `fixtures/`); they import the modules they exercise from `scripts/`. Verification phases in `.project/verification.toml` invoke them by `tests/` path.
+
 ## Test Types
 
 - Lint: ESLint over JavaScript and JSX source.

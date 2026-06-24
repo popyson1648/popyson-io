@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 import { APPS } from "../src/apps.js";
 import { allRoutes, configureMetaData } from "../src/meta.js";
-import { loadSiteContent } from "./content_loader.mjs";
+import { loadSiteContent } from "../scripts/content_loader.mjs";
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 

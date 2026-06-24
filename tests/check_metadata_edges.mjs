@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { evaluateMetadata, hasPendingMetadata, pendingMetadataReasons, resolveMetadata } from "./generate_metadata.mjs";
-import { parseFrontmatterForCheck, parseMarkdownFrontmatter } from "./frontmatter.mjs";
-import { assertValidMetadata, dateToIsoDate, validateMetadata } from "./metadataSchema.mjs";
+import { evaluateMetadata, hasPendingMetadata, pendingMetadataReasons, resolveMetadata } from "../scripts/generate_metadata.mjs";
+import { parseFrontmatterForCheck, parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
+import { assertValidMetadata, dateToIsoDate, validateMetadata } from "../scripts/metadataSchema.mjs";
 
 function test(name, fn) {
   try {

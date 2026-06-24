@@ -8,41 +8,39 @@ reason = "No formatter is configured yet."
 [phases.lint]
 enabled = true
 command = "npm run lint"
-run_pre_commit = true
+run_standard = true
 run_in_ci = true
 
 [phases.actionlint]
 enabled = true
 command = "actionlint"
 run_on_edit = false
-run_pre_commit = false
+run_standard = false
 run_pre_push = true
 # CI runs actionlint through a dedicated ci.yml step, so the other workflows
 # that call `verify.py --mode ci` do not need the actionlint binary installed.
 run_in_ci = false
 
 [phases.frontmatter]
-enabled = true
-command = "node tests/check_frontmatter.mjs"
-run_pre_commit = true
-run_in_ci = true
+enabled = false
+command = ""
+reason = "Now a Vitest spec (tests/check_frontmatter.test.mjs) run by the test_unit phase."
 
 [phases.metadata_generate_check]
 enabled = true
 command = "node scripts/generate_metadata.mjs --check"
-run_pre_commit = true
+run_standard = true
 run_in_ci = true
 
 [phases.metadata_quality]
-enabled = true
-command = "node tests/check_metadata_quality.mjs"
-run_pre_commit = true
-run_in_ci = true
+enabled = false
+command = ""
+reason = "Now a Vitest spec (tests/check_metadata_quality.test.mjs) run by the test_unit phase."
 
 [phases.typecheck]
 enabled = true
 command = "npm run typecheck"
-run_pre_commit = true
+run_standard = true
 run_in_ci = true
 
 [phases.build]
@@ -53,21 +51,30 @@ run_in_ci = true
 
 [phases.test_unit]
 enabled = true
-command = "npm run build && node tests/check_core_helpers.mjs && node tests/check_metadata_schema.mjs && node tests/check_metadata_edges.mjs && node tests/check_generate_metadata.mjs && node tests/check_markdown_rendering.mjs && node tests/check_content_loader.mjs && node tests/check_pagefind_search.mjs && node tests/check_prerendered_routes.mjs"
-run_pre_commit = true
+command = "npx vitest run --project unit"
+run_standard = true
 run_in_ci = true
 
 [phases.test_integration]
-enabled = false
-command = ""
+enabled = true
+command = "npx vitest run --project integration"
+# Asserts against the built dist/, so the build phase must run first; build is
+# ordered before this in DEFAULT_ORDER and runs in the same modes. Skipped on
+# per-edit runs to keep the inner loop fast.
+run_on_edit = false
+run_standard = true
+run_pre_push = true
+run_in_ci = true
 
 [phases.test_e2e]
 enabled = false
 command = ""
 
 [phases.test_component]
-enabled = false
-command = ""
+enabled = true
+command = "npx vitest run --project component"
+run_standard = true
+run_in_ci = true
 
 [phases.test_contract]
 enabled = false
@@ -77,14 +84,14 @@ command = ""
 enabled = true
 command = "python3 tests/check_accessibility_static.py"
 run_on_edit = true
-run_pre_commit = true
+run_standard = true
 run_in_ci = true
 
 [phases.performance]
 enabled = true
 command = "npm run build && npm run lighthouse"
 run_on_edit = false
-run_pre_commit = false
+run_standard = false
 run_pre_push = true
 run_in_ci = true
 

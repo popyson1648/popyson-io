@@ -129,7 +129,7 @@ in the UI is a separate task.
 Run:
 
 ```sh
-node tests/check_frontmatter.mjs
+npx vitest run --project unit tests/check_frontmatter.test.mjs
 ```
 
 To generate or refresh metadata:

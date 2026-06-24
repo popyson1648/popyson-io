@@ -31,7 +31,7 @@ DEFAULT_ORDER = [
 MODE_FLAG_MAP = {
     "all": None,
     "edit": "run_on_edit",
-    "pre-commit": "run_pre_commit",
+    "standard": "run_standard",
     "pre-push": "run_pre_push",
     "ci": "run_in_ci",
 }
@@ -63,7 +63,7 @@ def normalize_phase(name: str, entry: dict) -> dict:
         "command": str(entry.get("command", "")).strip(),
         "reason": str(entry.get("reason", "")).strip(),
         "run_on_edit": _optional_bool(entry.get("run_on_edit")),
-        "run_pre_commit": _optional_bool(entry.get("run_pre_commit")),
+        "run_standard": _optional_bool(entry.get("run_standard")),
         "run_pre_push": _optional_bool(entry.get("run_pre_push")),
         "run_in_ci": _optional_bool(entry.get("run_in_ci")),
     }
@@ -133,7 +133,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=["all", "edit", "pre-commit", "pre-push", "ci"],
+        choices=["all", "edit", "standard", "pre-push", "ci"],
         default="all",
         help="Execution mode",
     )

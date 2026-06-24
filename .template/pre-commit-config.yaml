@@ -8,6 +8,6 @@ repos:
     hooks:
       - id: verify-pre-commit
         name: verify-pre-commit
-        entry: python3 scripts/verify.py --mode pre-commit
+        entry: python3 scripts/verify.py --mode standard
         language: system
         pass_filenames: false

@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 import { postsDir } from "../scripts/content_loader.mjs";
 import { parseFrontmatterForCheck } from "../scripts/frontmatter.mjs";
 import { validateMetadata } from "../scripts/metadataSchema.mjs";
@@ -15,19 +16,17 @@ function postMarkdownFiles() {
     ]);
 }
 
-const failures = [];
+describe("checked-in article frontmatter", () => {
+  const files = postMarkdownFiles();
 
-for (const file of postMarkdownFiles()) {
-  const parsed = parseFrontmatterForCheck(readFileSync(file, "utf8"));
-  const errors = parsed.errors.length > 0 ? parsed.errors : validateMetadata(parsed.meta);
-  for (const error of errors) {
-    failures.push(`${file}: ${error.field}: ${error.reason}`);
-  }
-}
+  test("has article Markdown to validate", () => {
+    expect(files.length).toBeGreaterThan(0);
+  });
 
-if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
-}
+  test.each(files)("%s parses and validates against the metadata schema", (file) => {
+    const parsed = parseFrontmatterForCheck(readFileSync(file, "utf8"));
+    const errors = parsed.errors.length > 0 ? parsed.errors : validateMetadata(parsed.meta);
 
-console.log("frontmatter metadata checks passed");
+    expect(errors).toEqual([]);
+  });
+});

@@ -71,8 +71,8 @@ export function AboutPage() {
       </div>
 
       <div style={{ marginTop: 32 }}>
-        {PERSON.bio[lang].map((para, i) => (
-          <p key={i} style={{ maxWidth: "62ch", color: "var(--text-muted)", lineHeight: 1.8 }}>
+        {PERSON.bio[lang].map((para) => (
+          <p key={para} style={{ maxWidth: "62ch", color: "var(--text-muted)", lineHeight: 1.8 }}>
             {para}
           </p>
         ))}
@@ -208,8 +208,8 @@ export function ApplicationDetail({ id }) {
         <div className="adetail-tagline">{L(a.tagline, lang)}</div>
         <Ph className="adetail-hero" />
         <div className="prose">
-          {a.detail[lang].map((para, i) => (
-            <p key={i}>{para}</p>
+          {a.detail[lang].map((para) => (
+            <p key={para}>{para}</p>
           ))}
         </div>
         <div className="adetail-side">

@@ -25,10 +25,7 @@ import { dirname, resolve } from "node:path";
 import { oauthPost, requireEnv } from "./instapaper_oauth.mjs";
 import { makeDateLabel } from "../src/dateLabel.js";
 
-const OUT_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../src/reading.json",
-);
+const OUT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../src/reading.json");
 
 /* Derive a clean display source (hostname without leading www.). */
 function hostnameOf(url) {

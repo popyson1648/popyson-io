@@ -21,10 +21,5 @@
     "src/**/*.jsx",
     "src/**/*.d.ts"
   ],
-  "exclude": [
-    "dist",
-    ".tmp",
-    ".vite",
-    "node_modules"
-  ]
+  "exclude": ["dist", ".tmp", ".vite", "node_modules"]
 }

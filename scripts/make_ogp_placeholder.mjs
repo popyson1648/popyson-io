@@ -16,8 +16,8 @@ import { fileURLToPath } from "node:url";
 const W = 1200;
 const H = 630;
 
-const NAVY = [16, 22, 42];     // #10162a  background
-const ACCENT = [73, 96, 255];  // #4960ff  brand accent
+const NAVY = [16, 22, 42]; // #10162a  background
+const ACCENT = [73, 96, 255]; // #4960ff  brand accent
 const CREAM = [237, 232, 220]; // #ede8dc  text-ish
 
 const px = Buffer.alloc(W * H * 3);
@@ -25,7 +25,9 @@ const px = Buffer.alloc(W * H * 3);
 function set(x, y, [r, g, b]) {
   if (x < 0 || y < 0 || x >= W || y >= H) return;
   const i = (y * W + x) * 3;
-  px[i] = r; px[i + 1] = g; px[i + 2] = b;
+  px[i] = r;
+  px[i + 1] = g;
+  px[i + 2] = b;
 }
 function fillRect(x0, y0, w, h, color) {
   for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(x, y, color);
@@ -77,8 +79,8 @@ const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const ihdr = Buffer.alloc(13);
 ihdr.writeUInt32BE(W, 0);
 ihdr.writeUInt32BE(H, 4);
-ihdr[8] = 8;  // bit depth
-ihdr[9] = 2;  // color type: truecolor RGB
+ihdr[8] = 8; // bit depth
+ihdr[9] = 2; // color type: truecolor RGB
 ihdr[10] = 0; // compression
 ihdr[11] = 0; // filter
 ihdr[12] = 0; // interlace

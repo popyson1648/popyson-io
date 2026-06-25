@@ -28,20 +28,22 @@ describe("markdownToPlainText", () => {
     expect(calloutPlain).toMatch(/Supported Markdown/);
     expect(calloutPlain).not.toMatch(/warning/);
 
-    const richPlain = markdownToPlainText([
-      "Intro",
-      "",
-      "```js",
-      "secretImplementation()",
-      "```",
-      "",
-      "![Alt Text](/image.png)",
-      "[Guide](/guide)",
-      "",
-      ":::tip[Tip Title]",
-      "Body text.",
-      ":::",
-    ].join("\n"));
+    const richPlain = markdownToPlainText(
+      [
+        "Intro",
+        "",
+        "```js",
+        "secretImplementation()",
+        "```",
+        "",
+        "![Alt Text](/image.png)",
+        "[Guide](/guide)",
+        "",
+        ":::tip[Tip Title]",
+        "Body text.",
+        ":::",
+      ].join("\n"),
+    );
     expect(richPlain).toBe("Intro Alt Text Guide Tip Title Body text.");
     expect(richPlain).not.toMatch(/secretImplementation/);
   });
@@ -72,13 +74,10 @@ describe("renderArticleHtml", () => {
   });
 
   test("gives duplicate headings stable suffixed ids", async () => {
-    const html = await renderArticleHtml([
-      "## Feature Set",
-      "",
-      "## Feature Set",
-      "",
-      "## 型で導く CLI 設計",
-    ].join("\n"), { copyLabel: "Copy code" });
+    const html = await renderArticleHtml(
+      ["## Feature Set", "", "## Feature Set", "", "## 型で導く CLI 設計"].join("\n"),
+      { copyLabel: "Copy code" },
+    );
 
     expectMatchesAll(html, [
       /<h2 id="sec-feature-set">Feature Set<\/h2>/,
@@ -101,7 +100,7 @@ describe("renderArticleHtml", () => {
   });
 
   test("reads a callout title from a directive attribute", async () => {
-    const html = await renderArticleHtml(":::note{title=\"From attribute\"}\nContent.\n:::");
+    const html = await renderArticleHtml(':::note{title="From attribute"}\nContent.\n:::');
 
     expectMatchesAll(html, [
       /class="msg msg-note"/,
@@ -134,14 +133,16 @@ describe("renderArticleHtml", () => {
   });
 
   test("blocks unsafe link and image URLs", async () => {
-    const html = await renderArticleHtml([
-      "[mail](mailto:test@example.com)",
-      "[relative](../guide)",
-      "[hash](#section)",
-      "[bad](vbscript:alert(1))",
-      "![relative image](./image.png)",
-      "![bad image](data:text/html;base64,PHNjcmlwdD4=)",
-    ].join("\n"));
+    const html = await renderArticleHtml(
+      [
+        "[mail](mailto:test@example.com)",
+        "[relative](../guide)",
+        "[hash](#section)",
+        "[bad](vbscript:alert(1))",
+        "![relative image](./image.png)",
+        "![bad image](data:text/html;base64,PHNjcmlwdD4=)",
+      ].join("\n"),
+    );
 
     expectMatchesAll(html, [
       /<a href="mailto:test@example.com">mail<\/a>/,

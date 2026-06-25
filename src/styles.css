@@ -17,18 +17,18 @@
   --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* type scale */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-md: 1rem;       /* 16px */
-  --text-lg: 1.25rem;    /* 20px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-md: 1rem; /* 16px */
+  --text-lg: 1.25rem; /* 20px */
   --text-xl: clamp(1.5rem, 4vw, 2rem); /* 24px - 32px */
 
   /* role-based small band — disciplined steps for meta / captions / body.
      Replaces the ad-hoc 12.5 / 13.5 / 14.5 / 15 / 17 px values. */
-  --fs-caption: 12px;  /* numbers, years, kv keys, section labels, tags */
-  --fs-meta:    13px;  /* dates / meta rows / small summaries */
-  --fs-small:   14px;  /* secondary text, toc links, list titles */
-  --fs-base:    16px;  /* body copy, list item titles */
-  --fs-lead:    18px;  /* leads, card titles, taglines */
+  --fs-caption: 12px; /* numbers, years, kv keys, section labels, tags */
+  --fs-meta: 13px; /* dates / meta rows / small summaries */
+  --fs-small: 14px; /* secondary text, toc links, list titles */
+  --fs-base: 16px; /* body copy, list item titles */
+  --fs-lead: 18px; /* leads, card titles, taglines */
 
   /* weight — Alexandria has 400/600/700; LINE Seed JP only 400/700,
      so japanese semibold (600) resolves to the nearest face (700). */
@@ -72,9 +72,12 @@
    into CSS at build time by the tomlContent() plugin in vite.config.js,
    imported via `virtual:theme.css` in src/main.jsx. Edit colors there. */
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   background-color: var(--bg);
@@ -97,9 +100,15 @@ body::after {
 /* no theme transition on body — transitioning var()-resolved shorthands
    can freeze the computed value in some browsers */
 
-a { color: inherit; text-decoration: none; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
-::selection { background: var(--accent); color: var(--on-accent); }
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
 
 /* ---------- reusable wire primitives ---------- */
 .wire {
@@ -107,7 +116,9 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--r);
   background: transparent;
 }
-.wire-strong { border-color: var(--line-strong); }
+.wire-strong {
+  border-color: var(--line-strong);
+}
 
 .hr {
   border: none;
@@ -150,11 +161,39 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* utility */
-.muted { color: var(--text-muted); }
-.faint { color: var(--text-faint); }
-.mono { font-family: var(--mono); }
-.nowrap { white-space: nowrap; }
-.row { display: flex; align-items: center; }
-.col { display: flex; flex-direction: column; }
-.gap8 { gap: 8px; } .gap12 { gap: 12px; } .gap16 { gap: 16px; } .gap24 { gap: 24px; }
-.grow { flex: 1 1 auto; min-width: 0; }
+.muted {
+  color: var(--text-muted);
+}
+.faint {
+  color: var(--text-faint);
+}
+.mono {
+  font-family: var(--mono);
+}
+.nowrap {
+  white-space: nowrap;
+}
+.row {
+  display: flex;
+  align-items: center;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+}
+.gap8 {
+  gap: 8px;
+}
+.gap12 {
+  gap: 12px;
+}
+.gap16 {
+  gap: 16px;
+}
+.gap24 {
+  gap: 24px;
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}

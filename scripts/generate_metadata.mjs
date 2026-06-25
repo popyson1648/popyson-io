@@ -82,10 +82,12 @@ function todayIsoDate() {
 
 function hasDisallowedMarkup(text) {
   const value = String(text || "");
-  return /<\/?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?>/u.test(value)
-    || /!?\[[^\]]+\]\([^)]+\)/u.test(value)
-    || /`[^`]+`/u.test(value)
-    || /(?:\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/u.test(value);
+  return (
+    /<\/?[A-Za-z][A-Za-z0-9:-]*(?:\s[^<>]*)?>/u.test(value) ||
+    /!?\[[^\]]+\]\([^)]+\)/u.test(value) ||
+    /`[^`]+`/u.test(value) ||
+    /(?:\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/u.test(value)
+  );
 }
 
 function isLikelyJapanese(text) {
@@ -199,7 +201,9 @@ function summarySchema() {
 const RETRYABLE_STATUS = new Set([429, 500, 503]);
 
 function sleep(ms) {
-  return new Promise((resolve) => { setTimeout(resolve, ms); });
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 /**
@@ -209,7 +213,11 @@ function sleep(ms) {
  * bounds each attempt with a timeout so a request cannot hang forever.
  * Non-retryable responses and the final attempt are returned/thrown as-is.
  */
-async function fetchWithRetry(url, init, { attempts = 4, baseDelayMs = 1000, timeoutMs = 120000 } = {}) {
+async function fetchWithRetry(
+  url,
+  init,
+  { attempts = 4, baseDelayMs = 1000, timeoutMs = 120000 } = {},
+) {
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const isLastAttempt = attempt === attempts - 1;
@@ -261,14 +269,17 @@ export async function geminiGenerateJson({
     requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
 
-  const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
+  const response = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(requestBody),
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`Gemini API request failed: ${response.status} ${await response.text()}`);
@@ -277,14 +288,19 @@ export async function geminiGenerateJson({
   const data = await response.json();
   const candidate = data.candidates?.[0];
   const finishReason = candidate?.finishReason || "unknown";
-  const text = candidate?.content?.parts?.map((part) => part.text || "").join("").trim();
+  const text = candidate?.content?.parts
+    ?.map((part) => part.text || "")
+    .join("")
+    .trim();
   if (!text) {
     throw new Error(`Gemini API returned no text content (finishReason: ${finishReason})`);
   }
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error(`Gemini API returned non-JSON content (finishReason: ${finishReason}): ${text.slice(0, 200)}`);
+    throw new Error(
+      `Gemini API returned non-JSON content (finishReason: ${finishReason}): ${text.slice(0, 200)}`,
+    );
   }
 }
 
@@ -336,12 +352,14 @@ function allKnownTags(files) {
 }
 
 export function hasPendingMetadata(meta) {
-  return dateToIsoDate(meta.date) === "auto"
-    || Boolean(meta.auto_tags)
-    || meta.sumup?.mode === "auto"
-    || !meta.thumbnail
-    || meta.thumbnail?.mode === "none"
-    || meta.thumbnail?.mode === "auto";
+  return (
+    dateToIsoDate(meta.date) === "auto" ||
+    Boolean(meta.auto_tags) ||
+    meta.sumup?.mode === "auto" ||
+    !meta.thumbnail ||
+    meta.thumbnail?.mode === "none" ||
+    meta.thumbnail?.mode === "auto"
+  );
 }
 
 function autoTagCount(meta, config) {
@@ -377,10 +395,7 @@ function conceptSchema() {
 }
 
 function buildConceptPrompt({ summary }) {
-  return [
-    "Article summary:",
-    summary,
-  ].join("\n");
+  return ["Article summary:", summary].join("\n");
 }
 
 function conceptModel(config) {
@@ -441,7 +456,9 @@ async function resolveAutoTags(meta, { filePath, body, config, knownTags, provid
   if (!meta.auto_tags) return false;
 
   const count = autoTagCount(meta, config);
-  const result = await provider(tagGenerationRequest({ filePath, meta, body, config, knownTags, count }));
+  const result = await provider(
+    tagGenerationRequest({ filePath, meta, body, config, knownTags, count }),
+  );
   meta.tags = mergeTags(meta.tags || [], result.tags || [], count);
   delete meta.auto_tags;
   return true;
@@ -494,11 +511,14 @@ async function resolveThumbnailConcept(meta, { filePath, config, provider }) {
 
   const summary = readJaSummary(filePath, meta);
   if (!summary) {
-    throw new Error(`${filePath}: thumbnail concept needs a resolved Japanese summary or an explicit [thumbnail].concept`);
+    throw new Error(
+      `${filePath}: thumbnail concept needs a resolved Japanese summary or an explicit [thumbnail].concept`,
+    );
   }
   const result = await provider(conceptGenerationRequest({ config, summary }));
   const concept = String(result.concept || "").trim();
-  if (!concept) throw new Error(`${filePath}: thumbnail concept generation returned an empty concept`);
+  if (!concept)
+    throw new Error(`${filePath}: thumbnail concept generation returned an empty concept`);
   return concept;
 }
 
@@ -523,7 +543,11 @@ async function resolveAutoThumbnail(meta, { filePath, config, provider, imagePro
 
 function assertResolvedMetadata(meta, { filePath, config }) {
   assertValidMetadata(meta, filePath);
-  const evaluationErrors = evaluateMetadata(meta, { filePath, locale: localeFromPath(filePath), config });
+  const evaluationErrors = evaluateMetadata(meta, {
+    filePath,
+    locale: localeFromPath(filePath),
+    config,
+  });
   if (evaluationErrors.length > 0) {
     throw new Error(evaluationErrors.join("\n"));
   }
@@ -561,34 +585,52 @@ export function previewPrompts({ filePath, source, config, knownTags = [] }) {
   const previews = [];
   if (parsed.meta.auto_tags) {
     const count = autoTagCount(parsed.meta, config);
-    const request = tagGenerationRequest({ filePath, meta: parsed.meta, body: parsed.body, config, knownTags, count });
-    previews.push(previewItemFromRequest({
+    const request = tagGenerationRequest({
       filePath,
-      kind: "tags",
-      request,
-    }));
+      meta: parsed.meta,
+      body: parsed.body,
+      config,
+      knownTags,
+      count,
+    });
+    previews.push(
+      previewItemFromRequest({
+        filePath,
+        kind: "tags",
+        request,
+      }),
+    );
   }
   if (parsed.meta.sumup?.mode === "auto") {
-    const request = summaryGenerationRequest({ filePath, meta: parsed.meta, body: parsed.body, config });
-    previews.push(previewItemFromRequest({
+    const request = summaryGenerationRequest({
       filePath,
-      kind: "summary",
-      request,
-    }));
+      meta: parsed.meta,
+      body: parsed.body,
+      config,
+    });
+    previews.push(
+      previewItemFromRequest({
+        filePath,
+        kind: "summary",
+        request,
+      }),
+    );
   }
   if (parsed.meta.thumbnail?.mode === "auto") {
-    const explicit = typeof parsed.meta.thumbnail.concept === "string"
-      ? parsed.meta.thumbnail.concept.trim()
-      : "";
+    const explicit =
+      typeof parsed.meta.thumbnail.concept === "string" ? parsed.meta.thumbnail.concept.trim() : "";
     if (!explicit) {
-      const summary = parsed.meta.sumup?.mode === "text"
-        ? String(parsed.meta.sumup.text || "").trim()
-        : "{resolved Japanese summary}";
-      previews.push(previewItemFromRequest({
-        filePath,
-        kind: "thumbnail-concept",
-        request: conceptGenerationRequest({ config, summary }),
-      }));
+      const summary =
+        parsed.meta.sumup?.mode === "text"
+          ? String(parsed.meta.sumup.text || "").trim()
+          : "{resolved Japanese summary}";
+      previews.push(
+        previewItemFromRequest({
+          filePath,
+          kind: "thumbnail-concept",
+          request: conceptGenerationRequest({ config, summary }),
+        }),
+      );
     }
     previews.push({
       filePath,
@@ -613,9 +655,7 @@ export function pendingMetadataReasons(meta) {
 }
 
 function unresolvedMetadataMessage(items) {
-  return items
-    .map(({ filePath, reasons }) => `- ${filePath}: ${reasons.join(", ")}`)
-    .join("\n");
+  return items.map(({ filePath, reasons }) => `- ${filePath}: ${reasons.join(", ")}`).join("\n");
 }
 
 export async function runGenerateMetadata({
@@ -630,12 +670,14 @@ export async function runGenerateMetadata({
   const changedFiles = [];
 
   if (preview) {
-    const previews = files.flatMap((filePath) => previewPrompts({
-      filePath,
-      source: readFileSync(filePath, "utf8"),
-      config,
-      knownTags,
-    }));
+    const previews = files.flatMap((filePath) =>
+      previewPrompts({
+        filePath,
+        source: readFileSync(filePath, "utf8"),
+        config,
+        knownTags,
+      }),
+    );
     for (const item of previews) {
       console.log(`--- ${relative(ROOT, item.filePath)} ${item.kind} ${item.model} ---`);
       console.log("[systemInstruction]");
@@ -664,7 +706,14 @@ export async function runGenerateMetadata({
 
   for (const filePath of files) {
     const source = readFileSync(filePath, "utf8");
-    const result = await resolveMetadata({ filePath, source, config, knownTags, provider, imageProvider });
+    const result = await resolveMetadata({
+      filePath,
+      source,
+      config,
+      knownTags,
+      provider,
+      imageProvider,
+    });
     if (!result.changed || result.output === source) continue;
     changedFiles.push(filePath);
     if (!check) writeFileSync(filePath, result.output);

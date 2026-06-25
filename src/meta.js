@@ -40,33 +40,44 @@ function posts() {
 
 // Generic, concise per-page descriptions (overridden by article / work copy).
 const PAGE_DESC = {
-  about:   { ja: "分散システム、開発者ツール、設計について書く個人ブログ。", en: "A personal site on distributed systems, developer tools and design." },
-  blog:    { ja: "書いたものの一覧。", en: "Things I've written." },
-  app:     { ja: "作ったものの一覧。", en: "Things I've built." },
+  about: {
+    ja: "分散システム、開発者ツール、設計について書く個人ブログ。",
+    en: "A personal site on distributed systems, developer tools and design.",
+  },
+  blog: { ja: "書いたものの一覧。", en: "Things I've written." },
+  app: { ja: "作ったものの一覧。", en: "Things I've built." },
   reading: { ja: "読んだもの・読みたいもの。", en: "Things I've read and want to read." },
-  rss:     { ja: "更新を RSS で購読できます。", en: "Subscribe to updates via RSS." },
+  rss: { ja: "更新を RSS で購読できます。", en: "Subscribe to updates via RSS." },
 };
 
 // og:title suffix label per page (kept ASCII / English per the OGP plan).
 const PAGE_LABEL = {
-  about:   "About",
-  blog:    "Blog",
-  app:     "Works",
+  about: "About",
+  blog: "Blog",
+  app: "Works",
   reading: "Reading list",
-  rss:     "RSS",
+  rss: "RSS",
 };
 
 /** Canonical (locale-less, tag-less) path for a route. About is the home ("/"). */
 export function routeToPath(route) {
   switch (route.name) {
-    case "about":     return "/";
-    case "blog":      return "/blog";
-    case "article":   return `/blog/${route.id}`;
-    case "app":       return "/app";
-    case "appDetail": return `/app/${route.id}`;
-    case "reading":   return "/reading";
-    case "rss":       return "/rss";
-    default:          return "/";
+    case "about":
+      return "/";
+    case "blog":
+      return "/blog";
+    case "article":
+      return `/blog/${route.id}`;
+    case "app":
+      return "/app";
+    case "appDetail":
+      return `/app/${route.id}`;
+    case "reading":
+      return "/reading";
+    case "rss":
+      return "/rss";
+    default:
+      return "/";
   }
 }
 
@@ -76,15 +87,20 @@ export function localized(path, lang) {
   return path === "/" ? "/en" : `/en${path}`;
 }
 
-function findPost(id) { return posts().find((p) => p.id === id) || null; }
-function findApp(id) { return APPS.find((a) => a.id === id) || null; }
+function findPost(id) {
+  return posts().find((p) => p.id === id) || null;
+}
+function findApp(id) {
+  return APPS.find((a) => a.id === id) || null;
+}
 
 /** Page title + description for a route in a given language. */
 function titleAndDesc(route, lang) {
   switch (route.name) {
     case "article": {
       const p = findPost(route.id);
-      if (p) return { title: `${L(p.title, lang)} | ${SITE.name}`, description: L(p.summary, lang) };
+      if (p)
+        return { title: `${L(p.title, lang)} | ${SITE.name}`, description: L(p.summary, lang) };
       break;
     }
     case "appDetail": {
@@ -144,14 +160,14 @@ export function headModel(route, lang) {
 
 function baseRouteEntries() {
   return [
-    { dir: "",      route: { name: "about" } },   // home (About is the landing)
-    { dir: "about", route: { name: "about" } },   // alias, canonicals to "/"
-    { dir: "blog",  route: { name: "blog" } },
+    { dir: "", route: { name: "about" } }, // home (About is the landing)
+    { dir: "about", route: { name: "about" } }, // alias, canonicals to "/"
+    { dir: "blog", route: { name: "blog" } },
     ...posts().map((p) => ({ dir: `blog/${p.id}`, route: { name: "article", id: p.id } })),
-    { dir: "app",   route: { name: "app" } },
+    { dir: "app", route: { name: "app" } },
     ...APPS.map((a) => ({ dir: `app/${a.id}`, route: { name: "appDetail", id: a.id } })),
     { dir: "reading", route: { name: "reading" } },
-    { dir: "rss",     route: { name: "rss" } },
+    { dir: "rss", route: { name: "rss" } },
   ];
 }
 
@@ -161,11 +177,13 @@ function outputDirForLocale(dir, lang) {
 }
 
 function localizedRouteEntries(entries) {
-  return entries.flatMap((entry) => ROUTE_LOCALES.map((lang) => ({
-    dir: outputDirForLocale(entry.dir, lang),
-    route: entry.route,
-    lang,
-  })));
+  return entries.flatMap((entry) =>
+    ROUTE_LOCALES.map((lang) => ({
+      dir: outputDirForLocale(entry.dir, lang),
+      route: entry.route,
+      lang,
+    })),
+  );
 }
 
 /**

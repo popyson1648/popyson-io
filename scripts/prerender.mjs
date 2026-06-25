@@ -45,7 +45,9 @@ function renderHeadBlock(m) {
   const lines = [
     `<!-- OG:START -->`,
     `  <link rel="canonical" href="${esc(m.canonical)}" />`,
-    ...m.alternates.map((a) => `  <link rel="alternate" hreflang="${a.hreflang}" href="${esc(a.href)}" />`),
+    ...m.alternates.map(
+      (a) => `  <link rel="alternate" hreflang="${a.hreflang}" href="${esc(a.href)}" />`,
+    ),
     `  <meta property="og:type" content="${esc(m.og.type)}" />`,
     `  <meta property="og:site_name" content="${esc(m.og.site_name)}" />`,
     `  <meta property="og:title" content="${esc(m.og.title)}" />`,
@@ -94,7 +96,10 @@ function renderArticleRoot(route, lang, content) {
 }
 
 function injectRoot(template, rootHtml) {
-  return template.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootHtml}</div>`);
+  return template.replace(
+    /<div id="root">[\s\S]*?<\/div>/,
+    () => `<div id="root">${rootHtml}</div>`,
+  );
 }
 
 function buildSitemap(models) {
@@ -106,7 +111,10 @@ function buildSitemap(models) {
   const urls = [...seen.values()]
     .map((m) => {
       const links = m.alternates
-        .map((a) => `    <xhtml:link rel="alternate" hreflang="${a.hreflang}" href="${esc(a.href)}" />`)
+        .map(
+          (a) =>
+            `    <xhtml:link rel="alternate" hreflang="${a.hreflang}" href="${esc(a.href)}" />`,
+        )
         .join("\n");
       return `  <url>\n    <loc>${esc(m.canonical)}</loc>\n${links}\n  </url>`;
     })
@@ -121,13 +129,7 @@ function buildSitemap(models) {
 }
 
 function buildRobots() {
-  return [
-    "User-agent: *",
-    "Allow: /",
-    "",
-    `Sitemap: ${SITE.url}/sitemap.xml`,
-    "",
-  ].join("\n");
+  return ["User-agent: *", "Allow: /", "", `Sitemap: ${SITE.url}/sitemap.xml`, ""].join("\n");
 }
 
 // Render non-article route bodies from the real React page components. Vite's
@@ -175,9 +177,10 @@ async function main() {
     for (const { dir, route, lang } of routes) {
       const m = headModel(route, lang);
       models.push(m);
-      const rootHtml = route.name === "article"
-        ? renderArticleRoot(route, lang, content)
-        : await renderRouteRoot(route, lang);
+      const rootHtml =
+        route.name === "article"
+          ? renderArticleRoot(route, lang, content)
+          : await renderRouteRoot(route, lang);
       const html = injectRoot(injectHead(template, m), rootHtml);
       const outDir = dir ? join(DIST, dir) : DIST;
       mkdirSync(outDir, { recursive: true });

@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import { makeDateLabel, normalizeIsoDate, localizedDateLabel } from "../src/dateLabel.js";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
-import { allRoutes, configureMetaData, headModel, localized, routeToPath, SITE } from "../src/meta.js";
+import {
+  allRoutes,
+  configureMetaData,
+  headModel,
+  localized,
+  routeToPath,
+  SITE,
+} from "../src/meta.js";
 import { parseRoute } from "../src/routing.js";
 
 describe("slugifyHeading", () => {
@@ -57,12 +64,14 @@ describe("normalizeIsoDate", () => {
     expect(normalizeIsoDate(new Date("2026-02-07T23:45:00Z"))).toBe("2026-02-07");
   });
 
-  test.each([["2026-2-7"], [""], [null], [new Date("invalid")]])(
-    "returns an empty string for invalid value %o",
-    (value) => {
-      expect(normalizeIsoDate(value)).toBe("");
-    },
-  );
+  test.each([
+    ["2026-2-7"],
+    [""],
+    [null],
+    [new Date("invalid")],
+  ])("returns an empty string for invalid value %o", (value) => {
+    expect(normalizeIsoDate(value)).toBe("");
+  });
 });
 
 describe("makeDateLabel", () => {
@@ -70,17 +79,21 @@ describe("makeDateLabel", () => {
     expect(makeDateLabel("2026-02-07")).toEqual({ ja: "2026年2月7日", en: "Feb 7, 2026" });
   });
 
-  test.each([["2026-00-07"], ["2026-13-07"], ["2026-02-00"], ["2026-02-32"]])(
-    "returns empty labels when month or day is out of range (%s)",
-    (date) => {
-      expect(makeDateLabel(date)).toEqual({ ja: "", en: "" });
-    },
-  );
+  test.each([
+    ["2026-00-07"],
+    ["2026-13-07"],
+    ["2026-02-00"],
+    ["2026-02-32"],
+  ])("returns empty labels when month or day is out of range (%s)", (date) => {
+    expect(makeDateLabel(date)).toEqual({ ja: "", en: "" });
+  });
 });
 
 describe("localizedDateLabel", () => {
   test("falls back to Japanese, then the raw date, then empty", () => {
-    expect(localizedDateLabel({ date: "2026-02-07", dateLabel: { ja: "2026年2月7日" } }, "en")).toBe("2026年2月7日");
+    expect(
+      localizedDateLabel({ date: "2026-02-07", dateLabel: { ja: "2026年2月7日" } }, "en"),
+    ).toBe("2026年2月7日");
     expect(localizedDateLabel({ date: "2026-02-07", dateLabel: {} }, "en")).toBe("2026-02-07");
     expect(localizedDateLabel(null, "en")).toBe("");
   });
@@ -106,7 +119,11 @@ describe("parseRoute", () => {
   });
 
   test("parses an app detail path", () => {
-    expect(parseRoute("/app/linewatch", "")).toEqual({ name: "appDetail", id: "linewatch", lang: "ja" });
+    expect(parseRoute("/app/linewatch", "")).toEqual({
+      name: "appDetail",
+      id: "linewatch",
+      lang: "ja",
+    });
   });
 
   test("falls back to the About route for unknown paths", () => {
@@ -147,12 +164,14 @@ describe("headModel", () => {
 
   test("uses localized title/summary and canonical URL when the article exists", () => {
     configureMetaData({
-      POSTS: [{
-        id: "post-id",
-        title: { ja: "日本語タイトル", en: "English Title" },
-        summary: { ja: "日本語要約", en: "English summary" },
-        tags: [],
-      }],
+      POSTS: [
+        {
+          id: "post-id",
+          title: { ja: "日本語タイトル", en: "English Title" },
+          summary: { ja: "日本語要約", en: "English summary" },
+          tags: [],
+        },
+      ],
     });
 
     const model = headModel({ name: "article", id: "post-id" }, "en");
@@ -188,15 +207,19 @@ describe("allRoutes", () => {
       ],
     });
 
-    const keys = allRoutes().map(({ dir, route, lang }) => `${lang}:${dir}:${route.name}:${route.id || ""}`);
+    const keys = allRoutes().map(
+      ({ dir, route, lang }) => `${lang}:${dir}:${route.name}:${route.id || ""}`,
+    );
 
-    expect(keys).toEqual(expect.arrayContaining([
-      "ja::about:",
-      "en:en:about:",
-      "ja:blog/new-post:article:new-post",
-      "en:en/blog/new-post:article:new-post",
-      "ja:app/linewatch:appDetail:linewatch",
-      "en:en/app/linewatch:appDetail:linewatch",
-    ]));
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "ja::about:",
+        "en:en:about:",
+        "ja:blog/new-post:article:new-post",
+        "en:en/blog/new-post:article:new-post",
+        "ja:app/linewatch:appDetail:linewatch",
+        "en:en/app/linewatch:appDetail:linewatch",
+      ]),
+    );
   });
 });

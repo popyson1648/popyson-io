@@ -29,11 +29,7 @@ export function sign({ method, url, params, consumerSecret, tokenSecret = "" }) 
     .map((k) => `${rfc3986(k)}=${rfc3986(params[k])}`)
     .join("&");
 
-  const base = [
-    method.toUpperCase(),
-    rfc3986(url),
-    rfc3986(normalized),
-  ].join("&");
+  const base = [method.toUpperCase(), rfc3986(url), rfc3986(normalized)].join("&");
 
   const signingKey = `${rfc3986(consumerSecret)}&${rfc3986(tokenSecret)}`;
   return crypto.createHmac("sha1", signingKey).update(base).digest("base64");
@@ -91,9 +87,7 @@ export async function oauthPost({
 
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(
-      `Instapaper ${path} failed: HTTP ${res.status} ${res.statusText}\n${text}`,
-    );
+    throw new Error(`Instapaper ${path} failed: HTTP ${res.status} ${res.statusText}\n${text}`);
   }
   return text;
 }

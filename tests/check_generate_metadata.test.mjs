@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { evaluateMetadata, pendingMetadataReasons, previewPrompts, resolveMetadata } from "../scripts/generate_metadata.mjs";
+import {
+  evaluateMetadata,
+  pendingMetadataReasons,
+  previewPrompts,
+  resolveMetadata,
+} from "../scripts/generate_metadata.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -106,15 +111,16 @@ describe("resolveMetadata tag and summary generation", () => {
   test("rejects when generated tags lack enough usable values", async () => {
     const filePath = join(tempDir, "index.ja.md");
 
-    await expect(resolveMetadata({
-      filePath,
-      source: autoTagSummarySource,
-      config,
-      knownTags: [],
-      provider: async (request) => (request.schema.required.includes("tags")
-        ? { tags: ["js"] }
-        : { summary: "unused" }),
-    })).rejects.toThrow(/returned 0 usable tags, expected 2/);
+    await expect(
+      resolveMetadata({
+        filePath,
+        source: autoTagSummarySource,
+        config,
+        knownTags: [],
+        provider: async (request) =>
+          request.schema.required.includes("tags") ? { tags: ["js"] } : { summary: "unused" },
+      }),
+    ).rejects.toThrow(/returned 0 usable tags, expected 2/);
   });
 
   test("previewPrompts returns the tag and summary prompts", () => {
@@ -139,7 +145,11 @@ describe("resolveMetadata tag and summary generation", () => {
   test("pendingMetadataReasons lists the unresolved fields", () => {
     const meta = parseToml(autoTagSummarySource.slice(4, autoTagSummarySource.indexOf("\n+++", 4)));
 
-    expect(pendingMetadataReasons(meta)).toEqual(["auto_tags", 'sumup.mode = "auto"', 'thumbnail.mode = "none"']);
+    expect(pendingMetadataReasons(meta)).toEqual([
+      "auto_tags",
+      'sumup.mode = "auto"',
+      'thumbnail.mode = "none"',
+    ]);
   });
 });
 
@@ -147,26 +157,39 @@ describe("evaluateMetadata on resolved metadata", () => {
   const filePath = "post.md";
 
   test("accepts technical text with code-like tokens", () => {
-    expect(evaluateMetadata({
-      tags: ["csharp"],
-      sumup: { mode: "text", text: "C# examples use user_id and #id selectors." },
-    }, { filePath, locale: "en", config })).toEqual([]);
+    expect(
+      evaluateMetadata(
+        {
+          tags: ["csharp"],
+          sumup: { mode: "text", text: "C# examples use user_id and #id selectors." },
+        },
+        { filePath, locale: "en", config },
+      ),
+    ).toEqual([]);
   });
 
   test("flags Markdown markup in a summary", () => {
-    expect(evaluateMetadata({
-      tags: [],
-      sumup: { mode: "text", text: "Read [the guide](https://example.com)." },
-    }, { filePath, locale: "en", config })).toEqual([
-      `${filePath}: sumup.text: must not contain Markdown or HTML markup`,
-    ]);
+    expect(
+      evaluateMetadata(
+        {
+          tags: [],
+          sumup: { mode: "text", text: "Read [the guide](https://example.com)." },
+        },
+        { filePath, locale: "en", config },
+      ),
+    ).toEqual([`${filePath}: sumup.text: must not contain Markdown or HTML markup`]);
   });
 
   test("flags an over-long tag plus markup and missing Japanese", () => {
-    expect(evaluateMetadata({
-      tags: ["this tag is much too long for metadata quality checks"],
-      sumup: { mode: "text", text: "<b>bad</b>" },
-    }, { filePath, locale: "ja", config })).toEqual([
+    expect(
+      evaluateMetadata(
+        {
+          tags: ["this tag is much too long for metadata quality checks"],
+          sumup: { mode: "text", text: "<b>bad</b>" },
+        },
+        { filePath, locale: "ja", config },
+      ),
+    ).toEqual([
       `${filePath}: tags: "this tag is much too long for metadata quality checks" is longer than 32 characters`,
       `${filePath}: sumup.text: must not contain Markdown or HTML markup`,
       `${filePath}: sumup.text: Japanese article summaries must contain Japanese text`,
@@ -216,14 +239,16 @@ describe("resolveMetadata date resolution", () => {
     const originalCi = process.env.CI;
     process.env.CI = "true";
     try {
-      await expect(resolveMetadata({
-        filePath: join(tempDir, "uncommitted.md"),
-        source: autoDateSource,
-        config,
-        provider: async () => {
-          throw new Error("provider should not be called");
-        },
-      })).rejects.toThrow(/date = "auto" could not be resolved from git history/);
+      await expect(
+        resolveMetadata({
+          filePath: join(tempDir, "uncommitted.md"),
+          source: autoDateSource,
+          config,
+          provider: async () => {
+            throw new Error("provider should not be called");
+          },
+        }),
+      ).rejects.toThrow(/date = "auto" could not be resolved from git history/);
     } finally {
       if (originalCi === undefined) delete process.env.CI;
       else process.env.CI = originalCi;

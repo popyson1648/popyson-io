@@ -5,6 +5,8 @@ import { ARTICLE_BODIES } from "virtual:site-content";
   window.ArticleBody = {
     byId: ARTICLE_BODIES,
     fallback: { ja: "", en: "", headings: [] },
-    get(id) { return this.byId[id] || this.fallback; },
+    get(id) {
+      return this.byId[id] || this.fallback;
+    },
   };
 })();

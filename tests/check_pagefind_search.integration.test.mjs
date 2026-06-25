@@ -61,9 +61,7 @@ describe("Pagefind search over the built dist/", () => {
       currentScript: null,
       documentElement: { lang: "ja" },
       querySelector(selector) {
-        return selector === "html"
-          ? { getAttribute: () => this.documentElement.lang }
-          : null;
+        return selector === "html" ? { getAttribute: () => this.documentElement.lang } : null;
       },
     });
 

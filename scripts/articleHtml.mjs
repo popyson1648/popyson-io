@@ -73,16 +73,20 @@ function remarkHeadingIds() {
 }
 
 function isLocalMarkdownUrl(value) {
-  return value.startsWith("#")
-    || value.startsWith("/")
-    || value.startsWith("./")
-    || value.startsWith("../");
+  return (
+    value.startsWith("#") ||
+    value.startsWith("/") ||
+    value.startsWith("./") ||
+    value.startsWith("../")
+  );
 }
 
 function hasAllowedMarkdownProtocol(value) {
   try {
     const parsed = new URL(value, "https://popyson.com");
-    return parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "mailto:";
+    return (
+      parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "mailto:"
+    );
   } catch {
     return false;
   }
@@ -131,12 +135,14 @@ function rehypeCalloutBody() {
     visit(tree, "element", (node) => {
       const className = node.properties?.className;
       if (!Array.isArray(className) || !className.includes("msg")) return;
-      node.children = [{
-        type: "element",
-        tagName: "div",
-        properties: { className: ["msg-body"] },
-        children: node.children || [],
-      }];
+      node.children = [
+        {
+          type: "element",
+          tagName: "div",
+          properties: { className: ["msg-body"] },
+          children: node.children || [],
+        },
+      ];
     });
   };
 }
@@ -149,10 +155,23 @@ function getLanguage(codeNode) {
 }
 
 function iconPath(kind) {
-  if (kind === "check") return [{ type: "element", tagName: "path", properties: { d: "M5 12l5 5 9-10" }, children: [] }];
+  if (kind === "check")
+    return [
+      { type: "element", tagName: "path", properties: { d: "M5 12l5 5 9-10" }, children: [] },
+    ];
   return [
-    { type: "element", tagName: "rect", properties: { x: "9", y: "9", width: "11", height: "11", rx: "1.5" }, children: [] },
-    { type: "element", tagName: "path", properties: { d: "M5 15V5a1 1 0 0 1 1-1h10" }, children: [] },
+    {
+      type: "element",
+      tagName: "rect",
+      properties: { x: "9", y: "9", width: "11", height: "11", rx: "1.5" },
+      children: [],
+    },
+    {
+      type: "element",
+      tagName: "path",
+      properties: { d: "M5 15V5a1 1 0 0 1 1-1h10" },
+      children: [],
+    },
   ];
 }
 
@@ -192,7 +211,12 @@ function codeToolbarNode(preNode, copyLabel) {
         tagName: "div",
         properties: { className: ["code-bar"] },
         children: [
-          { type: "element", tagName: "span", properties: { className: ["code-lang"] }, children: [{ type: "text", value: lang }] },
+          {
+            type: "element",
+            tagName: "span",
+            properties: { className: ["code-lang"] },
+            children: [{ type: "text", value: lang }],
+          },
           {
             type: "element",
             tagName: "button",
@@ -252,31 +276,33 @@ export function markdownToPlainText(markdown) {
 
 function articleProcessor(copyLabel) {
   if (!articleProcessors.has(copyLabel)) {
-    articleProcessors.set(copyLabel, unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .use(remarkDirective)
-      .use(remarkCallouts)
-      .use(remarkHeadingIds)
-      .use(remarkRehype)
-      .use(rehypeSafeUrls)
-      .use(rehypeCalloutBody)
-      .use(rehypeCodeToolbar, copyLabel)
-      .use(rehypeShiki, {
-        themes: {
-          light: "github-light",
-          dark: "github-dark",
-        },
-        defaultColor: false,
-      })
-      .use(rehypeStringify));
+    articleProcessors.set(
+      copyLabel,
+      unified()
+        .use(remarkParse)
+        .use(remarkGfm)
+        .use(remarkDirective)
+        .use(remarkCallouts)
+        .use(remarkHeadingIds)
+        .use(remarkRehype)
+        .use(rehypeSafeUrls)
+        .use(rehypeCalloutBody)
+        .use(rehypeCodeToolbar, copyLabel)
+        .use(rehypeShiki, {
+          themes: {
+            light: "github-light",
+            dark: "github-dark",
+          },
+          defaultColor: false,
+        })
+        .use(rehypeStringify),
+    );
   }
   return articleProcessors.get(copyLabel);
 }
 
 export async function renderArticleHtml(markdown, { copyLabel = "Copy code" } = {}) {
-  const file = await articleProcessor(copyLabel)
-    .process(String(markdown || ""));
+  const file = await articleProcessor(copyLabel).process(String(markdown || ""));
   return String(file);
 }
 

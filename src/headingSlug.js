@@ -8,12 +8,13 @@
 export const SECTION_ID_PREFIX = "sec-";
 
 export function slugifyHeading(value, seen) {
-  const base = String(value)
-    .trim()
-    .toLowerCase()
-    .replace(/[`*_~:[\](){}]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "") || "section";
+  const base =
+    String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[`*_~:[\](){}]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-+|-+$/g, "") || "section";
   const count = seen.get(base) || 0;
   seen.set(base, count + 1);
   return count ? `${base}-${count + 1}` : base;

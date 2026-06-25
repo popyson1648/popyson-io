@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { parse as parseToml } from "smol-toml";
-import { contentWatchFiles, loadSiteContent, renderArticleBodies } from "./scripts/content_loader.mjs";
+import {
+  contentWatchFiles,
+  loadSiteContent,
+  renderArticleBodies,
+} from "./scripts/content_loader.mjs";
 
 const SITE_URL = "https://popyson.com";
 const SITE_TITLE = "popyson.com";
@@ -116,9 +120,11 @@ function siteContentPlugin() {
       if (id !== RESOLVED_SITE_CONTENT_ID) return null;
       for (const file of contentWatchFiles()) this.addWatchFile(file);
       const content = await renderArticleBodies(loadSiteContent());
-      return Object.entries(content)
-        .map(([key, value]) => `export const ${key} = ${JSON.stringify(value)};`)
-        .join("\n") + "\n";
+      return (
+        Object.entries(content)
+          .map(([key, value]) => `export const ${key} = ${JSON.stringify(value)};`)
+          .join("\n") + "\n"
+      );
     },
   };
 }

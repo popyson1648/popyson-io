@@ -27,10 +27,14 @@ npm run dev
 Common development checks:
 
 ```sh
+npm run format
 npm run lint
 npm run build
 python3 scripts/verify.py --mode edit
 ```
+
+Formatting is handled by Biome (`npm run format` to apply, `npm run format:check` to
+verify). Linting stays on ESLint. See `.project/conventions.md`.
 
 ## Related Documents
 

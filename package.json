@@ -8,6 +8,8 @@
     "build": "vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit --project component",
     "test:watch": "vitest --project unit --project component",
@@ -30,6 +32,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.1",
     "@shikijs/rehype": "^4.2.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

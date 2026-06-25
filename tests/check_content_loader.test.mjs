@@ -41,7 +41,11 @@ describe("relatedPostIds", () => {
     {
       name: "partial draft-like post objects do not fail",
       current: { id: "target" },
-      collection: [null, { id: "draft-without-tags" }, { id: "draft-without-date", tags: ["build"] }],
+      collection: [
+        null,
+        { id: "draft-without-tags" },
+        { id: "draft-without-date", tags: ["build"] },
+      ],
       expected: ["draft-without-tags", "draft-without-date"],
     },
     {
@@ -100,7 +104,11 @@ describe("loadSiteContent", () => {
     expect(content.ARTICLE_BODIES[firstPost.id].headings).toEqual([
       { id: "何が問題だったか", ja: "何が問題だったか", en: "What was wrong" },
       { id: "型で形を与える", ja: "型で形を与える", en: "Giving it a shape with types" },
-      { id: "ヘルプ-補完-検証を導出する", ja: "ヘルプ・補完・検証を導出する", en: "Deriving help, completion, validation" },
+      {
+        id: "ヘルプ-補完-検証を導出する",
+        ja: "ヘルプ・補完・検証を導出する",
+        en: "Deriving help, completion, validation",
+      },
       { id: "結果", ja: "結果", en: "The result" },
     ]);
   });

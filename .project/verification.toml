@@ -1,9 +1,10 @@
 version = 1
 
 [phases.format]
-enabled = false
-command = ""
-reason = "No formatter is configured yet."
+enabled = true
+command = "npm run format:check"
+run_standard = true
+run_in_ci = true
 
 [phases.lint]
 enabled = true

@@ -63,14 +63,32 @@ const invalidCases = [
   { field: "date", toml: `title = "Post"\ndate = "soon"` },
   { field: "tags", toml: `title = "Post"\ndate = "2026-02-07"\ntags = "js, react"` },
   { field: "tags", toml: `title = "Post"\ndate = "2026-02-07"\ntags = ["js", 1]` },
-  { field: "auto_tags.count", toml: `title = "Post"\ndate = "2026-02-07"\nauto_tags = { count = 0 }` },
+  {
+    field: "auto_tags.count",
+    toml: `title = "Post"\ndate = "2026-02-07"\nauto_tags = { count = 0 }`,
+  },
   { field: "sumup.mode", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "brief"` },
   { field: "sumup.text", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"` },
-  { field: "sumup.generated", toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"\ntext = "x"\ngenerated = "yes"` },
-  { field: "thumbnail.mode", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "remote"` },
-  { field: "thumbnail.concept", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "auto"\nconcept = 5` },
-  { field: "thumbnail.path", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"` },
-  { field: "thumbnail.generated", toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"` },
+  {
+    field: "sumup.generated",
+    toml: `title = "Post"\ndate = "2026-02-07"\n[sumup]\nmode = "text"\ntext = "x"\ngenerated = "yes"`,
+  },
+  {
+    field: "thumbnail.mode",
+    toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "remote"`,
+  },
+  {
+    field: "thumbnail.concept",
+    toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "auto"\nconcept = 5`,
+  },
+  {
+    field: "thumbnail.path",
+    toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"`,
+  },
+  {
+    field: "thumbnail.generated",
+    toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"`,
+  },
   { field: "summary", toml: `title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"` },
 ];
 

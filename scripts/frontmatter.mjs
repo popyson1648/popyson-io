@@ -15,12 +15,16 @@ import { assertValidMetadata } from "./metadataSchema.mjs";
  */
 
 export function normalizeMarkdownSource(source) {
-  return String(source || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  return String(source || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n");
 }
 
-export function splitTomlFrontmatter(source, filePath, {
-  missingClosingSuffix = "is missing closing +++ frontmatter delimiter",
-} = {}) {
+export function splitTomlFrontmatter(
+  source,
+  filePath,
+  { missingClosingSuffix = "is missing closing +++ frontmatter delimiter" } = {},
+) {
   const text = normalizeMarkdownSource(source);
   if (!text.startsWith("+++\n")) {
     throw new Error(`${filePath} must start with TOML frontmatter delimited by +++`);
@@ -53,7 +57,11 @@ export function parseFrontmatterForCheck(source) {
   } catch (error) {
     const message = error.message.replace(/^frontmatter /, "");
     if (message === "must start with TOML frontmatter delimited by +++") {
-      return { errors: [{ field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" }] };
+      return {
+        errors: [
+          { field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" },
+        ],
+      };
     }
     if (message === "is missing closing +++ delimiter") {
       return { errors: [{ field: "frontmatter", reason: message }] };

@@ -15,9 +15,9 @@ import { makeDateLabel } from "./dateLabel.js";
      Each item: { id, title, url, source, date, dateLabel, done }. */
   const READING = Array.isArray(readingData.items)
     ? readingData.items.map((item) => ({
-      ...item,
-      dateLabel: item.dateLabel || makeDateLabel(item.date),
-    }))
+        ...item,
+        dateLabel: item.dateLabel || makeDateLabel(item.date),
+      }))
     : [];
 
   window.BlogData = { PERSON, TAGS, POSTS, APPS, READING };

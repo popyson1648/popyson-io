@@ -41,8 +41,10 @@ def main() -> int:
     app_css = read("src/app.css")
     styles_css = read("src/styles.css")
 
-    checks.append(("<button className=\"made-card\"" in pages, "made-card must be a native button"))
-    checks.append(("<button className=\"fbtn ficon fbar-back\"" in blog, "filter/sort toolbar back control must be a native button"))
+    # The formatter may place each JSX attribute on its own line, so allow whitespace
+    # (including newlines) between `<button` and its first `className` attribute.
+    checks.append((bool(re.search(r"<button\s+className=\"made-card\"", pages)), "made-card must be a native button"))
+    checks.append((bool(re.search(r"<button\s+className=\"fbtn ficon fbar-back\"", blog)), "filter/sort toolbar back control must be a native button"))
     checks.append((
         "role=\"combobox\"" in blog and "aria-label={t.search}" in blog and "aria-autocomplete=\"list\"" in blog,
         "inline search must be a labelled combobox with list autocomplete"))
@@ -70,8 +72,16 @@ def main() -> int:
     checks.append(("id=\"main\"" in app, "main content region must be directly targetable"))
     checks.append((".sr-only" in styles_css, "screen-reader-only utility must exist"))
     checks.append(("@media (prefers-reduced-motion: reduce)" in app_css and ".modal" in app_css and ".menu" in app_css, "modal and menu animations must respect reduced motion"))
-    checks.append((".prose { font-size: 16px;" in app_css, "article body text must be at least 16px"))
-    checks.append(("  .prose { font-size: 16px;" in app_css, "mobile article body text must stay at least 16px"))
+    # Match the .prose body font-size independently of CSS formatting: the formatter
+    # may wrap single-line rules across multiple lines. [^}] spans newlines, so each
+    # pattern stays scoped to its own rule block. Top-level (column 0) selector is the
+    # desktop rule; an indented selector is the mobile rule inside a media query.
+    checks.append((
+        bool(re.search(r"^\.prose[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE)),
+        "article body text must be at least 16px"))
+    checks.append((
+        bool(re.search(r"^[ \t]+\.prose[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE)),
+        "mobile article body text must stay at least 16px"))
     checks.append((not has_any(app_css, [
         ".topbar .btn-ghost { padding: 4px 7px; font-size: 11px;",
         ".post-index-meta { font-family: var(--mono); font-size: 11px;",

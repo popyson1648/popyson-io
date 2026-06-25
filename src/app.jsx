@@ -46,13 +46,24 @@ function createFilterId(prefix, distortion, roughness) {
 // after client navigation. Mirrors what scripts/prerender.mjs bakes in.
 function upsertMeta(key, keyAttr, content) {
   let el = document.head.querySelector(`meta[${keyAttr}="${key}"]`);
-  if (!el) { el = document.createElement("meta"); el.setAttribute(keyAttr, key); document.head.appendChild(el); }
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(keyAttr, key);
+    document.head.appendChild(el);
+  }
   el.setAttribute("content", content);
 }
 function upsertLink(rel, href, hreflang) {
-  const sel = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]:not([hreflang]):not([type])`;
+  const sel = hreflang
+    ? `link[rel="${rel}"][hreflang="${hreflang}"]`
+    : `link[rel="${rel}"]:not([hreflang]):not([type])`;
   let el = document.head.querySelector(sel);
-  if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); if (hreflang) el.setAttribute("hreflang", hreflang); document.head.appendChild(el); }
+  if (!el) {
+    el = document.createElement("link");
+    el.setAttribute("rel", rel);
+    if (hreflang) el.setAttribute("hreflang", hreflang);
+    document.head.appendChild(el);
+  }
   el.setAttribute("href", href);
 }
 function applyHead(m) {
@@ -77,27 +88,42 @@ function applyHead(m) {
 }
 
 function useSystemDark() {
-  const [dark, setDark] = useState(() => window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const [dark, setDark] = useState(
+    () => window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
   useEffect(() => {
     if (!window.matchMedia) return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const fn = (e) => setDark(e.matches);
     mq.addEventListener ? mq.addEventListener("change", fn) : mq.addListener(fn);
-    return () => { mq.removeEventListener ? mq.removeEventListener("change", fn) : mq.removeListener(fn); };
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener("change", fn) : mq.removeListener(fn);
+    };
   }, []);
   return dark;
 }
 
 export default function App() {
-  const [route, setRoute] = useState(() => parseRoute(window.location.pathname, window.location.search));
+  const [route, setRoute] = useState(() =>
+    parseRoute(window.location.pathname, window.location.search),
+  );
   const lang = route.lang; // language is derived from the URL (no localStorage)
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
   const riso = RISOGRAPH_DEFAULTS;
   const sysDark = useSystemDark();
   const bgNoiseUrl = useMemo(() => createNoiseUrl(riso.bgNoiseFrequency), [riso.bgNoiseFrequency]);
-  const circleNoiseUrl = useMemo(() => createNoiseUrl(riso.circleNoiseFrequency), [riso.circleNoiseFrequency]);
-  const bgFilterId = useMemo(() => createFilterId("bg-rough", riso.bgDistortion, riso.bgRoughness), [riso.bgDistortion, riso.bgRoughness]);
-  const circleFilterId = useMemo(() => createFilterId("circle-rough", riso.circleDistortion, riso.circleRoughness), [riso.circleDistortion, riso.circleRoughness]);
+  const circleNoiseUrl = useMemo(
+    () => createNoiseUrl(riso.circleNoiseFrequency),
+    [riso.circleNoiseFrequency],
+  );
+  const bgFilterId = useMemo(
+    () => createFilterId("bg-rough", riso.bgDistortion, riso.bgRoughness),
+    [riso.bgDistortion, riso.bgRoughness],
+  );
+  const circleFilterId = useMemo(
+    () => createFilterId("circle-rough", riso.circleDistortion, riso.circleRoughness),
+    [riso.circleDistortion, riso.circleRoughness],
+  );
 
   // routing (History API). `to` is a canonical, locale-less path
   // (e.g. "/blog/x", "/blog?tag=foo"); the active locale prefix is applied
@@ -117,7 +143,9 @@ export default function App() {
   };
 
   // keep document.title + OG/Twitter/hreflang meta in sync with the route
-  useEffect(() => { applyHead(headModel(route, lang)); }, [route, lang]);
+  useEffect(() => {
+    applyHead(headModel(route, lang));
+  }, [route, lang]);
 
   // resolve + apply theme
   const resolved = theme === "system" ? (sysDark ? "dark" : "light") : theme;
@@ -157,14 +185,29 @@ export default function App() {
 
   let page;
   switch (route.name) {
-    case "about":     page = <AboutPage />; break;
-    case "blog":      page = <BlogList />; break;
-    case "article":   page = <Article id={route.id} />; break;
-    case "app":       page = <ApplicationPage />; break;
-    case "appDetail": page = <ApplicationDetail id={route.id} />; break;
-    case "reading":   page = <ReadingPage />; break;
-    case "rss":       page = <RssPage />; break;
-    default:          page = <AboutPage />;
+    case "about":
+      page = <AboutPage />;
+      break;
+    case "blog":
+      page = <BlogList />;
+      break;
+    case "article":
+      page = <Article id={route.id} />;
+      break;
+    case "app":
+      page = <ApplicationPage />;
+      break;
+    case "appDetail":
+      page = <ApplicationDetail id={route.id} />;
+      break;
+    case "reading":
+      page = <ReadingPage />;
+      break;
+    case "rss":
+      page = <RssPage />;
+      break;
+    default:
+      page = <AboutPage />;
   }
 
   return (
@@ -183,16 +226,40 @@ export default function App() {
       <div className="app">
         <svg className="grain-filter-defs" aria-hidden="true" focusable="false">
           <filter id={bgFilterId} x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency={riso.bgRoughness} numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale={riso.bgDistortion} xChannelSelector="R" yChannelSelector="G" />
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency={riso.bgRoughness}
+              numOctaves="3"
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale={riso.bgDistortion}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
           </filter>
           <filter id={circleFilterId} x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency={riso.circleRoughness} numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale={riso.circleDistortion} xChannelSelector="R" yChannelSelector="G" />
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency={riso.circleRoughness}
+              numOctaves="3"
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale={riso.circleDistortion}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
           </filter>
         </svg>
         <TopBar />
-        <main id="main" className="app-main" tabIndex={-1}>{page}</main>
+        <main id="main" className="app-main" tabIndex={-1}>
+          {page}
+        </main>
         <Footer />
       </div>
     </AppCtx.Provider>

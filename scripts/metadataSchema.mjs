@@ -24,7 +24,9 @@ export function dateToIsoDate(value) {
 }
 
 function isPlainObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date);
+  return (
+    value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)
+  );
 }
 
 function addError(errors, field, reason) {
@@ -55,7 +57,7 @@ export function validateMetadata(meta) {
   } else {
     const date = dateToIsoDate(meta.date);
     if (date !== "auto" && !ISO_DATE_RE.test(date)) {
-      addError(errors, "date", "must be YYYY-MM-DD or \"auto\"");
+      addError(errors, "date", 'must be YYYY-MM-DD or "auto"');
     }
   }
 
@@ -70,7 +72,10 @@ export function validateMetadata(meta) {
   if ("auto_tags" in meta) {
     if (!isPlainObject(meta.auto_tags)) {
       addError(errors, "auto_tags", "must be a table");
-    } else if ("count" in meta.auto_tags && (!Number.isInteger(meta.auto_tags.count) || meta.auto_tags.count <= 0)) {
+    } else if (
+      "count" in meta.auto_tags &&
+      (!Number.isInteger(meta.auto_tags.count) || meta.auto_tags.count <= 0)
+    ) {
       addError(errors, "auto_tags.count", "must be a positive integer");
     }
   }

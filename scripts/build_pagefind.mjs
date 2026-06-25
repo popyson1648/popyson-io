@@ -21,7 +21,9 @@ function articleContent(post, body, lang) {
     localizedField(post.summary, lang),
     ...(post.tags || []),
     body?.text || "",
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function main() {

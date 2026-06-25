@@ -31,7 +31,9 @@ async function ensureGlobals() {
   if (!globalsReady) {
     globalsReady = (async () => {
       if (typeof globalThis.window === "undefined") {
-        globalThis.window = /** @type {Window & typeof globalThis} */ (/** @type {unknown} */ (globalThis));
+        globalThis.window = /** @type {Window & typeof globalThis} */ (
+          /** @type {unknown} */ (globalThis)
+        );
       }
       await import("./i18n.js"); // -> window.I18N
       await import("./data.js"); // -> window.BlogData
@@ -59,7 +61,8 @@ export async function renderRouteRoot(route, lang) {
   if (!make) return "";
   await ensureGlobals();
   const t = window.I18N?.[lang];
-  if (!t) throw new Error(`Missing i18n bundle for lang "${lang}" in renderRouteRoot(${route.name})`);
+  if (!t)
+    throw new Error(`Missing i18n bundle for lang "${lang}" in renderRouteRoot(${route.name})`);
   const noop = () => {};
   // Static render: nav/theme handlers never fire, so a no-op context is enough.
   const ctx = { t, lang, theme: "light", setTheme: noop, route, nav: noop };

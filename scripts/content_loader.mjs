@@ -170,10 +170,14 @@ export function relatedPostIds(post, posts, limit = 3) {
     .filter((candidate) => candidate && candidate.id !== post.id)
     .map((candidate) => ({
       post: candidate,
-      score: (Array.isArray(candidate.tags) ? candidate.tags : [])
-        .filter((tag) => postTags.includes(tag)).length,
+      score: (Array.isArray(candidate.tags) ? candidate.tags : []).filter((tag) =>
+        postTags.includes(tag),
+      ).length,
     }))
-    .sort((a, b) => b.score - a.score || String(b.post.date || "").localeCompare(String(a.post.date || "")))
+    .sort(
+      (a, b) =>
+        b.score - a.score || String(b.post.date || "").localeCompare(String(a.post.date || "")),
+    )
     .slice(0, limit)
     .map((ranked) => ranked.post.id);
 }
@@ -219,14 +223,16 @@ export function loadSiteContent() {
 
 export async function renderArticleBodies(content) {
   const copyLabels = { ja: "コードをコピー", en: "Copy code" };
-  const entries = await Promise.all(Object.entries(content.ARTICLE_BODIES).map(async ([id, body]) => [
-    id,
-    {
-      ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
-      en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
-      headings: body.headings,
-    },
-  ]));
+  const entries = await Promise.all(
+    Object.entries(content.ARTICLE_BODIES).map(async ([id, body]) => [
+      id,
+      {
+        ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
+        en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
+        headings: body.headings,
+      },
+    ]),
+  );
   return {
     ...content,
     ARTICLE_BODIES: Object.fromEntries(entries),

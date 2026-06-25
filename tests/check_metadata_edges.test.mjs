@@ -2,9 +2,18 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
 
-import { evaluateMetadata, hasPendingMetadata, pendingMetadataReasons, resolveMetadata } from "../scripts/generate_metadata.mjs";
+import {
+  evaluateMetadata,
+  hasPendingMetadata,
+  pendingMetadataReasons,
+  resolveMetadata,
+} from "../scripts/generate_metadata.mjs";
 import { parseFrontmatterForCheck, parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
-import { assertValidMetadata, dateToIsoDate, validateMetadata } from "../scripts/metadataSchema.mjs";
+import {
+  assertValidMetadata,
+  dateToIsoDate,
+  validateMetadata,
+} from "../scripts/metadataSchema.mjs";
 
 const config = {
   tag_generation: {
@@ -30,7 +39,7 @@ describe("dateToIsoDate", () => {
 
 describe("parseMarkdownFrontmatter", () => {
   test("normalizes a BOM and CRLF and returns meta and body", () => {
-    const source = "﻿+++\r\ntitle = \"Post\"\r\ndate = \"2026-02-07\"\r\n+++\r\n\r\nBody.\r\n";
+    const source = '﻿+++\r\ntitle = "Post"\r\ndate = "2026-02-07"\r\n+++\r\n\r\nBody.\r\n';
 
     const parsed = parseMarkdownFrontmatter(source, "post.md");
 
@@ -42,13 +51,15 @@ describe("parseMarkdownFrontmatter", () => {
 
 describe("parseFrontmatterForCheck", () => {
   test("reports a missing opening delimiter", () => {
-    expect(parseFrontmatterForCheck("title = \"Post\"")).toEqual({
-      errors: [{ field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" }],
+    expect(parseFrontmatterForCheck('title = "Post"')).toEqual({
+      errors: [
+        { field: "frontmatter", reason: "must start with TOML frontmatter delimited by +++" },
+      ],
     });
   });
 
   test("reports a missing closing delimiter", () => {
-    expect(parseFrontmatterForCheck("+++\ntitle = \"Post\"\n")).toEqual({
+    expect(parseFrontmatterForCheck('+++\ntitle = "Post"\n')).toEqual({
       errors: [{ field: "frontmatter", reason: "is missing closing +++ delimiter" }],
     });
   });
@@ -77,7 +88,13 @@ describe("validateMetadata", () => {
       legacy: true,
     });
 
-    expect(errors.map((error) => error.field)).toEqual(["legacy", "title", "date", "tags", "reading"]);
+    expect(errors.map((error) => error.field)).toEqual([
+      "legacy",
+      "title",
+      "date",
+      "tags",
+      "reading",
+    ]);
   });
 });
 
@@ -91,10 +108,13 @@ describe("assertValidMetadata", () => {
 
 describe("evaluateMetadata", () => {
   test("reports tag quality errors when tags exceed limits", () => {
-    const errors = evaluateMetadata({
-      tags: ["valid", "toolongtag", "!!!", "extra"],
-      sumup: { mode: "none" },
-    }, { filePath: "post.md", locale: "en", config });
+    const errors = evaluateMetadata(
+      {
+        tags: ["valid", "toolongtag", "!!!", "extra"],
+        sumup: { mode: "none" },
+      },
+      { filePath: "post.md", locale: "en", config },
+    );
 
     expect(errors).toEqual([
       "post.md: tags: must contain at most 3 tags",
@@ -104,10 +124,13 @@ describe("evaluateMetadata", () => {
   });
 
   test("reports markup and missing-Japanese errors for a Japanese summary", () => {
-    const errors = evaluateMetadata({
-      tags: [],
-      sumup: { mode: "text", text: "**English only**" },
-    }, { filePath: "post.ja.md", locale: "ja", config });
+    const errors = evaluateMetadata(
+      {
+        tags: [],
+        sumup: { mode: "text", text: "**English only**" },
+      },
+      { filePath: "post.ja.md", locale: "ja", config },
+    );
 
     expect(errors).toEqual([
       "post.ja.md: sumup.text: must not contain Markdown or HTML markup",
@@ -118,22 +141,26 @@ describe("evaluateMetadata", () => {
 
 describe("hasPendingMetadata / pendingMetadataReasons", () => {
   test("detects remaining generated fields", () => {
-    expect(hasPendingMetadata({
-      title: "Post",
-      date: "auto",
-      auto_tags: { count: 2 },
-      sumup: { mode: "auto" },
-      thumbnail: { mode: "none" },
-    })).toBe(true);
+    expect(
+      hasPendingMetadata({
+        title: "Post",
+        date: "auto",
+        auto_tags: { count: 2 },
+        sumup: { mode: "auto" },
+        thumbnail: { mode: "none" },
+      }),
+    ).toBe(true);
   });
 
   test("lists stable human-readable reasons for remaining generated fields", () => {
-    expect(pendingMetadataReasons({
-      date: "auto",
-      auto_tags: {},
-      sumup: { mode: "auto" },
-      thumbnail: { mode: "none" },
-    })).toEqual(['date = "auto"', "auto_tags", 'sumup.mode = "auto"', 'thumbnail.mode = "none"']);
+    expect(
+      pendingMetadataReasons({
+        date: "auto",
+        auto_tags: {},
+        sumup: { mode: "auto" },
+        thumbnail: { mode: "none" },
+      }),
+    ).toEqual(['date = "auto"', "auto_tags", 'sumup.mode = "auto"', 'thumbnail.mode = "none"']);
   });
 });
 
@@ -180,7 +207,7 @@ describe("resolveMetadata", () => {
       'title = "Needs tags"',
       'date = "2026-02-07"',
       'tags = ["js"]',
-      'auto_tags = { count = 2 }',
+      "auto_tags = { count = 2 }",
       "",
       "[sumup]",
       'mode = "none"',
@@ -194,12 +221,14 @@ describe("resolveMetadata", () => {
       "",
     ].join("\n");
 
-    await expect(resolveMetadata({
-      filePath: join(tmpdir(), "needs-tags.en.md"),
-      source,
-      config,
-      knownTags: ["js"],
-      provider: async () => ({ tags: ["js", "", "JS"] }),
-    })).rejects.toThrow(/AI metadata generation returned 0 usable tags, expected 2/);
+    await expect(
+      resolveMetadata({
+        filePath: join(tmpdir(), "needs-tags.en.md"),
+        source,
+        config,
+        knownTags: ["js"],
+        provider: async () => ({ tags: ["js", "", "JS"] }),
+      }),
+    ).rejects.toThrow(/AI metadata generation returned 0 usable tags, expected 2/);
   });
 });

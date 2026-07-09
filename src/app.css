@@ -51,6 +51,7 @@
 }
 
 .grain-circle {
+  display: var(--grain-circle-display, block);
   position: absolute;
   width: min(34vw, 360px);
   aspect-ratio: 1;

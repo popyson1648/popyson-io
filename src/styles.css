@@ -64,6 +64,7 @@
   --text-noise-url: var(--noise-url);
   --grain-light: var(--noise-url);
   --grain-dark: var(--noise-url);
+  --grain-circle-display: none;
 }
 
 /* ---- Color theme tokens ----

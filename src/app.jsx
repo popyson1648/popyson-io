@@ -10,7 +10,11 @@ import { parseRoute } from "./routing.js";
 
 const RISOGRAPH_DEFAULTS = {
   bgNoiseOpacity: 30,
-  bgNoiseFrequency: 15.5,
+  // Keep baseFrequency at or below ~1 cycle per rendered pixel (tile is
+  // 200px for a 200-unit viewBox). Higher values alias into blotchy
+  // moiré, which the dark theme's screen blend makes plainly visible.
+  bgNoiseFrequency: 0.9,
+  bgNoiseOctaves: 2,
   bgDistortion: 0,
   bgRoughness: 0.25,
   circleOpacity: 60,
@@ -24,11 +28,11 @@ const RISOGRAPH_DEFAULTS = {
   textRoughness: 0.16,
 };
 
-function createNoiseUrl(frequency) {
+function createNoiseUrl(frequency, octaves = 3) {
   const noiseSvg = `
     <svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'>
       <filter id='noiseFilter'>
-        <feTurbulence type='fractalNoise' baseFrequency='${frequency}' numOctaves='3' stitchTiles='stitch'/>
+        <feTurbulence type='fractalNoise' baseFrequency='${frequency}' numOctaves='${octaves}' stitchTiles='stitch'/>
         <feColorMatrix type='saturate' values='0'/>
       </filter>
       <rect width='100%' height='100%' filter='url(#noiseFilter)'/>
@@ -111,7 +115,10 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("blog.theme") || "system");
   const riso = RISOGRAPH_DEFAULTS;
   const sysDark = useSystemDark();
-  const bgNoiseUrl = useMemo(() => createNoiseUrl(riso.bgNoiseFrequency), [riso.bgNoiseFrequency]);
+  const bgNoiseUrl = useMemo(
+    () => createNoiseUrl(riso.bgNoiseFrequency, riso.bgNoiseOctaves),
+    [riso.bgNoiseFrequency, riso.bgNoiseOctaves],
+  );
   const circleNoiseUrl = useMemo(
     () => createNoiseUrl(riso.circleNoiseFrequency),
     [riso.circleNoiseFrequency],

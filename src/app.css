@@ -50,53 +50,8 @@
   background-size: 200px 200px;
 }
 
-.grain-circle {
-  position: absolute;
-  width: min(34vw, 360px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  overflow: hidden;
-  mix-blend-mode: multiply;
-  opacity: var(--grain-circle-opacity, 1);
-  filter: var(--circle-edge-filter, none);
-}
-
-.grain-circle-1 {
-  left: max(-160px, calc(50% - 700px));
-  top: 64px;
-}
-
-.grain-circle-2 {
-  right: max(-180px, calc(50% - 700px));
-  bottom: 56px;
-}
-
-.grain-color,
-.grain-noise {
-  position: absolute;
-  inset: 0;
-}
-
-.grain-circle-1 .grain-color {
-  background-color: var(--accent-alt);
-}
-.grain-circle-2 .grain-color {
-  background-color: var(--accent);
-}
-
-.grain-noise {
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  opacity: var(--grain-noise-opacity, 0.5);
-  background-image: var(--circle-noise-url);
-  background-size: 200px 200px;
-}
-
 /* On the dark paper, multiply sinks the ink to black; screen keeps the
-   riso circles and the paper grain readable as light-on-dark. */
-[data-theme="dark"] .grain-circle {
-  mix-blend-mode: screen;
-}
+   paper grain readable as light-on-dark. */
 [data-theme="dark"] .bg-noise {
   mix-blend-mode: screen;
 }

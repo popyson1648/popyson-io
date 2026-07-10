@@ -48,23 +48,22 @@
   --tracking-label: 0.04em;
 
   --t: 140ms ease;
-  --search-backdrop-bg: color-mix(in srgb, var(--bg) 44%, transparent);
-  --search-backdrop-image: linear-gradient(
-    color-mix(in srgb, white 24%, transparent),
-    color-mix(in srgb, white 10%, transparent)
-  );
+  --search-backdrop-bg: var(--chrome-backdrop-bg);
+  --search-backdrop-image: linear-gradient(var(--chrome-glaze-top), var(--chrome-glaze-bottom));
   --search-backdrop-filter: blur(64px) saturate(190%) brightness(1.08) contrast(0.92);
-  --topbar-surface-bg: color-mix(in srgb, var(--bg) 88%, transparent);
+  --topbar-surface-bg: var(--chrome-bg);
   --topbar-surface-image: var(--search-backdrop-image);
   --topbar-surface-filter: var(--search-backdrop-filter);
-  --topbar-surface-highlight: inset 0 1px 0 color-mix(in srgb, white 54%, transparent);
+  --topbar-surface-highlight: inset 0 1px 0 var(--chrome-highlight);
+  --topbar-surface-shadow: 0 14px 34px var(--chrome-shadow);
+  --menu-shadow: 0 16px 36px var(--chrome-shadow);
+  --elevated-shadow: 0 14px 32px var(--chrome-shadow);
   --noise-url: url("data:image/svg+xml,%3Csvg%20viewBox%3D'0%200%20200%20200'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cfilter%20id%3D'noiseFilter'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'41'%20numOctaves%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20type%3D'saturate'%20values%3D'0'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23noiseFilter)'%2F%3E%3C%2Fsvg%3E");
   --bg-noise-url: var(--noise-url);
   --circle-noise-url: var(--noise-url);
   --text-noise-url: var(--noise-url);
   --grain-light: var(--noise-url);
   --grain-dark: var(--noise-url);
-  --grain-circle-display: none;
 }
 
 /* ---- Color theme tokens ----
@@ -72,6 +71,11 @@
    are the single source of truth in src/content/theme.toml and are generated
    into CSS at build time by the tomlContent() plugin in vite.config.js,
    imported via `virtual:theme.css` in src/main.jsx. Edit colors there. */
+
+[data-theme="dark"] {
+  --search-backdrop-image: none;
+  --topbar-surface-image: none;
+}
 
 * {
   box-sizing: border-box;

@@ -33,6 +33,7 @@ const CHECK_ICON_HTML =
   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="check"><path d="M5 12l5 5 9-10"></path></svg>';
 let pagefindLoadPromise = null;
 const pagefindInstances = new Map();
+const PAGEFIND_MODULE_URL = "/pagefind/pagefind.js";
 
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
@@ -40,8 +41,8 @@ function emptyFilters(initialTag = null) {
 
 async function loadPagefind(lang) {
   if (!pagefindLoadPromise) {
-    // @ts-expect-error Pagefind is generated under /pagefind at build time; Vite keeps this absolute URL external.
-    pagefindLoadPromise = import(/* @vite-ignore */ "/pagefind/pagefind.js").catch((error) => {
+    // Pagefind is generated under /pagefind at build time; Vite keeps this absolute URL external.
+    pagefindLoadPromise = import(/* @vite-ignore */ PAGEFIND_MODULE_URL).catch((error) => {
       pagefindLoadPromise = null;
       throw error;
     });

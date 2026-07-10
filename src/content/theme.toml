@@ -9,7 +9,7 @@
 # Values are raw CSS strings (hex, `transparent`, or `color-mix(...)`).
 #
 # Only colors live here. Non-color tokens (type scale, radius, noise,
-# blur surfaces) stay in src/styles.css :root.
+# blur/filter behavior) stay in src/styles.css :root.
 # ============================================================
 
 # ---- Light theme (grainy paper + blue/lime ink) ----
@@ -28,6 +28,14 @@ accent-alt  = "#d4ff0a"
 accent-soft = "transparent"
 # cream/white text on the blue accent fill (e.g. selected tag chips)
 on-accent   = "#fdfff7"
+
+# chrome/surface colors for topbar, menus, and floating controls
+chrome-bg           = "color-mix(in srgb, #fdfff7 88%, transparent)"
+chrome-backdrop-bg  = "color-mix(in srgb, #fdfff7 44%, transparent)"
+chrome-glaze-top    = "color-mix(in srgb, #fdfff7 72%, transparent)"
+chrome-glaze-bottom = "color-mix(in srgb, #fdfff7 38%, transparent)"
+chrome-highlight    = "color-mix(in srgb, #fdfff7 70%, transparent)"
+chrome-shadow       = "color-mix(in srgb, #4960ff 8%, transparent)"
 
 # message boxes — calm, distinct
 msg-info-b = "#4960ff"
@@ -54,29 +62,36 @@ msg-danger-tx = "#4960ff"
 bg          = "#12141d"
 bg-subtle   = "#161927"
 surface     = "transparent"
-text        = "#e9ecf7"
-text-muted  = "color-mix(in srgb, #e9ecf7 78%, #12141d)"
-text-meta   = "color-mix(in srgb, #e9ecf7 88%, #12141d)"
-text-faint  = "color-mix(in srgb, #e9ecf7 55%, #12141d)"
-line        = "color-mix(in srgb, #e9ecf7 26%, #12141d)"
-line-strong = "color-mix(in srgb, #e9ecf7 70%, #12141d)"
+text        = "#6f82ff"
+text-muted  = "color-mix(in srgb, #6f82ff 88%, #12141d)"
+text-meta   = "color-mix(in srgb, #6f82ff 94%, #12141d)"
+text-faint  = "color-mix(in srgb, #6f82ff 76%, #12141d)"
+line        = "color-mix(in srgb, #6f82ff 52%, #12141d)"
+line-strong = "#6f82ff"
 accent      = "#6f82ff"
 accent-alt  = "#d4ff0a"
 accent-soft = "transparent"
 on-accent   = "#12141d"
 
+chrome-bg           = "color-mix(in srgb, #12141d 88%, transparent)"
+chrome-backdrop-bg  = "color-mix(in srgb, #12141d 44%, transparent)"
+chrome-glaze-top    = "color-mix(in srgb, #e9ecf7 10%, transparent)"
+chrome-glaze-bottom = "color-mix(in srgb, #12141d 72%, transparent)"
+chrome-highlight    = "color-mix(in srgb, #e9ecf7 18%, transparent)"
+chrome-shadow       = "color-mix(in srgb, #050711 34%, transparent)"
+
 msg-info-b = "#6f82ff"
 msg-info-bg = "transparent"
-msg-info-tx = "#e9ecf7"
+msg-info-tx = "#6f82ff"
 msg-tip-b = "#d4ff0a"
 msg-tip-bg = "transparent"
-msg-tip-tx = "#e9ecf7"
+msg-tip-tx = "#6f82ff"
 msg-warn-b = "#d4ff0a"
 msg-warn-bg = "transparent"
-msg-warn-tx = "#e9ecf7"
+msg-warn-tx = "#6f82ff"
 msg-note-b = "#6f82ff"
 msg-note-bg = "transparent"
-msg-note-tx = "#e9ecf7"
+msg-note-tx = "#6f82ff"
 msg-danger-b = "#ff6b8a"
 msg-danger-bg = "transparent"
-msg-danger-tx = "#e9ecf7"
+msg-danger-tx = "#6f82ff"

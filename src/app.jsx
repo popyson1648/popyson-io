@@ -201,6 +201,10 @@ export default function App() {
   return (
     <AppCtx.Provider value={ctx}>
       <div className="grain-bg" aria-hidden="true">
+        <div className="bg-gradient">
+          <div className="bg-gradient-noise"></div>
+          <div className="bg-gradient-color"></div>
+        </div>
         <div className="bg-noise"></div>
       </div>
       <div className="app">

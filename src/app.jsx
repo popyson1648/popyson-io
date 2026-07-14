@@ -17,11 +17,6 @@ const RISOGRAPH_DEFAULTS = {
   bgNoiseOctaves: 2,
   bgDistortion: 0,
   bgRoughness: 0.25,
-  circleOpacity: 60,
-  circleNoiseOpacity: 6,
-  circleNoiseFrequency: 33,
-  circleDistortion: 8,
-  circleRoughness: 0.25,
   textNoiseOpacity: 11,
   textNoiseFrequency: 25,
   textDistortion: 0,
@@ -119,17 +114,9 @@ export default function App() {
     () => createNoiseUrl(riso.bgNoiseFrequency, riso.bgNoiseOctaves),
     [riso.bgNoiseFrequency, riso.bgNoiseOctaves],
   );
-  const circleNoiseUrl = useMemo(
-    () => createNoiseUrl(riso.circleNoiseFrequency),
-    [riso.circleNoiseFrequency],
-  );
   const bgFilterId = useMemo(
     () => createFilterId("bg-rough", riso.bgDistortion, riso.bgRoughness),
     [riso.bgDistortion, riso.bgRoughness],
-  );
-  const circleFilterId = useMemo(
-    () => createFilterId("circle-rough", riso.circleDistortion, riso.circleRoughness),
-    [riso.circleDistortion, riso.circleRoughness],
   );
 
   // routing (History API). `to` is a canonical, locale-less path
@@ -171,21 +158,15 @@ export default function App() {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--bg-noise-url", bgNoiseUrl);
-    root.style.setProperty("--circle-noise-url", circleNoiseUrl);
     root.style.setProperty("--text-noise-url", "none");
-    root.style.setProperty("--grain-light", circleNoiseUrl);
-    root.style.setProperty("--grain-dark", circleNoiseUrl);
     root.style.setProperty("--bg-noise-opacity", String(riso.bgNoiseOpacity / 100));
     root.style.setProperty("--bg-edge-filter", `url(#${bgFilterId})`);
-    root.style.setProperty("--grain-circle-opacity", String(riso.circleOpacity / 100));
-    root.style.setProperty("--grain-noise-opacity", String(riso.circleNoiseOpacity / 100));
-    root.style.setProperty("--circle-edge-filter", `url(#${circleFilterId})`);
     root.style.setProperty("--text-edge-filter", "none");
     root.style.setProperty("--text-ink-opacity", "0%");
     root.style.setProperty("--text-ink-alt-opacity", "0%");
     root.style.setProperty("--text-ink-offset", "0px");
     root.style.setProperty("--text-ink-alt-offset", "0px");
-  }, [bgFilterId, bgNoiseUrl, circleFilterId, circleNoiseUrl, riso]);
+  }, [bgFilterId, bgNoiseUrl, riso]);
 
   const t = window.I18N[lang];
   const ctx = { t, lang, theme, setTheme, route, nav };
@@ -221,14 +202,6 @@ export default function App() {
     <AppCtx.Provider value={ctx}>
       <div className="grain-bg" aria-hidden="true">
         <div className="bg-noise"></div>
-        <div className="grain-circle grain-circle-1">
-          <div className="grain-color"></div>
-          <div className="grain-noise"></div>
-        </div>
-        <div className="grain-circle grain-circle-2">
-          <div className="grain-color"></div>
-          <div className="grain-noise"></div>
-        </div>
       </div>
       <div className="app">
         <svg className="grain-filter-defs" aria-hidden="true" focusable="false">
@@ -243,21 +216,6 @@ export default function App() {
               in="SourceGraphic"
               in2="noise"
               scale={riso.bgDistortion}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-          <filter id={circleFilterId} x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency={riso.circleRoughness}
-              numOctaves="3"
-              result="noise"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="noise"
-              scale={riso.circleDistortion}
               xChannelSelector="R"
               yChannelSelector="G"
             />

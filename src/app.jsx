@@ -209,6 +209,21 @@ export default function App() {
       </div>
       <div className="app">
         <svg className="grain-filter-defs" aria-hidden="true" focusable="false">
+          {/* Dark-mode remap for the finished light gradient (.bg-gradient):
+              in the light palette the blue channel runs the paper↔lime axis
+              (#fdfff7 B=247 … #d4ff0a B=10). Swap only the existing dark
+              endpoints: light paper maps to dim lime #2f3b07, and light lime
+              maps to dark paper #12141d. Every blurred in-between shade stays
+              proportional along the same axis. */}
+          <filter id="gg-dark-map" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0 0  0.122363 0 0.065790
+                      0 0  0.164558 0 0.071978
+                      0 0 -0.092827 0 0.117366
+                      0 0  0        1 0"
+            />
+          </filter>
           <filter id={bgFilterId} x="-20%" y="-20%" width="140%" height="140%">
             <feTurbulence
               type="fractalNoise"

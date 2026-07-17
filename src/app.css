@@ -67,7 +67,18 @@
   --grain: url("data:image/svg+xml,%3Csvg%20viewBox%3D'0%200%20200%20200'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cfilter%20id%3D'n'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.65'%20numOctaves%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23n)'%2F%3E%3C%2Fsvg%3E");
   filter: contrast(170%) brightness(1000%);
   background:
-/* white glow: top-left main (solid core; the rim dissolves into grain) */
+/* white strip across the top: keeps the topbar zone on plain paper (the
+   lime body's long alpha ramp otherwise reaches the top edge and dithers
+   the band yellow); its lower edge dissolves into the grain like the rims */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.92) 14%,
+      rgba(255, 255, 255, 0.55) 20%,
+      rgba(255, 255, 255, 0.18) 27%,
+      rgba(255, 255, 255, 0) 33%
+    ),
+    /* white glow: top-left main (solid core; the rim dissolves into grain) */
     radial-gradient(
       79% 49% at 28.6% -11.8%,
       rgba(255, 255, 255, 1) 38%,
@@ -125,6 +136,7 @@
     var(--grain),
     var(--grain);
   background-size:
+    100% 100%,
     100% 100%,
     100% 100%,
     100% 100%,
@@ -216,13 +228,11 @@
       transparent 100%
     ),
     /* base vertical ramp — stays at the bright lime below the transition
-       band; no darker shades, so text keeps its contrast over the field */
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--gg-paper) 80%, var(--accent-alt)) 4.5%,
-      #e4f878 24.5%,
-      var(--accent-alt) 40.9%
-    );
+       band; no darker shades, so text keeps its contrast over the field.
+       The top is plain paper (not a paper/lime mix) held down past the
+       topbar zone, so the white regions resolve to the same cream as the
+       topbar chrome; the noise layer's top strip matches this extent. */
+    linear-gradient(180deg, var(--gg-paper) 16%, #e4f878 30%, var(--accent-alt) 44%);
 }
 
 /* Dark theme: render the identical light composite (the color layer keeps

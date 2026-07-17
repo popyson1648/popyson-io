@@ -6,6 +6,9 @@ import { describe, expect, test } from "vitest";
 const ROOT = process.cwd();
 const theme = parseToml(readFileSync(join(ROOT, "src/content/theme.toml"), "utf8"));
 const DARK_LIME = "#2f3b07";
+// Gradient paper endpoint: darker than the chrome navy #1b2030 because the
+// screen-blended grain lifts the rendered band onto the topbar's color.
+const DARK_PAPER = "#01081a";
 
 function parseHex(value) {
   const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(value);
@@ -42,7 +45,8 @@ function contrastRatio(foreground, background) {
 
 function darkBackgrounds() {
   return [
-    ["dark paper", theme.dark.bg],
+    ["dark chrome", theme.dark["bg-subtle"]],
+    ["dark paper", DARK_PAPER],
     ["dark lime field", DARK_LIME],
   ];
 }
@@ -106,7 +110,7 @@ describe("dark gradient endpoint mapping", () => {
     const toHex = (rgb) =>
       `#${rgb.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 
-    expect(toHex(mapBlue(247))).toBe(theme.dark.bg);
+    expect(toHex(mapBlue(247))).toBe(DARK_PAPER);
     expect(toHex(mapBlue(10))).toBe(DARK_LIME);
   });
 });

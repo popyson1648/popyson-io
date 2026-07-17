@@ -213,17 +213,20 @@ export default function App() {
               in the light palette the blue channel runs the paper↔lime axis
               (#fdfff7 B=247 … #d4ff0a B=10). Dark mode keeps the identical
               composition and only swaps the two color codes: light paper
-              #fdfff7 → dark paper #12141d, light lime #d4ff0a → dim lime
-              #2f3b07. Every blurred in-between shade stays proportional
+              #fdfff7 → dark paper #01081a, light lime #d4ff0a → dim lime
+              #2f3b07. The paper code is darker than the topbar chrome navy
+              (#1b2030) on purpose: the dark grain lifts the rendered band
+              ~11% via its screen blend, landing it on the same navy as the
+              topbar. Every blurred in-between shade stays proportional
               along the same axis. Each row is the linear map of the blue
               channel between those endpoints; the endpoint mapping is
               guarded by tests/check_theme_contrast.test.mjs. */}
           <filter id="gg-dark-map" colorInterpolationFilters="sRGB">
             <feColorMatrix
               type="matrix"
-              values="0 0 -0.122363 0 0.189112
-                      0 0 -0.164557 0 0.237826
-                      0 0  0.092827 0 0.023811
+              values="0 0 -0.194093 0 0.191925
+                      0 0 -0.215190 0 0.239811
+                      0 0  0.080169 0 0.024307
                       0 0  0        1 0"
             />
           </filter>

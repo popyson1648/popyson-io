@@ -90,7 +90,7 @@ describe("dark theme contrast", () => {
 });
 
 describe("dark gradient endpoint mapping", () => {
-  test("maps light lime to dark paper and light paper to the dark lime field", () => {
+  test("keeps the light composition: light paper maps to dark paper, light lime to the dark lime field", () => {
     const appSource = readFileSync(join(ROOT, "src/app.jsx"), "utf8");
     const filter = appSource.match(/<filter id="gg-dark-map"[\s\S]*?values="([^"]+)"/);
     expect(filter).not.toBeNull();
@@ -106,7 +106,7 @@ describe("dark gradient endpoint mapping", () => {
     const toHex = (rgb) =>
       `#${rgb.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 
-    expect(toHex(mapBlue(10))).toBe(theme.dark.bg);
-    expect(toHex(mapBlue(247))).toBe(DARK_LIME);
+    expect(toHex(mapBlue(247))).toBe(theme.dark.bg);
+    expect(toHex(mapBlue(10))).toBe(DARK_LIME);
   });
 });

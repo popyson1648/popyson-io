@@ -75,16 +75,15 @@ describe("prerendered routes", () => {
     expect(cases.length).toBeGreaterThan(0);
   });
 
-  test.each(cases)("$dir ($route.name, $lang) bakes its primary body into #root", ({
-    dir,
-    route,
-    lang,
-  }) => {
-    const expectations = expectationsFor(route, lang);
-    expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
-    const html = read(dir);
-    for (const needle of expectations) {
-      expect(html).toContain(needle);
-    }
-  });
+  test.each(cases)(
+    "$dir ($route.name, $lang) bakes its primary body into #root",
+    ({ dir, route, lang }) => {
+      const expectations = expectationsFor(route, lang);
+      expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
+      const html = read(dir);
+      for (const needle of expectations) {
+        expect(html).toContain(needle);
+      }
+    },
+  );
 });

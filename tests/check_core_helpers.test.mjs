@@ -64,14 +64,12 @@ describe("normalizeIsoDate", () => {
     expect(normalizeIsoDate(new Date("2026-02-07T23:45:00Z"))).toBe("2026-02-07");
   });
 
-  test.each([
-    ["2026-2-7"],
-    [""],
-    [null],
-    [new Date("invalid")],
-  ])("returns an empty string for invalid value %o", (value) => {
-    expect(normalizeIsoDate(value)).toBe("");
-  });
+  test.each([["2026-2-7"], [""], [null], [new Date("invalid")]])(
+    "returns an empty string for invalid value %o",
+    (value) => {
+      expect(normalizeIsoDate(value)).toBe("");
+    },
+  );
 });
 
 describe("makeDateLabel", () => {
@@ -79,14 +77,12 @@ describe("makeDateLabel", () => {
     expect(makeDateLabel("2026-02-07")).toEqual({ ja: "2026年2月7日", en: "Feb 7, 2026" });
   });
 
-  test.each([
-    ["2026-00-07"],
-    ["2026-13-07"],
-    ["2026-02-00"],
-    ["2026-02-32"],
-  ])("returns empty labels when month or day is out of range (%s)", (date) => {
-    expect(makeDateLabel(date)).toEqual({ ja: "", en: "" });
-  });
+  test.each([["2026-00-07"], ["2026-13-07"], ["2026-02-00"], ["2026-02-32"]])(
+    "returns empty labels when month or day is out of range (%s)",
+    (date) => {
+      expect(makeDateLabel(date)).toEqual({ ja: "", en: "" });
+    },
+  );
 });
 
 describe("localizedDateLabel", () => {

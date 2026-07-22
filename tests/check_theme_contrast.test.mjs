@@ -52,27 +52,23 @@ function darkBackgrounds() {
 }
 
 describe("dark theme contrast", () => {
-  test.each([
-    "text",
-    "text-muted",
-    "text-meta",
-    "text-faint",
-  ])("%s reaches 4.5:1 over both background endpoints", (role) => {
-    for (const [, background] of darkBackgrounds()) {
-      expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
+  test.each(["text", "text-muted", "text-meta", "text-faint"])(
+    "%s reaches 4.5:1 over both background endpoints",
+    (role) => {
+      for (const [, background] of darkBackgrounds()) {
+        expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 
-  test.each([
-    "line",
-    "line-strong",
-    "focus",
-    "accent-alt",
-  ])("%s reaches 3:1 over both background endpoints", (role) => {
-    for (const [, background] of darkBackgrounds()) {
-      expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(3);
-    }
-  });
+  test.each(["line", "line-strong", "focus", "accent-alt"])(
+    "%s reaches 3:1 over both background endpoints",
+    (role) => {
+      for (const [, background] of darkBackgrounds()) {
+        expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
 
   test("filled blue controls keep readable light text", () => {
     expect(
@@ -80,17 +76,14 @@ describe("dark theme contrast", () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
-  test.each([
-    "msg-info-tx",
-    "msg-tip-tx",
-    "msg-warn-tx",
-    "msg-note-tx",
-    "msg-danger-tx",
-  ])("%s reaches 4.5:1 over both background endpoints", (role) => {
-    for (const [, background] of darkBackgrounds()) {
-      expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(4.5);
-    }
-  });
+  test.each(["msg-info-tx", "msg-tip-tx", "msg-warn-tx", "msg-note-tx", "msg-danger-tx"])(
+    "%s reaches 4.5:1 over both background endpoints",
+    (role) => {
+      for (const [, background] of darkBackgrounds()) {
+        expect(contrastRatio(theme.dark[role], background)).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });
 
 describe("dark gradient endpoint mapping", () => {

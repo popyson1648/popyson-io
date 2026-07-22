@@ -240,7 +240,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
         with:
           node-version: "22"

@@ -53,11 +53,13 @@ manual approval. Use a dedicated automation token for fully automatic PR checks.
   dispatch, reads open Dependabot and code scanning alerts, asks Claude Code for
   a minimal fix, verifies it, and opens a remediation PR.
 - `.github/workflows/_pr-followup.yml`: shared `workflow_call` job that follows
-  up on one matching open maintenance PR. It asks Claude Code to fix actionable
-  review or CI feedback, runs `python3 scripts/verify.py --mode ci`, pushes the
-  minimal fix, or comments `LGTM` when the PR is quiet and checks are green. A
-  `selector` input chooses which PRs to act on (`security` or `dependabot`). It
-  never merges a PR.
+  up on one matching open maintenance PR. Scheduled runs rotate among PRs with
+  failing checks, requested changes, or merge conflicts so one unchanged PR
+  cannot starve the others. It asks Claude Code to fix actionable feedback,
+  runs `python3 scripts/verify.py --mode ci`, and pushes the minimal fix. When no
+  PR is actionable, it comments `LGTM` on one completed green PR without
+  invoking Claude. A `selector` input chooses which PRs to act on (`security` or
+  `dependabot`). It never merges a PR.
 - `.github/workflows/security-pr-followup.yml`: thin caller that runs the shared
   follow-up on security remediation PRs (label `security-alert-remediation`) on
   review activity, hourly, and on manual dispatch.
@@ -78,8 +80,9 @@ GitHub's security UI and by revoking or rotating the affected secret.
 
 - The automation never merges a PR.
 - The automation never dismisses alerts.
-- Each follow-up run handles one matching open PR at a time (the most recently
-  updated) to avoid duplicate fixes.
+- Each follow-up run handles one matching open PR. Scheduled runs prioritize
+  actionable PRs and rotate through them; completed green PRs that already have
+  `LGTM` are excluded from later scheduled runs.
 - Labels `dependencies` and `security` must exist so Dependabot can apply them;
   the `dependabot` selector also matches PRs authored by `app/dependabot`.
 - If Claude cannot safely fix an alert, the workflow should leave the alert open

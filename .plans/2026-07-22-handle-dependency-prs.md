@@ -104,3 +104,7 @@ follow-up workflow from starving older failing pull requests.
   and bypass Claude for quiet green PRs.
 - Validated the workflow with `actionlint`, live GitHub PR data, and synthetic
   rotation fixtures. Full repository verification passed.
+- Addressed all CodeRabbit feedback on #83: the final `LGTM` gates re-check
+  merge conflicts, check-state jq definitions have a single source, and the
+  durable automation token is exposed only in the final push step instead of
+  being persisted during dependency or model execution.

@@ -41,8 +41,26 @@ jobs:
   follow-up:
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
       GH_REPO: ${{ github.repository }}
+      CHECK_STATE_JQ: |
+        def check_result: (.conclusion // .state // "");
+        def failed_checks:
+          [(.statusCheckRollup // [])[]
+            | check_result as $result
+            | select(
+                ($result != "")
+                and (["SUCCESS", "SKIPPED", "NEUTRAL", "PENDING", "EXPECTED"]
+                  | index($result) | not)
+              )]
+          | length;
+        def pending_checks:
+          [(.statusCheckRollup // [])[]
+            | select(
+                (((.status // "") != "") and (.status != "COMPLETED"))
+                or ((.state // "") == "PENDING")
+                or ((.state // "") == "EXPECTED")
+              )]
+          | length;
     steps:
       - name: Check GitHub automation secret
         run: |
@@ -52,6 +70,7 @@ jobs:
         id: pr
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           SELECTOR: ${{ inputs.selector }}
           EVENT_PR: ${{ inputs.pr_number }}
           RUN_NUMBER: ${{ github.run_number }}
@@ -92,24 +111,6 @@ jobs:
             # cannot permanently starve the other matching PRs. When no PR is
             # actionable, select a completed green PR that still needs `LGTM`.
             selection_filter="$(cat <<'JQ'
-              def check_result: (.conclusion // .state // "");
-              def failed_checks:
-                [(.statusCheckRollup // [])[]
-                  | check_result as $result
-                  | select(
-                      ($result != "")
-                      and (["SUCCESS", "SKIPPED", "NEUTRAL", "PENDING", "EXPECTED"]
-                        | index($result) | not)
-                    )]
-                | length;
-              def pending_checks:
-                [(.statusCheckRollup // [])[]
-                  | select(
-                      (((.status // "") != "") and (.status != "COMPLETED"))
-                      or ((.state // "") == "PENDING")
-                      or ((.state // "") == "EXPECTED")
-                    )]
-                | length;
               def has_lgtm: [(.comments // [])[].body] | any(. == "LGTM");
               def matches_selector:
                 if $sel == "security" then
@@ -151,7 +152,7 @@ jobs:
               --json number,updatedAt,author,labels,statusCheckRollup,reviewDecision,mergeStateStatus,comments \
               > "$RUNNER_TEMP/open-prs.json"
             jq --arg sel "$SELECTOR" --argjson run "$RUN_NUMBER" \
-              "$selection_filter" "$RUNNER_TEMP/open-prs.json" \
+              "$CHECK_STATE_JQ $selection_filter" "$RUNNER_TEMP/open-prs.json" \
               > "$RUNNER_TEMP/selection.json"
             number="$(jq -r '.number // ""' "$RUNNER_TEMP/selection.json")"
             needs_claude="$(jq -r '.needs_claude // false' "$RUNNER_TEMP/selection.json")"
@@ -187,64 +188,52 @@ jobs:
         if: ${{ steps.pr.outputs.should_run == 'true' && steps.pr.outputs.needs_claude != 'true' }}
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           set -euo pipefail
 
-          gh pr view "$PR_NUMBER" --json statusCheckRollup,reviewDecision,comments \
+          gh pr view "$PR_NUMBER" \
+            --json statusCheckRollup,reviewDecision,mergeStateStatus,comments \
             > "$RUNNER_TEMP/green-pr.json"
 
           state_filter="$(cat <<'JQ'
-            def check_result: (.conclusion // .state // "");
-            def failed_checks:
-              [(.statusCheckRollup // [])[]
-                | check_result as $result
-                | select(
-                    ($result != "")
-                    and (["SUCCESS", "SKIPPED", "NEUTRAL", "PENDING", "EXPECTED"]
-                      | index($result) | not)
-                  )]
-              | length;
-            def pending_checks:
-              [(.statusCheckRollup // [])[]
-                | select(
-                    (((.status // "") != "") and (.status != "COMPLETED"))
-                    or ((.state // "") == "PENDING")
-                    or ((.state // "") == "EXPECTED")
-                  )]
-              | length;
             {
               failed: failed_checks,
               pending: pending_checks,
               review_decision: (.reviewDecision // ""),
+              merge_state: (.mergeStateStatus // ""),
               has_lgtm: ([.comments[].body] | any(. == "LGTM"))
             }
           JQ
           )"
-          jq "$state_filter" "$RUNNER_TEMP/green-pr.json" > "$RUNNER_TEMP/green-state.json"
+          jq "$CHECK_STATE_JQ $state_filter" "$RUNNER_TEMP/green-pr.json" \
+            > "$RUNNER_TEMP/green-state.json"
 
           failed_checks="$(jq -r '.failed' "$RUNNER_TEMP/green-state.json")"
           pending_checks="$(jq -r '.pending' "$RUNNER_TEMP/green-state.json")"
           review_decision="$(jq -r '.review_decision' "$RUNNER_TEMP/green-state.json")"
+          merge_state="$(jq -r '.merge_state' "$RUNNER_TEMP/green-state.json")"
           has_lgtm="$(jq -r '.has_lgtm' "$RUNNER_TEMP/green-state.json")"
 
           if [[ "$failed_checks" == "0" && "$pending_checks" == "0" \
-            && "$review_decision" != "CHANGES_REQUESTED" ]]; then
+            && "$review_decision" != "CHANGES_REQUESTED" && "$merge_state" != "DIRTY" ]]; then
             if [[ "$has_lgtm" != "true" ]]; then
               gh pr comment "$PR_NUMBER" --body "LGTM"
             else
               echo "LGTM comment already exists."
             fi
           else
-            echo "PR changed after selection; skipping LGTM: failed_checks=$failed_checks pending_checks=$pending_checks review_decision=$review_decision"
+            echo "PR changed after selection; skipping LGTM: failed_checks=$failed_checks pending_checks=$pending_checks review_decision=$review_decision merge_state=$merge_state"
           fi
 
       - uses: actions/checkout@v7
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
         with:
-          token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
+          token: ${{ github.token }}
           ref: ${{ steps.pr.outputs.head_ref }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-python@v6
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
@@ -265,6 +254,8 @@ jobs:
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
         id: context
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -406,6 +397,9 @@ jobs:
       - name: Push fixes or comment LGTM
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTOMATION_TOKEN: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -414,6 +408,11 @@ jobs:
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
+            # Configure the durable write token only after all untrusted
+            # dependency and model execution has finished. The helper command is
+            # stored in git configuration, but the token itself remains in the
+            # environment of this final step only.
+            GH_TOKEN="$AUTOMATION_TOKEN" gh auth setup-git --hostname github.com --force
             # Verification writes throwaway output under .tmp/ (e.g. Lighthouse);
             # keep it out of the commit: exclude untracked copies and drop any
             # already-tracked ones before staging.
@@ -421,44 +420,31 @@ jobs:
             git rm -r --cached --quiet --ignore-unmatch .tmp
             git add .
             git commit -m "fix: address automated maintenance PR feedback"
-            git push
+            GH_TOKEN="$AUTOMATION_TOKEN" git push
             exit 0
           fi
 
-          gh pr view "$pr_number" --json statusCheckRollup,reviewDecision \
+          gh pr view "$pr_number" \
+            --json statusCheckRollup,reviewDecision,mergeStateStatus \
             > "$RUNNER_TEMP/post-fix-pr.json"
           state_filter="$(cat <<'JQ'
-            def check_result: (.conclusion // .state // "");
-            def failed_checks:
-              [(.statusCheckRollup // [])[]
-                | check_result as $result
-                | select(
-                    ($result != "")
-                    and (["SUCCESS", "SKIPPED", "NEUTRAL", "PENDING", "EXPECTED"]
-                      | index($result) | not)
-                  )]
-              | length;
-            def pending_checks:
-              [(.statusCheckRollup // [])[]
-                | select(
-                    (((.status // "") != "") and (.status != "COMPLETED"))
-                    or ((.state // "") == "PENDING")
-                    or ((.state // "") == "EXPECTED")
-                  )]
-              | length;
             {
               failed: failed_checks,
               pending: pending_checks,
-              review_decision: (.reviewDecision // "")
+              review_decision: (.reviewDecision // ""),
+              merge_state: (.mergeStateStatus // "")
             }
           JQ
           )"
-          jq "$state_filter" "$RUNNER_TEMP/post-fix-pr.json" > "$RUNNER_TEMP/post-fix-state.json"
+          jq "$CHECK_STATE_JQ $state_filter" "$RUNNER_TEMP/post-fix-pr.json" \
+            > "$RUNNER_TEMP/post-fix-state.json"
           failed_checks="$(jq -r '.failed' "$RUNNER_TEMP/post-fix-state.json")"
           pending_checks="$(jq -r '.pending' "$RUNNER_TEMP/post-fix-state.json")"
           review_decision="$(jq -r '.review_decision' "$RUNNER_TEMP/post-fix-state.json")"
+          merge_state="$(jq -r '.merge_state' "$RUNNER_TEMP/post-fix-state.json")"
 
-          if [[ "$failed_checks" == "0" && "$pending_checks" == "0" && "$review_decision" != "CHANGES_REQUESTED" ]]; then
+          if [[ "$failed_checks" == "0" && "$pending_checks" == "0" \
+            && "$review_decision" != "CHANGES_REQUESTED" && "$merge_state" != "DIRTY" ]]; then
             has_lgtm="$(gh pr view "$pr_number" --json comments --jq '[.comments[].body] | any(. == "LGTM")')"
             if [[ "$has_lgtm" != "true" ]]; then
               gh pr comment "$pr_number" --body "LGTM"
@@ -466,5 +452,5 @@ jobs:
               echo "LGTM comment already exists."
             fi
           else
-            echo "PR is not ready for LGTM: failed_checks=$failed_checks pending_checks=$pending_checks review_decision=$review_decision"
+            echo "PR is not ready for LGTM: failed_checks=$failed_checks pending_checks=$pending_checks review_decision=$review_decision merge_state=$merge_state"
           fi

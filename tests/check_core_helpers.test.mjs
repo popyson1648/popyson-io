@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import { makeDateLabel, normalizeIsoDate, localizedDateLabel } from "../src/dateLabel.js";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
+import { splitLinks } from "../src/linkText.js";
 import {
   allRoutes,
   configureMetaData,
@@ -217,5 +218,71 @@ describe("allRoutes", () => {
         "en:en/app/linewatch:appDetail:linewatch",
       ]),
     );
+  });
+});
+
+describe("splitLinks", () => {
+  test("returns plain text unchanged as a single part", () => {
+    expect(splitLinks("交通費の支援を受けて参加します。")).toEqual([
+      { type: "text", value: "交通費の支援を受けて参加します。" },
+    ]);
+  });
+
+  test("turns a bare URL into a link, query string and all", () => {
+    const url =
+      "https://x.com/popyson1648/status/2064514604018155887?s=46&t=irGI_ALoyclK0ynjtXf_Tg";
+
+    expect(splitLinks(url)).toEqual([{ type: "link", value: url, href: url }]);
+  });
+
+  test("keeps the text around a URL", () => {
+    expect(splitLinks("詳細は https://example.com/a を見てください")).toEqual([
+      { type: "text", value: "詳細は " },
+      { type: "link", value: "https://example.com/a", href: "https://example.com/a" },
+      { type: "text", value: " を見てください" },
+    ]);
+  });
+
+  test("splits several URLs in one description", () => {
+    const parts = splitLinks("http://a.example と https://b.example");
+
+    expect(parts.filter((part) => part.type === "link").map((part) => part.href)).toEqual([
+      "http://a.example",
+      "https://b.example",
+    ]);
+  });
+
+  test.each([
+    { name: "full stop", text: "https://example.com/a。", href: "https://example.com/a" },
+    { name: "comma", text: "https://example.com/a, next", href: "https://example.com/a" },
+    { name: "closing paren", text: "(https://example.com/a)", href: "https://example.com/a" },
+    { name: "japanese bracket", text: "「https://example.com/a」", href: "https://example.com/a" },
+  ])("drops trailing $name from the href", ({ text, href }) => {
+    const link = splitLinks(text).find((part) => part.type === "link");
+
+    expect(link.href).toBe(href);
+  });
+
+  test("keeps a bracket that belongs to the URL", () => {
+    const url = "https://ja.wikipedia.org/wiki/Foo_(bar)";
+
+    expect(splitLinks(url).find((part) => part.type === "link").href).toBe(url);
+  });
+
+  test.each([
+    { name: "javascript", text: 'javascript:alert("x")' },
+    { name: "data", text: "data:text/html;base64,PHNjcmlwdD4=" },
+    { name: "bare domain", text: "example.com/a" },
+    { name: "scheme with no host", text: "https://" },
+  ])("leaves $name as plain text", ({ text }) => {
+    expect(splitLinks(text).every((part) => part.type === "text")).toBe(true);
+  });
+
+  test.each([
+    { name: "empty string", text: "" },
+    { name: "undefined", text: undefined },
+    { name: "null", text: null },
+  ])("returns no parts for $name", ({ text }) => {
+    expect(splitLinks(text)).toEqual([]);
   });
 });

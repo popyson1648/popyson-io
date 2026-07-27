@@ -242,7 +242,24 @@ function withRelatedIds(posts) {
   }));
 }
 
+// The locale files are zipped by index, so a drifting entry count would quietly
+// render blank English fields. Fail the build instead — this is easy to hit when
+// only one locale gets a new entry.
+export function assertLocaleParity(field, jaItems, enItems, source = "about") {
+  const jaCount = (jaItems || []).length;
+  const enCount = (enItems || []).length;
+  if (jaCount !== enCount) {
+    throw new Error(
+      `${field}: ${source}.ja.toml has ${jaCount} entries but ${source}.en.toml has ${enCount}; ` +
+        "the two locales are matched by position and must stay the same length",
+    );
+  }
+}
+
 function localizeAbout(ja, en) {
+  for (const field of ["career", "education", "activities"]) {
+    assertLocaleParity(field, ja[field], en[field]);
+  }
   const person = {
     icon: ja.icon || en.icon || "",
     name: { ja: ja.name || "", en: en.name || "" },
@@ -284,6 +301,9 @@ export function loadSiteContent() {
   const en = readAbout("en");
   const person = localizeAbout(ja.person, en.person);
   const news = { ja: readNews(ja.news), en: readNews(en.news) };
+  // News is not index-zipped, but a locale missing entries silently empties the
+  // News section on that language's page, so hold both files to the same count.
+  assertLocaleParity("news", news.ja, news.en, "news");
   return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person, NEWS: news };
 }
 

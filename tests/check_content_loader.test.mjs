@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import {
+  assertLocaleParity,
   contentWatchFiles,
   loadSiteContent,
   normalizeNewsEntries,
@@ -181,6 +182,28 @@ describe("loadSiteContent", () => {
     );
     // `[news] count = 5` is the cap, not a requirement.
     expect(content.NEWS.ja.length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("assertLocaleParity", () => {
+  test.each([
+    { name: "equal lengths pass", ja: [1, 2], en: ["a", "b"] },
+    { name: "both empty pass", ja: [], en: [] },
+    { name: "missing arrays count as empty", ja: undefined, en: undefined },
+  ])("$name", ({ ja, en }) => {
+    expect(() => assertLocaleParity("career", ja, en)).not.toThrow();
+  });
+
+  test("reports the field, both counts, and the files involved", () => {
+    expect(() => assertLocaleParity("news", [1, 2, 3], [1], "news")).toThrow(
+      /news: news\.ja\.toml has 3 entries but news\.en\.toml has 1/,
+    );
+  });
+
+  test("a locale missing an entry entirely is caught", () => {
+    expect(() => assertLocaleParity("activities", [1], undefined)).toThrow(
+      /about\.ja\.toml has 1 entries but about\.en\.toml has 0/,
+    );
   });
 });
 

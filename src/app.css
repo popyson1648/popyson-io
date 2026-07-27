@@ -1659,6 +1659,18 @@
   line-height: 1.7;
   margin-top: 3px;
 }
+/* A URL written inside an authored description. Long URLs must wrap rather
+   than push the column wider. */
+.inline-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: var(--line-w);
+  text-underline-offset: 0.18em;
+  overflow-wrap: anywhere;
+}
+.inline-link:hover {
+  color: var(--text);
+}
 .news-link {
   display: inline-flex;
   align-items: baseline;

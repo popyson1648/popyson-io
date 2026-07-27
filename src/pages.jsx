@@ -4,7 +4,28 @@
 import { useContext, useEffect, useState } from "react";
 import { AppCtx, Chip, Icon, L, PageHead, Ph } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
+import { splitLinks } from "./linkText.js";
 import { localized } from "./meta.js";
+
+/* Authored descriptions may contain a bare URL; render those as real links.
+   Only http/https is linkified (see splitLinks), so the href is always safe. */
+function RichText({ text }) {
+  return splitLinks(text).map((part, i) =>
+    part.type === "link" ? (
+      <a
+        key={`${i}:${part.href}`}
+        href={part.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-link"
+      >
+        {part.value}
+      </a>
+    ) : (
+      part.value
+    ),
+  );
+}
 
 /* ===================== ABOUT ===================== */
 export function AboutPage() {
@@ -117,7 +138,11 @@ export function AboutPage() {
                       ) : (
                         <div className="news-title">{n.title}</div>
                       )}
-                      {n.description && <div className="news-desc">{n.description}</div>}
+                      {n.description && (
+                        <div className="news-desc">
+                          <RichText text={n.description} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -154,7 +179,7 @@ export function AboutPage() {
                   </button>
                   {expanded && (
                     <div className="act-detail" id={`activity-detail-${i}`}>
-                      {detail}
+                      <RichText text={detail} />
                     </div>
                   )}
                 </div>
@@ -186,7 +211,9 @@ export function AboutPage() {
                   <div>
                     <div className="tl-role">{L(e.school, lang)}</div>
                     {L(e.description, lang) && (
-                      <div className="tl-org">{L(e.description, lang)}</div>
+                      <div className="tl-org">
+                        <RichText text={L(e.description, lang)} />
+                      </div>
                     )}
                   </div>
                 </div>

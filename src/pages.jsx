@@ -9,7 +9,8 @@ import { localized } from "./meta.js";
 /* ===================== ABOUT ===================== */
 export function AboutPage() {
   const { t, lang, nav } = useContext(AppCtx);
-  const { PERSON, APPS } = window.BlogData;
+  const { PERSON, NEWS, APPS } = window.BlogData;
+  const news = NEWS?.[lang] || [];
   const linkIcon = (label) => {
     if (label === "GitHub") return <Icon.github width={15} height={15} />;
     if (label === "X") return <Icon.xcom width={14} height={14} />;
@@ -28,17 +29,20 @@ export function AboutPage() {
     <div className="container route-fade">
       <PageHead title={t.page_about.title} />
       <div className="about-top">
-        <div className="avatar">{PERSON.initials}</div>
+        {/* Decorative: the name sits right next to it, so alt stays empty.
+            With no icon set, the row simply starts at the name. */}
+        {PERSON.icon && <img className="avatar avatar-img" src={PERSON.icon} alt="" />}
         <div>
           <h2 className="about-name">{L(PERSON.name, lang)}</h2>
           <div className="about-role">
             {L(PERSON.role, lang)} · {L(PERSON.location, lang)}
           </div>
-          <p className="about-tag">{L(PERSON.tagline, lang)}</p>
+          {L(PERSON.tagline, lang) && <p className="about-tag">{L(PERSON.tagline, lang)}</p>}
           <div className="links-row" data-cf-change="ch-profile-links">
             {PERSON.links.map((lk) => {
-              const internal = lk.href.startsWith("/"); // in-app route (locale applied via nav)
-              if (lk.href.startsWith("mailto:"))
+              const internal = lk.href?.startsWith("/"); // in-app route (locale applied via nav)
+              // No href, or a mailto: — written out as text rather than linked.
+              if (!lk.href || lk.href.startsWith("mailto:"))
                 return (
                   <span key={lk.label} className="profile-link profile-link-text">
                     {linkIcon(lk.label)}
@@ -71,34 +75,71 @@ export function AboutPage() {
       </div>
 
       <div style={{ marginTop: 32 }}>
-        {PERSON.bio[lang].map((para) => (
+        {PERSON.bio[lang].filter(Boolean).map((para) => (
           <p key={para} style={{ maxWidth: "62ch", color: "var(--text-muted)", lineHeight: 1.8 }}>
             {para}
           </p>
         ))}
       </div>
 
+      {/* DOM order is the mobile order (news, activity, career, education); the
+          two-column desktop layout keeps career and education stacked together
+          in the right column, so visual order never diverges from it. */}
       <div className="about-grid">
-        <div className="about-block">
-          <h2>{t.about_career}</h2>
-          <div className="timeline">
-            {PERSON.career.map((c, i) => (
-              <div className="tl-item" key={i}>
-                <div className="tl-period">{c.period}</div>
-                <div>
-                  <div className="tl-role">{L(c.role, lang)}</div>
-                  <div className="tl-org">{L(c.org, lang)}</div>
-                </div>
-              </div>
-            ))}
+        {news.length > 0 && (
+          <div className="about-block about-block-wide">
+            <h2>{t.about_news}</h2>
+            <div className="news-list">
+              {news.map((n) => {
+                const internal = n.href?.startsWith("/");
+                return (
+                  <div className="news-item" key={`${n.date}:${n.title}`}>
+                    <div className="news-date">{localizedDateLabel(n, lang)}</div>
+                    <div>
+                      {n.href ? (
+                        <a
+                          className="news-title news-link"
+                          href={internal ? localized(n.href, lang) : n.href}
+                          target={internal ? undefined : "_blank"}
+                          rel={internal ? undefined : "noopener noreferrer"}
+                          onClick={
+                            internal
+                              ? (e) => {
+                                  e.preventDefault();
+                                  nav(n.href);
+                                }
+                              : undefined
+                          }
+                        >
+                          <span>{n.title}</span>
+                          {internal ? null : <Icon.ext width={13} height={13} />}
+                        </a>
+                      ) : (
+                        <div className="news-title">{n.title}</div>
+                      )}
+                      {n.description && <div className="news-desc">{n.description}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
         <div className="about-block">
           <h2>{t.about_activity}</h2>
           <div className="act-list">
             {PERSON.activities.map((a, i) => {
-              const title = L(a, lang);
+              const title = L(a.title, lang);
+              const detail = L(a.description, lang);
               const expanded = openActivity === i;
+              // Without a description there is nothing to reveal, so the row is
+              // static text rather than a control that opens an empty panel.
+              if (!detail)
+                return (
+                  <div className="act-item" key={i}>
+                    <div className="act-static">{title}</div>
+                  </div>
+                );
               return (
                 <div className="act-item" key={i}>
                   <button
@@ -113,12 +154,44 @@ export function AboutPage() {
                   </button>
                   {expanded && (
                     <div className="act-detail" id={`activity-detail-${i}`}>
-                      {t.activity_detail(title)}
+                      {detail}
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        </div>
+        <div className="about-col">
+          <div className="about-block">
+            <h2>{t.about_career}</h2>
+            <div className="timeline">
+              {PERSON.career.map((c, i) => (
+                <div className="tl-item" key={i}>
+                  <div className="tl-period">{L(c.period, lang)}</div>
+                  <div>
+                    <div className="tl-role">{L(c.role, lang)}</div>
+                    {L(c.org, lang) && <div className="tl-org">{L(c.org, lang)}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="about-block">
+            <h2>{t.about_education}</h2>
+            <div className="timeline">
+              {PERSON.education.map((e, i) => (
+                <div className="tl-item" key={i}>
+                  <div className="tl-period">{L(e.period, lang)}</div>
+                  <div>
+                    <div className="tl-role">{L(e.school, lang)}</div>
+                    {L(e.description, lang) && (
+                      <div className="tl-org">{L(e.description, lang)}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

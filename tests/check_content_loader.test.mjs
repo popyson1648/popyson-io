@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import {
+  assertLocaleParity,
   contentWatchFiles,
   loadSiteContent,
+  normalizeNewsEntries,
   postIdPattern,
   relatedPostIds,
   rootDir,
@@ -117,25 +119,152 @@ describe("loadSiteContent", () => {
     expect(content.TAGS).toEqual(["CLI", "型", "DX"]);
   });
 
-  test("localizes about content by matching Japanese and English records", () => {
-    expect({
-      initials: content.PERSON.initials,
-      name: content.PERSON.name,
-      firstCareer: content.PERSON.career[0],
-      firstActivity: content.PERSON.activities[0],
-    }).toEqual({
-      initials: "RS",
-      name: { ja: "佐藤 玲", en: "Rei Sato" },
-      firstCareer: {
-        period: "2022 — now",
-        role: { ja: "シニアエンジニア / 基盤チーム", en: "Senior Engineer / Platform" },
-        org: { ja: "Tate Systems", en: "Tate Systems" },
+  // These assert the shape the loader produces, not the author's own wording:
+  // the About TOML is edited often, and pinning its prose here would turn every
+  // content tweak into a CI failure.
+  test("pairs each Japanese record with the English one at the same index", () => {
+    expect(content.PERSON.name.ja).toBeTruthy();
+    expect(content.PERSON.name.en).toBeTruthy();
+    for (const entry of content.PERSON.career) {
+      expect(entry).toEqual({
+        period: { ja: expect.any(String), en: expect.any(String) },
+        role: { ja: expect.any(String), en: expect.any(String) },
+        // An org is optional; the About page skips the line when it is empty.
+        org: { ja: expect.any(String), en: expect.any(String) },
+      });
+      expect(entry.role.en).toBeTruthy();
+    }
+    for (const entry of content.PERSON.activities) {
+      expect(entry).toEqual({
+        title: { ja: expect.any(String), en: expect.any(String) },
+        // Authored in the TOML; empty keeps the row static instead of expandable.
+        description: { ja: expect.any(String), en: expect.any(String) },
+      });
+      expect(entry.title.en).toBeTruthy();
+    }
+  });
+
+  test("localizes education entries alongside career entries", () => {
+    expect(content.PERSON.education.length).toBeGreaterThan(0);
+    for (const entry of content.PERSON.education) {
+      expect(entry).toEqual({
+        period: { ja: expect.any(String), en: expect.any(String) },
+        school: { ja: expect.any(String), en: expect.any(String) },
+        description: { ja: expect.any(String), en: expect.any(String) },
+      });
+      expect(entry.school.en).toBeTruthy();
+    }
+    // A period can carry words, so the English one must come from the English
+    // file rather than falling through to the Japanese "現在".
+    expect(content.PERSON.education.some((e) => e.period.ja.includes("現在"))).toBe(true);
+    expect(content.PERSON.education.every((e) => !e.period.en.includes("現在"))).toBe(true);
+  });
+
+  test("keeps links without an href so they can render as plain text", () => {
+    const textOnly = content.PERSON.links.filter((link) => !link.href);
+    expect(textOnly.length).toBeGreaterThan(0);
+    for (const link of textOnly) expect(link.label).toBeTruthy();
+  });
+
+  test("loads news for both locales from the files the about config points at", () => {
+    expect(content.NEWS.ja).toHaveLength(content.NEWS.en.length);
+    expect(content.NEWS.ja.length).toBeGreaterThan(0);
+    for (const item of content.NEWS.ja) {
+      expect(item).toMatchObject({
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dateLabel: { ja: expect.any(String), en: expect.any(String) },
+        title: expect.any(String),
+        description: expect.any(String),
+      });
+    }
+    expect(content.NEWS.ja.map((item) => item.date)).toEqual(
+      [...content.NEWS.ja.map((item) => item.date)].sort((a, b) => b.localeCompare(a)),
+    );
+    // `[news] count = 5` is the cap, not a requirement.
+    expect(content.NEWS.ja.length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("assertLocaleParity", () => {
+  test.each([
+    { name: "equal lengths pass", ja: [1, 2], en: ["a", "b"] },
+    { name: "both empty pass", ja: [], en: [] },
+    { name: "missing arrays count as empty", ja: undefined, en: undefined },
+  ])("$name", ({ ja, en }) => {
+    expect(() => assertLocaleParity("career", ja, en)).not.toThrow();
+  });
+
+  test("reports the field, both counts, and the files involved", () => {
+    expect(() => assertLocaleParity("news", [1, 2, 3], [1], "news")).toThrow(
+      /news: news\.ja\.toml has 3 entries but news\.en\.toml has 1/,
+    );
+  });
+
+  test("a locale missing an entry entirely is caught", () => {
+    expect(() => assertLocaleParity("activities", [1], undefined)).toThrow(
+      /about\.ja\.toml has 1 entries but about\.en\.toml has 0/,
+    );
+  });
+});
+
+describe("normalizeNewsEntries", () => {
+  const entries = [
+    { date: "2026-01-10", title: "middle" },
+    {
+      date: "2026-03-02",
+      title: "newest",
+      description: "with detail",
+      href: "https://example.com",
+    },
+    { date: "2025-12-24", title: "oldest" },
+  ];
+
+  test("sorts newest first, carries description, and attaches bilingual date labels", () => {
+    expect(normalizeNewsEntries(entries)).toEqual([
+      {
+        date: "2026-03-02",
+        dateLabel: { ja: "2026年3月2日", en: "Mar 2, 2026" },
+        title: "newest",
+        description: "with detail",
+        href: "https://example.com",
       },
-      firstActivity: {
-        ja: "技術カンファレンスでの登壇（分散トレーシング、型駆動設計）",
-        en: "Conference talks on distributed tracing and type-driven design",
+      {
+        date: "2026-01-10",
+        dateLabel: { ja: "2026年1月10日", en: "Jan 10, 2026" },
+        title: "middle",
+        description: "",
       },
-    });
+      {
+        date: "2025-12-24",
+        dateLabel: { ja: "2025年12月24日", en: "Dec 24, 2025" },
+        title: "oldest",
+        description: "",
+      },
+    ]);
+  });
+
+  test("caps the list at count and omits href when absent", () => {
+    const shown = normalizeNewsEntries(entries, 2);
+    expect(shown.map((item) => item.title)).toEqual(["newest", "middle"]);
+    expect(shown[1]).not.toHaveProperty("href");
+  });
+
+  test.each([
+    { name: "no count shows everything", count: undefined, expected: 3 },
+    { name: "zero count shows everything", count: 0, expected: 3 },
+    { name: "count above the list length is harmless", count: 99, expected: 3 },
+  ])("$name", ({ count, expected }) => {
+    expect(normalizeNewsEntries(entries, count)).toHaveLength(expected);
+  });
+
+  test("rejects an entry without a usable date", () => {
+    expect(() =>
+      normalizeNewsEntries([{ date: "2026/03/02", title: "bad" }], 5, "news.ja.toml"),
+    ).toThrow(/news.ja.toml: news entry "bad" needs a YYYY-MM-DD date/);
+  });
+
+  test("treats missing entries as an empty list", () => {
+    expect(normalizeNewsEntries(undefined, 5)).toEqual([]);
   });
 });
 
@@ -157,6 +286,8 @@ describe("contentWatchFiles", () => {
     ["src/content/metadata.toml"],
     ["src/content/prompts/tag-generation.md"],
     ["src/content/posts/20260521-a1b2c3d4/index.ja.md"],
+    ["src/content/about/news.ja.toml"],
+    ["src/content/about/news.en.toml"],
   ])("includes %s", (relativePath) => {
     expect(watchedFiles).toContain(join(root, relativePath));
   });

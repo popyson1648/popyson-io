@@ -1,34 +1,58 @@
 [person]
-initials = "RS"
-name = "佐藤 玲"
-role = "ソフトウェアエンジニア"
-location = "東京"
-tagline = "分散システムと開発者ツールをつくっています。線で考えるのが好き。"
+# Avatar image under public/ (e.g. "/avatar.png"). Empty renders no avatar.
+icon = ""
+name = "popyson (瀬戸口 駿介)"
+role = "学生"
+location = "Oita / Yokohama"
+tagline = ""
 bio = [
-  "バックエンドと開発基盤を中心に、約8年間ソフトウェアをつくっています。信頼性の高いシステムと、触っていて気持ちのいい開発者体験の両立に関心があります。",
-  "最近は型システム、ストリーム処理、そして「速くて静かな」CLI ツールにのめり込んでいます。",
-]
-activities = [
-  "技術カンファレンスでの登壇（分散トレーシング、型駆動設計）",
-  "OSS メンテナ — ストリーム処理ライブラリ",
-  "社内の輪読会・勉強会の運営",
-  "技術書の翻訳レビュー",
+  "",
+  "",
 ]
 
-[[person.career]]
-period = "2022 — now"
-role = "シニアエンジニア / 基盤チーム"
-org = "Tate Systems"
+# News entries live in their own file; see that file for the entry format.
+# `count` caps how many of the newest entries the About page shows.
+[news]
+file = "news.ja.toml"
+count = 5
+
+# `description` is the text revealed when the row is opened. Leave it empty and
+# the row stays a plain line with nothing to open.
+[[person.activities]]
+title = "Google AI Student Ambassador"
+description = ""
+
+[[person.activities]]
+title = '学生団体 "Google AI TechHub" 理事 (運営)'
+description = ""
+
+[[person.activities]]
+title = "ソフトウェアエンジニアリング協会 : 勉強会 CSZAP に参加中"
+description = ""
+
+[[person.activities]]
+title = "ソフトウェアエンジニアリング協会 : O'Reilly SRE 輪読会"
+description = ""
 
 [[person.career]]
-period = "2019 — 2022"
-role = "バックエンドエンジニア"
-org = "Kumo Inc."
+period = "2025/7 — 2026/1"
+role = "業務委託 : 不動産検索Webアプリケーション"
+org = ""
 
-[[person.career]]
-period = "2017 — 2019"
-role = "ソフトウェアエンジニア"
-org = "Hashi Labs"
+[[person.education]]
+period = "2021/4 - 2026/3"
+school = "北海道情報大学 経営情報学部 システム情報学科"
+description = ""
+
+[[person.education]]
+period = "2021/4 - 2026/3"
+school = "KCS大分情報専門学校 大学併修科 AI･システム専攻"
+description = ""
+
+[[person.education]]
+period = "2026/4 - 現在"
+school = "KCS大分情報専門学校 研究生"
+description = "コーディングエージェントに関する研究"
 
 [[person.links]]
 label = "GitHub"
@@ -50,6 +74,7 @@ href = "https://www.wantedly.com/id/shunsuke_setoguchi_s"
 label = "RSS"
 href = "/rss"
 
+# No href: rendered as plain text, not a link.
 [[person.links]]
-label = "xxx at gmail.com"
-href = "mailto:xxx@gmail.com"
+label = "popyson1648 at gmail.com"
+

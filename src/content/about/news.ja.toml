@@ -1,0 +1,37 @@
+# News shown on the About page. Referenced from about.ja.toml `[news] file`,
+# newest first, capped by `[news] count`.
+#
+# Every entry needs its own [[news]] header; repeating date/title under one
+# header is a duplicate-key error.
+#
+# [[news]]
+# date = "2026-07-20"        # ISO 8601 (YYYY-MM-DD), required
+# title = "お知らせの見出し"
+# description = "見出しの下に出る補足。省略可。"
+# href = "https://..."       # optional; a leading "/" is an in-site route
+
+[[news]]
+date = "2026-07-19"
+title = "STORES Tech Conf 2026 の学生支援に採択されました!"
+description = ""
+
+[[news]]
+date = "2026-06-27"
+title = "Gemini AI Hackathon に参加しました"
+description = ""
+
+[[news]]
+date = "2026-06-26"
+title = "Google AI Student Ambassador Meetup に参加しました"
+description = ""
+
+[[news]]
+date = "2026-06-10"
+title = "Google AI TechHub のロゴを作成しました"
+description = "https://x.com/popyson1648/status/2064514604018155887?s=46&t=irGI_ALoyclK0ynjtXf_Tg"
+
+[[news]]
+date = "2026-06-09"
+title = "基本アルゴリズムを LeetCode で学習するための問題一覧サイト『Learn Algorithms with LeetCode』を公開しました!"
+description = ""
+

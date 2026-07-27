@@ -1,0 +1,36 @@
+# News shown on the About page. Referenced from about.en.toml `[news] file`,
+# newest first, capped by `[news] count`.
+#
+# Every entry needs its own [[news]] header; repeating date/title under one
+# header is a duplicate-key error.
+#
+# [[news]]
+# date = "2026-07-20"        # ISO 8601 (YYYY-MM-DD), required
+# title = "Headline"
+# description = "Supporting line under the headline. Optional."
+# href = "https://..."       # optional; a leading "/" is an in-site route
+
+[[news]]
+date = "2026-07-19"
+title = "Selected for the STORES Tech Conf 2026 student support program"
+description = ""
+
+[[news]]
+date = "2026-06-27"
+title = "Took part in the Gemini AI Hackathon"
+description = ""
+
+[[news]]
+date = "2026-06-26"
+title = "Attended the Google AI Student Ambassador Meetup"
+description = ""
+
+[[news]]
+date = "2026-06-10"
+title = "Designed the Google AI TechHub logo"
+description = ""
+
+[[news]]
+date = "2026-06-09"
+title = "Published \"Learn Algorithms with LeetCode\", an index of LeetCode problems for studying core algorithms"
+description = ""

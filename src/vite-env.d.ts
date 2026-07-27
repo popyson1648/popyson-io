@@ -6,6 +6,7 @@ declare module "virtual:site-content" {
   export const POSTS: Post[];
   export const TAGS: string[];
   export const PERSON: Person;
+  export const NEWS: LocaleMap<NewsItem[]>;
   export const APPS: AppItem[];
   export const READING: ReadingItem[];
   export const ARTICLE_BODIES: Record<string, ArticleBodyEntry>;
@@ -46,16 +47,28 @@ type ReadingItem = {
   done?: boolean;
 };
 
+type NewsItem = {
+  date: string;
+  dateLabel: { ja: string; en: string };
+  title: string;
+  description: string;
+  href?: string;
+};
+
 type Person = {
-  initials: string;
+  // Avatar image path; empty renders no avatar.
+  icon: string;
   name: LocaleMap;
   role: LocaleMap;
   location: LocaleMap;
   tagline: LocaleMap;
   bio: LocaleMap<string[]>;
-  career: Array<{ period: string; role: LocaleMap; org: LocaleMap }>;
-  activities: LocaleMap[];
-  links: Array<{ label: string; href: string }>;
+  career: Array<{ period: LocaleMap; role: LocaleMap; org: LocaleMap }>;
+  education: Array<{ period: LocaleMap; school: LocaleMap; description: LocaleMap }>;
+  // An empty description makes the row static instead of expandable.
+  activities: Array<{ title: LocaleMap; description: LocaleMap }>;
+  // A link without an href renders as plain text.
+  links: Array<{ label: string; href?: string }>;
 };
 
 type ArticleBodyEntry = {
@@ -68,6 +81,7 @@ type ArticleBodyLocale = { html?: string; text?: string } | string;
 
 type BlogDataShape = {
   PERSON: Person;
+  NEWS: LocaleMap<NewsItem[]>;
   POSTS: Post[];
   TAGS: string[];
   APPS: AppItem[];

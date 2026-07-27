@@ -6,7 +6,7 @@
    and imported from reading.json. unread -> done:false, archive -> done:true.
    ============================================================ */
 import readingData from "./reading.json";
-import { PERSON, POSTS, TAGS } from "virtual:site-content";
+import { NEWS, PERSON, POSTS, TAGS } from "virtual:site-content";
 import { APPS } from "./apps.js";
 import { makeDateLabel } from "./dateLabel.js";
 
@@ -20,5 +20,5 @@ import { makeDateLabel } from "./dateLabel.js";
       }))
     : [];
 
-  window.BlogData = { PERSON, TAGS, POSTS, APPS, READING };
+  window.BlogData = { PERSON, NEWS, TAGS, POSTS, APPS, READING };
 })();

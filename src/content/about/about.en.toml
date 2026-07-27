@@ -1,31 +1,79 @@
 [person]
-initials = "RS"
-name = "Rei Sato"
-role = "Software Engineer"
-location = "Tokyo"
-tagline = "Building distributed systems and developer tools. I like thinking in lines."
+# Avatar image under public/ (e.g. "/avatar.png"). Empty renders no avatar.
+icon = ""
+name = "Shunsuke Setoguchi"
+role = "Student"
+location = "Oita/Yokohama"
+tagline = ""
 bio = [
-  "I've spent about 8 years building software, focused on backend and developer infrastructure. I care about the overlap between reliable systems and developer experience that feels good to touch.",
-  "Lately I'm deep into type systems, stream processing, and CLI tools that are fast and quiet.",
-]
-activities = [
-  "Conference talks on distributed tracing and type-driven design",
-  "OSS maintainer of a stream-processing library",
-  "Running internal reading groups and study sessions",
-  "Technical book translation reviews",
+  "",
+  "",
 ]
 
-[[person.career]]
-period = "2022 — now"
-role = "Senior Engineer / Platform"
-org = "Tate Systems"
+# News entries live in their own file; see that file for the entry format.
+# `count` caps how many of the newest entries the About page shows.
+[news]
+file = "news.en.toml"
+count = 5
+
+# `description` is the text revealed when the row is opened. Leave it empty and
+# the row stays a plain line with nothing to open.
+[[person.activities]]
+title = "Google AI Student Ambassador"
+description = ""
+
+[[person.activities]]
+title = 'Board member of the student organization "Google AI TechHub"'
+description = ""
+
+[[person.activities]]
+title = "Software Engineering Association: attending the CSZAP study group"
+description = ""
+
+[[person.activities]]
+title = "Software Engineering Association: O'Reilly SRE reading group"
+description = ""
 
 [[person.career]]
-period = "2019 — 2022"
-role = "Backend Engineer"
-org = "Kumo Inc."
+period = "2025/7 — 2026/1"
+role = "Contract work: real-estate search web application"
+org = ""
 
-[[person.career]]
-period = "2017 — 2019"
-role = "Software Engineer"
-org = "Hashi Labs"
+[[person.education]]
+period = "2021/4 - 2026/3"
+school = "Hokkaido Information University, Department of Systems and Information Science"
+description = ""
+
+[[person.education]]
+period = "2021/4 - 2026/3"
+school = "KCS Oita College of Information Technology, AI & Systems major"
+description = ""
+
+[[person.education]]
+period = "2026/4 - now"
+school = "KCS Oita College of Information Technology, research student"
+description = "Research on coding agents"
+
+[[person.links]]
+label = "GitHub"
+href = "https://github.com/popyson1648"
+
+[[person.links]]
+label = "X"
+href = "https://x.com/popyson1648"
+
+[[person.links]]
+label = "LinkedIn"
+href = "https://www.linkedin.com/in/shunsuke-setoguchi"
+
+[[person.links]]
+label = "Wantedly"
+href = "https://www.wantedly.com/id/shunsuke_setoguchi_s"
+
+[[person.links]]
+label = "RSS"
+href = "/rss"
+
+# No href: rendered as plain text, not a link.
+[[person.links]]
+label = "popyson1648 at gmail.com"

@@ -9,7 +9,9 @@
       page_blog: { title: "Blog", sub: "書いたもの" },
       page_app: { title: "制作物", sub: "作ったもの" },
       page_reading: { title: "Reading List", sub: "読んだもの・読みたいもの" },
+      about_news: "News",
       about_career: "経歴",
+      about_education: "学歴",
       about_activity: "活動",
       about_made: "作ったもの",
       about_links: "リンク",
@@ -81,8 +83,6 @@
       no_link: "リンクは未設定です",
       lang: "EN",
       view_all: "すべて見る",
-      activity_detail: (title) =>
-        `${title}について、取り組みの背景と現在の関心を短くまとめています。`,
     },
     en: {
       brand: "popyson.com",
@@ -92,7 +92,9 @@
       page_blog: { title: "Blog", sub: "Things I've written" },
       page_app: { title: "Works", sub: "Things I've built" },
       page_reading: { title: "Reading List", sub: "Read & to read" },
+      about_news: "News",
       about_career: "Career",
+      about_education: "Education",
       about_activity: "Activities",
       about_made: "Built",
       about_links: "Links",
@@ -164,8 +166,6 @@
       no_link: "No link is configured",
       lang: "日本語",
       view_all: "View all",
-      activity_detail: (title) =>
-        `A short note on the context behind ${title} and why it matters to my current work.`,
     },
   };
 })();

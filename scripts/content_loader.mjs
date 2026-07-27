@@ -135,10 +135,63 @@ function readPost(dirName, config) {
   return { post, body: localizeMarkdown(ja.body, en.body) };
 }
 
+/**
+ * @typedef {Object} AboutFile
+ * @property {Record<string, any>} [person]
+ * @property {{ file?: string, count?: number }} [news]
+ */
+
 function readAbout(locale) {
   const file = join(ABOUT_DIR, `about.${locale}.toml`);
-  const data = parseToml(readFileSync(file, "utf8"));
-  return data.person || {};
+  const data = /** @type {AboutFile} */ (parseToml(readFileSync(file, "utf8")));
+  return { person: data.person || {}, news: data.news || {} };
+}
+
+// Newest first, capped by `count`. A missing or non-positive `count` shows
+// every entry. `source` only names the file in error messages.
+export function normalizeNewsEntries(entries, count, source = "news") {
+  const items = Array.isArray(entries) ? entries : [];
+  const limit = Number.isFinite(Number(count)) && Number(count) > 0 ? Math.floor(count) : Infinity;
+  return items
+    .map((entry) => {
+      const date = normalizeIsoDate(entry.date);
+      if (!date) {
+        throw new Error(`${source}: news entry "${entry.title || ""}" needs a YYYY-MM-DD date`);
+      }
+      const item = {
+        date,
+        dateLabel: makeDateLabel(date),
+        title: String(entry.title || ""),
+        description: String(entry.description || ""),
+      };
+      if (entry.href) item.href = String(entry.href);
+      return item;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
+}
+
+// `[news] file` names a sibling of the about file; `[news] count` caps how many
+// of the newest entries reach the page. An empty `file` disables the section.
+function readNews(config) {
+  const fileName = String(config.file || "").trim();
+  if (!fileName) return [];
+  const file = join(ABOUT_DIR, fileName);
+  if (!existsSync(file)) {
+    throw new Error(`${file} is referenced by [news] file but does not exist`);
+  }
+  return normalizeNewsEntries(parseToml(readFileSync(file, "utf8")).news, config.count, file);
+}
+
+function newsWatchFiles() {
+  const files = [];
+  for (const locale of ["ja", "en"]) {
+    const aboutFile = join(ABOUT_DIR, `about.${locale}.toml`);
+    if (!existsSync(aboutFile)) continue;
+    const fileName = String(readAbout(locale).news.file || "").trim();
+    if (fileName) files.push(join(ABOUT_DIR, fileName));
+  }
+  return files;
 }
 
 function postDirectories() {
@@ -191,21 +244,31 @@ function withRelatedIds(posts) {
 
 function localizeAbout(ja, en) {
   const person = {
-    initials: ja.initials || en.initials || "",
+    icon: ja.icon || en.icon || "",
     name: { ja: ja.name || "", en: en.name || "" },
     role: { ja: ja.role || "", en: en.role || "" },
     location: { ja: ja.location || "", en: en.location || "" },
     tagline: { ja: ja.tagline || "", en: en.tagline || "" },
     bio: { ja: ja.bio || [], en: en.bio || [] },
+    // `period` is localized too: it can carry words ("現在" / "now"), not just dates.
     career: (ja.career || []).map((item, i) => ({
-      period: item.period,
+      period: { ja: item.period || "", en: en.career?.[i]?.period || item.period || "" },
       role: { ja: item.role || "", en: en.career?.[i]?.role || "" },
       org: { ja: item.org || "", en: en.career?.[i]?.org || "" },
     })),
-    activities: (ja.activities || []).map((item, i) => ({
-      ja: item,
-      en: en.activities?.[i] || "",
+    education: (ja.education || []).map((item, i) => ({
+      period: { ja: item.period || "", en: en.education?.[i]?.period || item.period || "" },
+      school: { ja: item.school || "", en: en.education?.[i]?.school || "" },
+      description: { ja: item.description || "", en: en.education?.[i]?.description || "" },
     })),
+    // An activity with no description renders as a plain row instead of an
+    // expandable one, so the detail text is authored entirely in the TOML.
+    activities: (ja.activities || []).map((item, i) => ({
+      title: { ja: item.title || "", en: en.activities?.[i]?.title || "" },
+      description: { ja: item.description || "", en: en.activities?.[i]?.description || "" },
+    })),
+    // `href` is optional: a link without one renders as plain text (e.g. an
+    // email address written out to keep it away from scrapers).
     links: ja.links || en.links || [],
   };
   return person;
@@ -217,8 +280,11 @@ export function loadSiteContent() {
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = articleBodiesFromEntries(entries);
   const tags = uniqueTags(posts);
-  const person = localizeAbout(readAbout("ja"), readAbout("en"));
-  return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person };
+  const ja = readAbout("ja");
+  const en = readAbout("en");
+  const person = localizeAbout(ja.person, en.person);
+  const news = { ja: readNews(ja.news), en: readNews(en.news) };
+  return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person, NEWS: news };
 }
 
 export async function renderArticleBodies(content) {
@@ -243,6 +309,7 @@ export function contentWatchFiles() {
   const files = [
     join(ABOUT_DIR, "about.ja.toml"),
     join(ABOUT_DIR, "about.en.toml"),
+    ...newsWatchFiles(),
     METADATA_CONFIG_FILE,
   ];
   const metadataConfig = existsSync(METADATA_CONFIG_FILE) ? readMetadataConfig() : {};

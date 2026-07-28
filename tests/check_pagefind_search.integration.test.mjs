@@ -8,7 +8,11 @@ import { loadSiteContent } from "../scripts/content_loader.mjs";
 const DIST = resolve("dist");
 // Pagefind only indexes article bodies, and with no posts the build emits no
 // index at all — there is nothing to search, so the suite has nothing to say.
-const HAS_POSTS = loadSiteContent().POSTS.length > 0;
+const POSTS = loadSiteContent().POSTS;
+const HAS_POSTS = POSTS.length > 0;
+// Asserted against whichever post the site currently ships, so adding or
+// removing posts does not strand the suite on a post that no longer exists.
+const POST = POSTS[0];
 const CONTENT_TYPES = {
   ".css": "text/css",
   ".html": "text/html",
@@ -78,18 +82,18 @@ describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
   });
 
   test("finds the Japanese article for a Japanese query", async () => {
-    const ja = await searchWithLang(pagefind, base, "ja", "サブコマンド");
+    const ja = await searchWithLang(pagefind, base, "ja", POST.title.ja);
 
-    expect(ja.count).toBe(1);
-    expect(ja.first?.url).toBe(`${base}/blog/20260521-a1b2c3d4/`);
-    expect(ja.first?.meta?.title).toBe("型で導く CLI 設計");
+    expect(ja.count).toBeGreaterThan(0);
+    expect(ja.first?.url).toBe(`${base}/blog/${POST.id}/`);
+    expect(ja.first?.meta?.title).toBe(POST.title.ja);
   });
 
   test("finds the English article for an English query", async () => {
-    const en = await searchWithLang(pagefind, base, "en", "subcommands");
+    const en = await searchWithLang(pagefind, base, "en", POST.title.en);
 
-    expect(en.count).toBe(1);
-    expect(en.first?.url).toBe(`${base}/en/blog/20260521-a1b2c3d4/`);
-    expect(en.first?.meta?.title).toBe("Type-Driven CLI Design");
+    expect(en.count).toBeGreaterThan(0);
+    expect(en.first?.url).toBe(`${base}/en/blog/${POST.id}/`);
+    expect(en.first?.meta?.title).toBe(POST.title.en);
   });
 });

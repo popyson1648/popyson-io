@@ -2906,17 +2906,26 @@
 .post-index-card {
   padding: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 20px;
 }
 
-/* Generated thumbnails are square (1024x1024); the fallback OGP image is
-   1200x630, so cover crops it to the same frame. */
+/* The frame spans the card: its height follows the text column, and the image
+   is cropped into it (generated thumbnails are 1024x1024, the fallback OGP
+   image 1200x630). The width stays fixed — deriving it from the height as well
+   would make width and height depend on each other.
+   The first and last text rows are 13px on a 1.6 line-height, leaving 3.9px of
+   half-leading above the date and below the tags. Trimming that much lines the
+   frame up with the text as it is seen, not with the line boxes. */
 .post-index-thumb {
   flex: none;
+  align-self: stretch;
+  font-size: 13px;
+  margin-block: calc((1.6em - 1em) / 2);
   width: 96px;
-  height: 96px;
+  height: auto;
   object-fit: cover;
+  border: var(--line-w) solid var(--line-strong);
   border-radius: var(--r);
 }
 
@@ -3042,9 +3051,9 @@
     gap: 14px;
   }
 
+  /* Height still follows the card; only the width gives the text more room. */
   .post-index-thumb {
     width: 72px;
-    height: 72px;
   }
 
   .post-index-title {

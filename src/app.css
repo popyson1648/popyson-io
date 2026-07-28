@@ -2884,7 +2884,14 @@
   display: flex;
   flex-direction: column;
   gap: 34px;
-  max-width: 860px;
+  max-width: var(--post-col-w);
+  margin: 0 auto;
+}
+
+/* The empty state stands in for the list, so it occupies the same column
+   rather than stretching across the full container. */
+.empty {
+  max-width: var(--post-col-w);
   margin: 0 auto;
 }
 

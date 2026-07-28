@@ -6,6 +6,10 @@ on:
     paths:
       - "src/content/posts/**/index.ja.md"
       - "src/content/about/about.ja.toml"
+  # generate-metadata.yml commits with [skip translate], so a post whose
+  # metadata was resolved after publishing needs a way to be translated
+  # without another content push.
+  workflow_dispatch:
 
 concurrency:
   group: translate-content-${{ github.ref }}
@@ -47,7 +51,9 @@ jobs:
           before="${{ github.event.before }}"
           after="${{ github.sha }}"
 
-          if [[ "$before" =~ ^0+$ ]]; then
+          # Empty on workflow_dispatch, all zeroes on a branch's first push:
+          # both mean "compare against the previous commit".
+          if [[ -z "$before" || "$before" =~ ^0+$ ]]; then
             if git rev-parse "${after}^" >/dev/null 2>&1; then
               before="${after}^"
             else

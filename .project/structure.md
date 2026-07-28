@@ -35,7 +35,9 @@
 - `tests/check_metadata_quality.test.mjs`: static quality checks for generated tags and summaries.
 - `tests/check_metadata_schema.test.mjs`: schema unit checks for valid and invalid metadata examples.
 - `tests/check_generate_metadata.test.mjs`: metadata generation unit checks with a mock provider.
-- `scripts/new_post.mjs`: creates a new post directory with a collision-free `YYYYMMDD-xxxxxxxx` post ID. Run it with `npm run new:post`.
+- `scripts/new_post.mjs`: creates a new post directory with a collision-free `YYYYMMDD-xxxxxxxx` post ID. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field.
+- `scripts/publish_post.mjs`: stages `src/content/posts/`, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. Run it with `npm run post:push`.
+- `src/readingTime.js`: estimates the reading time of a Markdown body per locale, replacing the removed `reading` front-matter field.
 - `src/apps.js`: Works (APPS) metadata; Node-importable and shared by the browser and prerenderer.
 - `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings.
 - `src/content/theme.toml`: single source of truth for the light/dark color tokens (CSS custom properties), generated into CSS at build time.

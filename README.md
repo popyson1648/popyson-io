@@ -221,6 +221,21 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 日本語版と英語版では見出し構造を揃えます。
 英語版を更新するときは [.project/translation.md](.project/translation.md) の規則にも従います。
 
+## 記事の公開
+
+次のコマンドは `src/content/posts/` 配下の変更だけを add し、コミットして push します。
+コミットメッセージは変更の種類から組み立てられ、記事の追加・編集・削除をそれぞれ `add` / `update` / `remove` として記録します。
+
+```sh
+npm run post:push
+```
+
+送信せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
+
+```sh
+npm run post:push -- --dry-run
+```
+
 ## 記事の front matter
 
 記事ファイルは `+++` で囲んだ TOML front matter から始めます。
@@ -230,7 +245,6 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 +++
 title = "<記事タイトル>"
 date = "<YYYY-MM-DD または auto>"
-reading = 1
 tags = ["<タグ>"]
 kana = "<記事タイトルの読み>"
 

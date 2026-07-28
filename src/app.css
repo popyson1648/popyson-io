@@ -2906,24 +2906,25 @@
 .post-index-card {
   padding: 0;
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 20px;
 }
 
-/* The frame spans the card: its height follows the text column, and the image
-   is cropped into it (generated thumbnails are 1024x1024, the fallback OGP
-   image 1200x630). The width stays fixed — deriving it from the height as well
-   would make width and height depend on each other.
-   The first and last text rows are 13px on a 1.6 line-height, leaving 3.9px of
-   half-leading above the date and below the tags. Trimming that much lines the
-   frame up with the text as it is seen, not with the line boxes. */
+/* Square, sized to the height of a card whose summary and tags each take one
+   line — the shape generated thumbnails already have (1024x1024; the 1200x630
+   fallback OGP image is cropped to fit).
+   The side cannot follow the card's height and stay square at the same time:
+   the width would set the text column's width, which sets the text's height,
+   which sets the card's height, which would set the width again.
+   The top is aligned to the date as it is seen. Its row is 13px on a 1.6
+   line-height, so 3.9px of half-leading sits above the glyphs. */
 .post-index-thumb {
+  --thumb-side: 107px;
   flex: none;
-  align-self: stretch;
   font-size: 13px;
-  margin-block: calc((1.6em - 1em) / 2);
-  width: 96px;
-  height: auto;
+  margin-top: calc((1.6em - 1em) / 2);
+  width: var(--thumb-side);
+  height: var(--thumb-side);
   object-fit: cover;
   border: var(--line-w) solid var(--line-strong);
   border-radius: var(--r);
@@ -3051,9 +3052,9 @@
     gap: 14px;
   }
 
-  /* Height still follows the card; only the width gives the text more room. */
+  /* Smaller square, so the tags still fit on one line. */
   .post-index-thumb {
-    width: 72px;
+    --thumb-side: 84px;
   }
 
   .post-index-title {

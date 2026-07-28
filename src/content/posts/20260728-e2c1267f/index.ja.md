@@ -1,16 +1,7 @@
 +++
-# title      記事タイトル。必須、空文字不可
-# date       "auto" | "YYYY-MM-DD"。auto は初回コミット日に置換される
-# tags       手書きのタグ
-# auto_tags  AI にタグを追加させる。{} で既定 3 個。追加しないなら行ごと削除
-# kana       五十音順ソートに使う読み仮名
-# sumup      mode = "text" | "auto" | "none"。text は text が必須
-# thumbnail  mode = "auto" | "file" | "none"。file は path が必須
-
 title = "償却計算量"
-date = "auto"
-tags = ["アルゴリズム", "学習"]
-auto_tags = {}
+date = "2026-07-28"
+tags = [ "アルゴリズム", "学習", "計算量", "データ構造", "プログラミング" ]
 kana = "しょうきゃくけいさんりょう"
 
 [sumup]
@@ -18,7 +9,9 @@ mode = "text"
 text = "償却計算量について"
 
 [thumbnail]
-mode = "auto"
+mode = "file"
+path = "/thumbnails/20260728-e2c1267f.png"
+generated = true
 +++
 
 ## 償却計算量とは

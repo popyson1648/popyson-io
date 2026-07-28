@@ -42,18 +42,31 @@ The total time complexity of all expansion operations across every capacity over
 
 The total time complexity of all operations is O(N). Dividing by the number of append operations N gives the amortized time complexity: O(N) / N = O(1).
 
-::note::
+:::note
 ### Example: Dynamic Array Operation
+
 Current array (capacity: 4): `[a, b, c, d]`
+
 We want to append "e".
+
 Capacity is full, so we expand.
+
 A new array with capacity 4 × 2 = 8 is created.
+
 `[_, _, _, _, _, _, _, _]`
+
 The elements from the old array are copied to the new one.
+
 Copy 1: `[a, _, _, _, _, _, _, _]`
+
 Copy 2: `[a, b, _, _, _, _, _, _]`
+
 Copy 3: `[a, b, c, _, _, _, _, _]`
+
 Copy 4: `[a, b, c, d, _, _, _, _]`
+
 "e" is appended.
+
 `[a, b, c, d, e, _, _, _]`
-::
+
+:::

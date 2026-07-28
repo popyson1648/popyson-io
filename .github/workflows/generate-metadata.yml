@@ -97,9 +97,11 @@ jobs:
             exit 0
           fi
 
-          # [skip translate] keeps the translation workflow from re-running on the
-          # frontmatter edits; [skip metadata] keeps this workflow from looping on
-          # its own push.
-          git commit -m "chore: generate article metadata [skip metadata][skip translate]"
+          # [skip metadata] keeps this workflow from looping on its own push.
+          # Translation is deliberately left to run: this commit is the last one
+          # a newly published post receives, so suppressing it would leave the
+          # English version as the scaffold. The translation commit only touches
+          # index.en.md and carries [skip translate], so nothing loops.
+          git commit -m "chore: generate article metadata [skip metadata]"
           git pull --rebase origin main
           git push

@@ -48,25 +48,53 @@ jobs:
         run: |
           set -euo pipefail
 
-          before="${{ github.event.before }}"
-          after="${{ github.sha }}"
-
-          # Empty on workflow_dispatch, all zeroes on a branch's first push:
-          # both mean "compare against the previous commit".
-          if [[ -z "$before" || "$before" =~ ^0+$ ]]; then
-            if git rev-parse "${after}^" >/dev/null 2>&1; then
-              before="${after}^"
+          english_target() {
+            if [[ "$1" == "src/content/about/about.ja.toml" ]]; then
+              echo "src/content/about/about.en.toml"
             else
-              before="$(git hash-object -t tree /dev/null)"
+              echo "${1%/index.ja.md}/index.en.md"
             fi
-          fi
+          }
 
-          mapfile -t changed_sources < <(
-            git diff --name-only "$before" "$after" -- \
-              ":(glob)src/content/posts/**/index.ja.md" \
-              "src/content/about/about.ja.toml" |
-              sort -u
-          )
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # A manual run has no meaningful diff base — the previous commit is
+            # whatever landed last, not the content being republished. Take
+            # every Japanese source whose English counterpart is missing or was
+            # last committed before it.
+            changed_sources=()
+            while read -r source; do
+              target="$(english_target "$source")"
+              source_at="$(git log -1 --format=%ct -- "$source")"
+              target_at="$(git log -1 --format=%ct -- "$target")"
+              if [[ ! -f "$target" || "${target_at:-0}" -lt "${source_at:-0}" ]]; then
+                changed_sources+=("$source")
+              fi
+            done < <(
+              git ls-files -- \
+                ":(glob)src/content/posts/**/index.ja.md" \
+                "src/content/about/about.ja.toml" |
+                sort -u
+            )
+          else
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+
+            # All zeroes on a branch's first push: compare against the parent.
+            if [[ "$before" =~ ^0+$ ]]; then
+              if git rev-parse "${after}^" >/dev/null 2>&1; then
+                before="${after}^"
+              else
+                before="$(git hash-object -t tree /dev/null)"
+              fi
+            fi
+
+            mapfile -t changed_sources < <(
+              git diff --name-only "$before" "$after" -- \
+                ":(glob)src/content/posts/**/index.ja.md" \
+                "src/content/about/about.ja.toml" |
+                sort -u
+            )
+          fi
 
           if [[ "${#changed_sources[@]}" -eq 0 ]]; then
             echo "should_run=false" >> "$GITHUB_OUTPUT"

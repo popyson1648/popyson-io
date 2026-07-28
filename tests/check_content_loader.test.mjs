@@ -70,53 +70,59 @@ describe("relatedPostIds", () => {
 describe("loadSiteContent", () => {
   const content = loadSiteContent();
 
-  test("returns a non-empty POSTS array sorted newest first", () => {
+  // The blog can legitimately be empty, so these describe how the loader shapes
+  // whatever posts exist rather than pinning one checked-in article. The
+  // Markdown pipeline itself is covered by check_markdown_rendering against
+  // fixtures, so no coverage rides on a sample post being present.
+  test("returns POSTS sorted newest first", () => {
     expect(Array.isArray(content.POSTS)).toBe(true);
-    expect(content.POSTS.length).toBeGreaterThan(0);
     expect(content.POSTS.map((post) => post.date)).toEqual(
       [...content.POSTS.map((post) => post.date)].sort((a, b) => b.localeCompare(a)),
     );
   });
 
-  test("resolves localized metadata, date labels, summaries, tags, and thumbnail", () => {
-    const firstPost = content.POSTS.find((post) => post.id === "20260521-a1b2c3d4");
-    expect(firstPost).toBeDefined();
-    expect({
-      title: firstPost.title,
-      date: firstPost.date,
-      dateLabel: firstPost.dateLabel,
-      tags: firstPost.tags,
-      summary: firstPost.summary,
-      thumbnail: firstPost.thumbnail,
-    }).toEqual({
-      title: { ja: "型で導く CLI 設計", en: "Type-Driven CLI Design" },
-      date: "2026-05-21",
-      dateLabel: { ja: "2026年5月21日", en: "May 21, 2026" },
-      tags: ["CLI", "型", "DX"],
-      summary: {
-        ja: "サブコマンドと引数を型で表現すると、ヘルプ・補完・検証が一箇所から生える。手書きの分岐を消すまでの記録。",
-        en: "When subcommands and arguments are expressed as types, help, completion and validation all grow from one place. Notes on deleting hand-written branches.",
-      },
-      thumbnail: "/provisional_ogp_image.png",
-    });
-  });
+  test.skipIf(content.POSTS.length === 0)(
+    "resolves localized metadata, date labels, summaries, tags, and thumbnail",
+    () => {
+      for (const post of content.POSTS) {
+        expect(post.id).toMatch(postIdPattern());
+        expect(post.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(post.dateLabel).toEqual({ ja: expect.any(String), en: expect.any(String) });
+        expect(post.title.ja).toBeTruthy();
+        expect(post.title.en).toBeTruthy();
+        expect(post.summary).toEqual({ ja: expect.any(String), en: expect.any(String) });
+        expect(Array.isArray(post.tags)).toBe(true);
+        expect(post.thumbnail).toBeTruthy();
+      }
+    },
+  );
 
-  test("derives bilingual h2 heading metadata from the Markdown body", () => {
-    const firstPost = content.POSTS.find((post) => post.id === "20260521-a1b2c3d4");
-    expect(content.ARTICLE_BODIES[firstPost.id].headings).toEqual([
-      { id: "何が問題だったか", ja: "何が問題だったか", en: "What was wrong" },
-      { id: "型で形を与える", ja: "型で形を与える", en: "Giving it a shape with types" },
-      {
-        id: "ヘルプ-補完-検証を導出する",
-        ja: "ヘルプ・補完・検証を導出する",
-        en: "Deriving help, completion, validation",
-      },
-      { id: "結果", ja: "結果", en: "The result" },
-    ]);
-  });
+  test.skipIf(content.POSTS.length === 0)(
+    "derives bilingual h2 heading metadata from the Markdown body",
+    () => {
+      for (const post of content.POSTS) {
+        const headings = content.ARTICLE_BODIES[post.id].headings;
+        expect(Array.isArray(headings)).toBe(true);
+        for (const heading of headings) {
+          expect(heading.id).toBeTruthy();
+          // Both locales are zipped by position, so each side must be filled.
+          expect(heading).toEqual({
+            id: expect.any(String),
+            ja: expect.any(String),
+            en: expect.any(String),
+          });
+        }
+      }
+    },
+  );
 
-  test("preserves first-seen unique tag order", () => {
-    expect(content.TAGS).toEqual(["CLI", "型", "DX"]);
+  test("collects unique tags in first-seen order", () => {
+    const seen = [];
+    for (const post of content.POSTS) {
+      for (const tag of post.tags) if (!seen.includes(tag)) seen.push(tag);
+    }
+
+    expect(content.TAGS).toEqual(seen);
   });
 
   // These assert the shape the loader produces, not the author's own wording:
@@ -285,11 +291,22 @@ describe("contentWatchFiles", () => {
   test.each([
     ["src/content/metadata.toml"],
     ["src/content/prompts/tag-generation.md"],
-    ["src/content/posts/20260521-a1b2c3d4/index.ja.md"],
     ["src/content/about/news.ja.toml"],
     ["src/content/about/news.en.toml"],
   ])("includes %s", (relativePath) => {
     expect(watchedFiles).toContain(join(root, relativePath));
+  });
+
+  // Every post that exists must be watched, so editing one still triggers HMR.
+  test("includes both Markdown files of every post", () => {
+    const posts = loadSiteContent().POSTS;
+    for (const post of posts) {
+      for (const locale of ["ja", "en"]) {
+        expect(watchedFiles).toContain(
+          join(root, "src/content/posts", post.id, `index.${locale}.md`),
+        );
+      }
+    }
   });
 
   test("only returns existing checked-in files", () => {

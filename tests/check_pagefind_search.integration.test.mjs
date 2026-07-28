@@ -3,7 +3,12 @@ import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
+import { loadSiteContent } from "../scripts/content_loader.mjs";
+
 const DIST = resolve("dist");
+// Pagefind only indexes article bodies, and with no posts the build emits no
+// index at all — there is nothing to search, so the suite has nothing to say.
+const HAS_POSTS = loadSiteContent().POSTS.length > 0;
 const CONTENT_TYPES = {
   ".css": "text/css",
   ".html": "text/html",
@@ -47,7 +52,7 @@ async function searchWithLang(pagefind, base, lang, query) {
   return { count: response.results.length, first };
 }
 
-describe("Pagefind search over the built dist/", () => {
+describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
   let server;
   let base;
   let pagefind;

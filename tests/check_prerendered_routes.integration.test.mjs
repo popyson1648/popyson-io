@@ -43,7 +43,11 @@ function expectationsFor(route, lang) {
     case "about":
       return ['class="about-top"', PERSON.name[lang]];
     case "blog":
-      return ['class="post-index"', "post-index-title"];
+      // With no posts the list is replaced by the empty state, so there is no
+      // real content to assert — the class marker alone proves it rendered.
+      return content.POSTS.length > 0
+        ? ['class="post-index"', "post-index-title"]
+        : ['class="empty"'];
     case "app": {
       const firstApp = APPS[0];
       expect(firstApp, "missing app metadata for the app index route").toBeTruthy();

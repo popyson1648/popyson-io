@@ -19,8 +19,11 @@ function postMarkdownFiles() {
 describe("checked-in article frontmatter", () => {
   const files = postMarkdownFiles();
 
-  test("has article Markdown to validate", () => {
-    expect(files.length).toBeGreaterThan(0);
+  // The blog may legitimately hold no posts, so this guards the lookup path
+  // rather than the count: a broken postsDir() would otherwise make every
+  // per-file check below pass vacuously.
+  test("can find the posts directory", () => {
+    expect(existsSync(postsDir())).toBe(true);
   });
 
   test.each(files)("%s parses and validates against the metadata schema", (file) => {

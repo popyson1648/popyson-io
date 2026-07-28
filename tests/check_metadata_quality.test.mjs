@@ -193,8 +193,11 @@ describe("metadata.toml configuration", () => {
 });
 
 describe("checked-in article metadata quality", () => {
-  test("has article Markdown to validate", () => {
-    expect(files.length).toBeGreaterThan(0);
+  // The blog may legitimately hold no posts, so this guards the lookup path
+  // rather than the count: a broken postsDir() would otherwise make every
+  // per-file check below pass vacuously.
+  test("can find the posts directory", () => {
+    expect(existsSync(postsDir())).toBe(true);
   });
 
   test.each(files)("$filePath passes tag/summary/thumbnail quality rules", (file) => {
@@ -203,8 +206,12 @@ describe("checked-in article metadata quality", () => {
 });
 
 describe("locale parity", () => {
-  test("article directories have both locales", () => {
-    expect(localePairs.length).toBeGreaterThan(0);
+  test("every article directory carries both locales", () => {
+    const incomplete = [...filesByDir.entries()]
+      .filter(([, pair]) => !pair.ja || !pair.en)
+      .map(([dir]) => dir);
+
+    expect(incomplete).toEqual([]);
   });
 
   test.each(localePairs)("%s has matching date and thumbnail across locales", (dir, pair) => {

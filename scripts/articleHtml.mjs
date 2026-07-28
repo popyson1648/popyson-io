@@ -55,6 +55,38 @@ function remarkCallouts() {
   };
 }
 
+function directiveAttributes(node) {
+  const entries = Object.entries(node.attributes || {}).filter(([, value]) => value != null);
+  if (entries.length === 0) return "";
+  // Values are emitted verbatim. The parser cannot produce one containing a
+  // quote — `{key="a\"b"}` drops the attribute entirely — and it treats a
+  // backslash as an ordinary character, so re-escaping here would change the
+  // value rather than restore it.
+  const pairs = entries.map(([key, value]) => (value === "" ? key : `${key}="${value}"`));
+  return `{${pairs.join(" ")}}`;
+}
+
+// remark-directive reads `:name` anywhere in a line, so ordinary prose like
+// "12:30", "a:b", or "容量:4" parses as a directive. Only container directives
+// carry meaning here (the callouts above); a text or leaf directive is written
+// back as the source it came from. Without this they reach remark-rehype
+// unhandled and render as an empty <div>, swallowing the text — which is why a
+// colon in prose used to need escaping.
+function remarkDirectiveFallback() {
+  return (tree) => {
+    visit(tree, ["textDirective", "leafDirective"], (node, index, parent) => {
+      if (!parent || typeof index !== "number") return;
+      const marker = node.type === "textDirective" ? ":" : "::";
+      const label = nodeText(node);
+      const source = `${marker}${node.name}${label ? `[${label}]` : ""}${directiveAttributes(node)}`;
+      parent.children[index] =
+        node.type === "leafDirective"
+          ? { type: "paragraph", children: [{ type: "text", value: source }] }
+          : { type: "text", value: source };
+    });
+  };
+}
+
 function remarkHeadingIds() {
   return (tree) => {
     const seen = new Map();
@@ -283,6 +315,7 @@ function articleProcessor(copyLabel) {
         .use(remarkGfm)
         .use(remarkDirective)
         .use(remarkCallouts)
+        .use(remarkDirectiveFallback)
         .use(remarkHeadingIds)
         .use(remarkRehype)
         .use(rehypeSafeUrls)

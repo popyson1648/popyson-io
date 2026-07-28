@@ -1,6 +1,6 @@
 [person]
 # Avatar image under public/ (e.g. "/avatar.png"). Empty renders no avatar.
-icon = ""
+icon = "/avator.jpg"
 name = "popyson (瀬戸口 駿介)"
 role = "学生"
 location = "Oita / Yokohama"

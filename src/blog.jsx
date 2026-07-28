@@ -790,6 +790,17 @@ export function BlogList() {
               key={p.id}
               onClick={() => nav("/blog/" + p.id)}
             >
+              {p.thumbnail ? (
+                <img
+                  className="post-index-thumb"
+                  src={p.thumbnail}
+                  alt=""
+                  width="96"
+                  height="96"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : null}
               <span className="post-index-main">
                 <span className="post-index-meta">
                   {localizedDateLabel(p, lang)} · {L(p.reading, lang)} {t.min_read}

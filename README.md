@@ -221,6 +221,21 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 日本語版と英語版では見出し構造を揃えます。
 英語版を更新するときは [.project/translation.md](.project/translation.md) の規則にも従います。
 
+## 記事の公開
+
+次のコマンドは `src/content/posts/` 配下の変更だけを add し、コミットして push します。
+コミットメッセージは変更の種類から組み立てられ、記事の追加・編集・削除をそれぞれ `add` / `update` / `remove` として記録します。
+
+```sh
+npm run post:push
+```
+
+送信せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
+
+```sh
+npm run post:push -- --dry-run
+```
+
 ## 記事の front matter
 
 記事ファイルは `+++` で囲んだ TOML front matter から始めます。
@@ -230,7 +245,6 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 +++
 title = "<記事タイトル>"
 date = "<YYYY-MM-DD または auto>"
-reading = 1
 tags = ["<タグ>"]
 kana = "<記事タイトルの読み>"
 
@@ -248,14 +262,17 @@ path = "/<公開ディレクトリからの画像パス>"
 
 - **`title`**：記事タイトルを指定する必須項目です。
 - **`date`**：`YYYY-MM-DD` または `"auto"` を指定する必須項目です。
-- **`reading`**：表示する読了時間を正の数で指定します。
 - **`tags`**：絞り込みと検索に使うタグを文字列の配列で指定します。
 - **`kana`**：日本語の並べ替えと検索で使う読みを指定します。
 - **`auto_tags`**：生成スクリプトに追加させるタグ数を `count` で指定します。
 - **`sumup`**：概要の処理を `text`、`none`、`auto` から選びます。
 - **`thumbnail`**：画像の処理を `file`、`none`、`auto` から選びます。
 
-`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は、コミット前に次のコマンドで解決します。
+読了時間は front matter の項目ではありません。本文の分量から `src/readingTime.js` が言語ごとに算出します。
+
+`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は未解決のままコミットして構いません。
+main へ push すると `generate-metadata.yml` が解決し、その結果をコミットします。
+手元で先に解決したいときは次のコマンドを使います。
 
 ```sh
 npm run metadata:generate:op

@@ -19,7 +19,8 @@ type Post = {
   title: LocaleMap;
   date: string;
   dateLabel?: { ja: string; en: string };
-  reading: number;
+  // Minutes, estimated from the body of each locale.
+  reading: LocaleMap<number>;
   tags: string[];
   kana: string;
   summary: LocaleMap;

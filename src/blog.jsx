@@ -792,7 +792,7 @@ export function BlogList() {
             >
               <span className="post-index-main">
                 <span className="post-index-meta">
-                  {localizedDateLabel(p, lang)} · {p.reading} {t.min_read}
+                  {localizedDateLabel(p, lang)} · {L(p.reading, lang)} {t.min_read}
                 </span>
                 <span className="post-index-title">{L(p.title, lang)}</span>
                 <span className="post-index-summary">{L(p.summary, lang)}</span>
@@ -948,7 +948,7 @@ export function Article({ id }) {
           <div className="article-meta">
             <span>{localizedDateLabel(post, lang)}</span>
             <span>
-              {post.reading} {t.min_read}
+              {L(post.reading, lang)} {t.min_read}
             </span>
           </div>
           <div className="article-tags">

@@ -84,17 +84,10 @@ describe("validateMetadata", () => {
       title: "",
       date: "soon",
       tags: ["js", 1],
-      reading: 0,
       legacy: true,
     });
 
-    expect(errors.map((error) => error.field)).toEqual([
-      "legacy",
-      "title",
-      "date",
-      "tags",
-      "reading",
-    ]);
+    expect(errors.map((error) => error.field)).toEqual(["legacy", "title", "date", "tags"]);
   });
 });
 

@@ -40,6 +40,13 @@ On push to `main`, `.github/workflows/generate-metadata.yml` runs the same
 generation step automatically and commits the resolved metadata and generated
 thumbnails. See `.project/metadata.md`.
 
+## Publish a post
+
+`npm run post:push` stages only `src/content/posts/`, builds the commit subject
+from what changed (`add` / `update` / `remove`, with the post title for a single
+change and counts plus a body list for several), commits, and pushes. Add
+`--dry-run` to print the message without touching git.
+
 ## Run
 
 ```sh

@@ -12,7 +12,6 @@ title = "Post"
 date = "2026-02-07"
 tags = ["js"]
 auto_tags = { count = 3 }
-reading = 1
 kana = ""
 
 [sumup]
@@ -90,6 +89,7 @@ const invalidCases = [
     toml: `title = "Post"\ndate = "2026-02-07"\n[thumbnail]\nmode = "file"\npath = "/x.png"\ngenerated = "yes"`,
   },
   { field: "summary", toml: `title = "Post"\ndate = "2026-02-07"\nsummary = "legacy"` },
+  { field: "reading", toml: `title = "Post"\ndate = "2026-02-07"\nreading = 1` },
 ];
 
 describe("validateMetadata", () => {

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { makeDateLabel, normalizeIsoDate, localizedDateLabel } from "../src/dateLabel.js";
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 import { splitLinks } from "../src/linkText.js";
+import { estimateReadingMinutes } from "../src/readingTime.js";
 import {
   allRoutes,
   configureMetaData,
@@ -284,5 +285,40 @@ describe("splitLinks", () => {
     { name: "null", text: null },
   ])("returns no parts for $name", ({ text }) => {
     expect(splitLinks(text)).toEqual([]);
+  });
+});
+
+describe("estimateReadingMinutes", () => {
+  test.each([
+    { name: "empty string", markdown: "" },
+    { name: "undefined", markdown: undefined },
+    { name: "one short paragraph", markdown: "短い本文。" },
+  ])("returns one minute for $name", ({ markdown }) => {
+    expect(estimateReadingMinutes(markdown)).toBe(1);
+  });
+
+  test("counts japanese characters at 600 per minute", () => {
+    expect(estimateReadingMinutes("あ".repeat(1200))).toBe(2);
+  });
+
+  test("counts other words at 250 per minute", () => {
+    expect(estimateReadingMinutes("word ".repeat(500))).toBe(2);
+  });
+
+  test("adds up mixed scripts before rounding", () => {
+    expect(estimateReadingMinutes(`${"あ".repeat(600)}\n\n${"word ".repeat(250)}`)).toBe(2);
+  });
+
+  test("ignores fenced code blocks", () => {
+    const markdown = `本文。\n\n\`\`\`js\n${"const value = 1;\n".repeat(200)}\`\`\`\n`;
+
+    expect(estimateReadingMinutes(markdown)).toBe(1);
+  });
+
+  test("counts link text but not the url", () => {
+    const url = "https://example.com/a/very/long/path/that/nobody/reads/out/loud";
+    const markdown = `[リンク](${url})\n`.repeat(60);
+
+    expect(estimateReadingMinutes(markdown)).toBe(1);
   });
 });

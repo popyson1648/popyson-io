@@ -25,28 +25,64 @@ function newPostId() {
   throw new Error("Could not generate a collision-free post ID");
 }
 
+// Drafting aid only: `scripts/generate_metadata.mjs` re-serializes the front
+// matter, so these comments disappear once metadata is generated.
+const TEMPLATE_TEXT = {
+  ja: {
+    fields: [
+      "title      記事タイトル。必須、空文字不可",
+      'date       "auto" | "YYYY-MM-DD"。auto は初回コミット日に置換される',
+      "tags       手書きのタグ",
+      "auto_tags  AI にタグを追加させる。{} で既定 3 個。追加しないなら行ごと削除",
+      "kana       五十音順ソートに使う読み仮名",
+      'sumup      mode = "text" | "auto" | "none"。text は text が必須',
+      'thumbnail  mode = "auto" | "file" | "none"。file は path が必須',
+    ],
+    title: "新しい記事",
+    summary: "記事の概要を書く。",
+    heading: "見出し",
+    body: "本文を書く。",
+  },
+  en: {
+    fields: [
+      "title      Article title. Required, must not be empty",
+      'date       "auto" | "YYYY-MM-DD". auto is replaced with the first commit date',
+      "tags       Hand-written tags",
+      "auto_tags  Let the generator add tags. {} uses the default 3. Delete the line to skip",
+      "kana       Reading used for Japanese kana sorting",
+      'sumup      mode = "text" | "auto" | "none". text requires text',
+      'thumbnail  mode = "auto" | "file" | "none". file requires path',
+    ],
+    title: "New Post",
+    summary: "Write a short summary.",
+    heading: "Heading",
+    body: "Write the body.",
+  },
+};
+
 function markdownTemplate(locale) {
-  const title = locale === "ja" ? "新しい記事" : "New Post";
-  const summary = locale === "ja" ? "記事の概要を書く。" : "Write a short summary.";
+  const text = TEMPLATE_TEXT[locale];
+  const fields = text.fields.map((field) => `# ${field}`).join("\n");
   return `+++
-title = "${title}"
+${fields}
+
+title = "${text.title}"
 date = "auto"
-reading = 1
 tags = []
 auto_tags = {}
 kana = ""
 
 [sumup]
 mode = "text"
-text = "${summary}"
+text = "${text.summary}"
 
 [thumbnail]
 mode = "auto"
 +++
 
-## ${locale === "ja" ? "見出し" : "Heading"}
+## ${text.heading}
 
-${locale === "ja" ? "本文を書く。" : "Write the body."}
+${text.body}
 `;
 }
 

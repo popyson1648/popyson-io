@@ -16,8 +16,15 @@ the file.
 
 - `tags`: array of strings. Empty arrays are valid.
 - `auto_tags`: table. `count`, when present, must be a positive integer.
-- `reading`: positive number used for the displayed reading time.
-- `kana`: string used for Japanese sorting/search metadata.
+- `kana`: reading of the title, used by the kana sort on the blog index.
+
+Any other top-level field is rejected. Reading time is not a metadata field: it is
+estimated per locale from the body by `src/readingTime.js` (600 CJK characters or
+250 other words per minute, rounded up, minimum one).
+
+`npm run new:post` scaffolds both files with a comment block listing the fields and
+their accepted values. `scripts/generate_metadata.mjs` re-serializes the front matter,
+so those comments are dropped the first time metadata is generated.
 
 `auto_tags` is processed by `node scripts/generate_metadata.mjs`. Manual tags are
 kept, and the generator adds the requested number of non-duplicate tags before

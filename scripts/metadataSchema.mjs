@@ -7,7 +7,6 @@ const TOP_LEVEL_FIELDS = new Set([
   "auto_tags",
   "sumup",
   "thumbnail",
-  "reading",
   "kana",
 ]);
 
@@ -119,10 +118,6 @@ export function validateMetadata(meta) {
         addError(errors, "thumbnail.generated", "must be a boolean");
       }
     }
-  }
-
-  if ("reading" in meta && (!Number.isFinite(meta.reading) || meta.reading <= 0)) {
-    addError(errors, "reading", "must be a positive number");
   }
 
   if ("kana" in meta && typeof meta.kana !== "string") {

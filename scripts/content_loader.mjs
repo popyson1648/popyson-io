@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
+import { estimateReadingMinutes } from "../src/readingTime.js";
 import { renderArticleBody } from "./articleHtml.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
@@ -126,7 +127,7 @@ function readPost(dirName, config) {
     title: { ja: ja.meta.title || "", en: en.meta.title || "" },
     date,
     dateLabel: makeDateLabel(date),
-    reading: Number(common.reading || 1),
+    reading: { ja: estimateReadingMinutes(ja.body), en: estimateReadingMinutes(en.body) },
     tags: Array.isArray(common.tags) ? common.tags.map(String) : [],
     kana: String(common.kana || ""),
     summary: { ja: resolveSummary(ja.meta), en: resolveSummary(en.meta) },

@@ -1538,8 +1538,9 @@
   margin-bottom: 8px;
 }
 .avatar {
-  width: 104px;
-  height: 104px;
+  --avatar-size: 104px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
   border: var(--line-w) solid var(--line-strong);
   border-radius: var(--r);
   display: grid;
@@ -1550,9 +1551,14 @@
   background: var(--surface);
   letter-spacing: 0.02em;
 }
-/* Image avatar: keeps the .avatar frame, cropped to fill it. */
+/* Image avatar: keeps the .avatar frame, with the artwork inset by 5% a side
+   (10% smaller overall). Percentage padding would resolve against the parent's
+   width, so the inset is calculated from the frame size instead. The inset is
+   filled with the artwork's own background further down — the transparency
+   reset near the end of this file also matches .avatar and would win here. */
 .avatar-img {
   object-fit: cover;
+  padding: calc(var(--avatar-size) * 0.05);
 }
 .about-name {
   font-size: 30px;
@@ -3096,6 +3102,14 @@
   background-image: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* The reset above also matches .avatar, but the image avatar's inset has to be
+   filled with the artwork's own background so the frame reads as one surface.
+   This is the image's colour, not a theme colour, so it is fixed in both
+   light and dark. */
+.avatar-img {
+  background: #fbfbfb !important;
 }
 
 /* ---------------- search modal backdrop ---------------- */

@@ -6,10 +6,15 @@ on:
     paths:
       - "src/content/posts/**/index.ja.md"
       - "src/content/about/about.ja.toml"
-  # generate-metadata.yml commits with [skip translate], so a post whose
-  # metadata was resolved after publishing needs a way to be translated
-  # without another content push.
+  # Repair path for a post whose English version was never written — a push
+  # that predates translation running on the metadata commit, or a run that
+  # failed partway.
   workflow_dispatch:
+    inputs:
+      post_id:
+        description: "Post id to translate. Empty translates every post with no English file."
+        required: false
+        default: ""
 
 concurrency:
   group: translate-content-${{ github.ref }}
@@ -45,6 +50,9 @@ jobs:
       - name: Detect translation targets
         id: detect
         shell: bash
+        env:
+          # Through the environment, so the value is never spliced into the script.
+          POST_ID: ${{ inputs.post_id }}
         run: |
           set -euo pipefail
 
@@ -57,24 +65,30 @@ jobs:
           }
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # A manual run has no meaningful diff base — the previous commit is
-            # whatever landed last, not the content being republished. Take
-            # every Japanese source whose English counterpart is missing or was
-            # last committed before it.
+            # A manual run has no diff base worth reading: the previous commit
+            # is whatever landed last, and metadata generation rewrites both
+            # locales in one commit, so timestamps cannot tell a stale English
+            # file from a fresh one. Translate what the operator names, or
+            # every post that has no English file at all.
+            post_id="${POST_ID}"
             changed_sources=()
-            while read -r source; do
-              target="$(english_target "$source")"
-              source_at="$(git log -1 --format=%ct -- "$source")"
-              target_at="$(git log -1 --format=%ct -- "$target")"
-              if [[ ! -f "$target" || "${target_at:-0}" -lt "${source_at:-0}" ]]; then
-                changed_sources+=("$source")
+            if [[ -n "$post_id" ]]; then
+              source="src/content/posts/${post_id}/index.ja.md"
+              if [[ ! -f "$source" ]]; then
+                echo "No such post: $post_id" >&2
+                exit 1
               fi
-            done < <(
-              git ls-files -- \
-                ":(glob)src/content/posts/**/index.ja.md" \
-                "src/content/about/about.ja.toml" |
-                sort -u
-            )
+              changed_sources+=("$source")
+            else
+              while read -r source; do
+                [[ -f "$(english_target "$source")" ]] || changed_sources+=("$source")
+              done < <(
+                git ls-files -- \
+                  ":(glob)src/content/posts/**/index.ja.md" \
+                  "src/content/about/about.ja.toml" |
+                  sort -u
+              )
+            fi
           else
             before="${{ github.event.before }}"
             after="${{ github.sha }}"

@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # Same as generate-metadata.yml: the translation commit targets main,
+          # which the ruleset only opens to repository admins.
+          token: ${{ secrets.SECURITY_AUTOMATION_TOKEN }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v7

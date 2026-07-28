@@ -1,8 +1,46 @@
 import { describe, expect, test } from "vitest";
 
-import { commitMessage } from "../scripts/publish_post.mjs";
+import { commitMessage, postIdsFromStatus } from "../scripts/publish_post.mjs";
 
 const post = (state, title, id = "20260728-e2c1267f") => ({ id, state, title });
+
+describe("postIdsFromStatus", () => {
+  test.each([
+    ["unstaged edit", " M src/content/posts/20260728-e2c1267f/index.ja.md"],
+    ["staged edit", "M  src/content/posts/20260728-e2c1267f/index.ja.md"],
+    ["untracked file", "?? src/content/posts/20260728-e2c1267f/index.ja.md"],
+    ["deletion", " D src/content/posts/20260728-e2c1267f/index.ja.md"],
+    ["staged add", "A  src/content/posts/20260728-e2c1267f/index.ja.md"],
+  ])("finds the post id in a %s", (_name, line) => {
+    expect(postIdsFromStatus(`${line}\n`)).toEqual(["20260728-e2c1267f"]);
+  });
+
+  test("reads the destination of a rename", () => {
+    const line =
+      "R  src/content/posts/20260101-aaaaaaaa/index.ja.md -> src/content/posts/20260728-e2c1267f/index.ja.md";
+
+    expect(postIdsFromStatus(`${line}\n`)).toEqual(["20260728-e2c1267f"]);
+  });
+
+  test("collapses a post's files into one id and sorts across posts", () => {
+    const output = [
+      " M src/content/posts/20260728-e2c1267f/index.ja.md",
+      " M src/content/posts/20260728-e2c1267f/index.en.md",
+      "?? src/content/posts/20260101-aaaaaaaa/index.ja.md",
+      "",
+    ].join("\n");
+
+    expect(postIdsFromStatus(output)).toEqual(["20260101-aaaaaaaa", "20260728-e2c1267f"]);
+  });
+
+  test.each([
+    ["blank output", ""],
+    ["a path outside posts", " M src/app.css"],
+    ["a directory that is not a post id", "?? src/content/posts/drafts/index.ja.md"],
+  ])("returns nothing for %s", (_name, output) => {
+    expect(postIdsFromStatus(output)).toEqual([]);
+  });
+});
 
 describe("commitMessage", () => {
   test.each([

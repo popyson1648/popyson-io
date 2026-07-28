@@ -58,6 +58,10 @@ function remarkCallouts() {
 function directiveAttributes(node) {
   const entries = Object.entries(node.attributes || {}).filter(([, value]) => value != null);
   if (entries.length === 0) return "";
+  // Values are emitted verbatim. The parser cannot produce one containing a
+  // quote — `{key="a\"b"}` drops the attribute entirely — and it treats a
+  // backslash as an ordinary character, so re-escaping here would change the
+  // value rather than restore it.
   const pairs = entries.map(([key, value]) => (value === "" ? key : `${key}="${value}"`));
   return `{${pairs.join(" ")}}`;
 }

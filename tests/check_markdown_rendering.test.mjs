@@ -127,6 +127,12 @@ describe("renderArticleHtml", () => {
     expect(html).toMatch(/<p>::block\[label\]<\/p>/);
   });
 
+  test("writes directive attributes back as parsed", async () => {
+    const html = await renderArticleHtml(':unknown{key="a\\\\d" flag}');
+
+    expect(html).toContain(':unknown{key="a\\\\d" flag}');
+  });
+
   test("keeps a colon inside a callout body", async () => {
     const html = await renderArticleHtml(":::note[題]\n中身 (容量:4)｡\n:::");
 

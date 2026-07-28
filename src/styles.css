@@ -9,6 +9,9 @@
   --r-sm: 3px;
   --line-w: 1px;
   --maxw: 1160px;
+  /* Width of the blog post column, shared by the list and its empty state so
+     the two cannot drift apart. */
+  --post-col-w: 860px;
   --gap: 24px;
 
   /* ---- Typography design system ---- */

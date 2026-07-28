@@ -235,7 +235,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: ${{ steps.pr.outputs.needs_claude == 'true' }}
         with:
           python-version: "3.11"

@@ -28,7 +28,7 @@ jobs:
           tar -C "$RUNNER_TEMP" -xzf "$RUNNER_TEMP/$asset" actionlint
           "$RUNNER_TEMP/actionlint" -color
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 

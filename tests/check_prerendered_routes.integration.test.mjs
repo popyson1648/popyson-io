@@ -12,7 +12,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 
-import { APPS } from "../src/apps.js";
 import { allRoutes, configureMetaData } from "../src/meta.js";
 import { loadSiteContent } from "../scripts/content_loader.mjs";
 
@@ -22,6 +21,7 @@ const content = loadSiteContent();
 configureMetaData(content);
 
 const PERSON = content.PERSON;
+const APPS = content.APPS;
 
 // Routes that carry an assertable body here; article routes (the default case)
 // are covered by check_markdown_rendering. Used to build `cases` without touching
@@ -51,12 +51,12 @@ function expectationsFor(route, lang) {
     case "app": {
       const firstApp = APPS[0];
       expect(firstApp, "missing app metadata for the app index route").toBeTruthy();
-      return ['class="app-grid"', firstApp.title];
+      return ['class="app-grid"', firstApp.title[lang]];
     }
     case "appDetail": {
       const app = APPS.find((a) => a.id === route.id);
       expect(app, `missing app metadata for route id ${route.id}`).toBeTruthy();
-      return ['class="adetail"', `<h1>${app.title}</h1>`];
+      return ['class="adetail"', `<h1>${app.title[lang]}</h1>`];
     }
     case "reading":
       return ['class="reading-list"', 'class="seg-filter"'];

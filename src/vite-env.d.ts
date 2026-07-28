@@ -10,6 +10,7 @@ declare module "virtual:site-content" {
   export const APPS: AppItem[];
   export const READING: ReadingItem[];
   export const ARTICLE_BODIES: Record<string, ArticleBodyEntry>;
+  export const WORK_BODIES: Record<string, WorkBodyEntry>;
 }
 
 type LocaleMap<T = string> = Record<string, T> & { ja?: T; en?: T };
@@ -28,14 +29,18 @@ type Post = {
   relatedIds?: string[];
 };
 
+// A work under src/content/works/. Named AppItem because the Works page routes
+// under /app; the body lives in WORK_BODIES, keyed by id.
 type AppItem = {
   id: string;
-  title: string;
+  title: LocaleMap;
   tagline: LocaleMap;
-  desc: LocaleMap;
-  detail: LocaleMap<string[]>;
+  summary: LocaleMap;
   stack: string[];
-  year: string | number;
+  year: number;
+  // Paths under public/. An empty string renders a placeholder instead.
+  thumbnail: string;
+  hero: string;
 };
 
 type ReadingItem = {
@@ -80,12 +85,18 @@ type ArticleBodyEntry = {
 
 type ArticleBodyLocale = { html?: string; text?: string } | string;
 
+type WorkBodyEntry = {
+  ja?: ArticleBodyLocale;
+  en?: ArticleBodyLocale;
+};
+
 type BlogDataShape = {
   PERSON: Person;
   NEWS: LocaleMap<NewsItem[]>;
   POSTS: Post[];
   TAGS: string[];
   APPS: AppItem[];
+  WORK_BODIES: Record<string, WorkBodyEntry>;
   READING: ReadingItem[];
 };
 

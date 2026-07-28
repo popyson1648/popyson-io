@@ -233,7 +233,7 @@ export function AboutPage() {
                 key={a.id}
                 onClick={() => nav("/app/" + a.id)}
               >
-                <div className="made-title">{a.title}</div>
+                <div className="made-title">{L(a.title, lang)}</div>
                 <div className="made-sub">{L(a.tagline, lang)}</div>
               </button>
             ))}
@@ -254,11 +254,15 @@ export function ApplicationPage() {
       <div className="app-grid">
         {APPS.map((a) => (
           <div className="acard" key={a.id}>
-            <Ph className="acard-img" />
+            {a.thumbnail ? (
+              <img className="acard-img" src={a.thumbnail} alt="" loading="lazy" decoding="async" />
+            ) : (
+              <Ph className="acard-img" />
+            )}
             <div className="acard-body">
-              <h3 className="acard-title">{a.title}</h3>
+              <h3 className="acard-title">{L(a.title, lang)}</h3>
               <div className="acard-tagline">{L(a.tagline, lang)}</div>
-              <p className="acard-desc">{L(a.desc, lang)}</p>
+              <p className="acard-desc">{L(a.summary, lang)}</p>
               <div className="tag-row">
                 {a.stack.map((s) => (
                   <Chip key={s} isStatic>
@@ -272,7 +276,7 @@ export function ApplicationPage() {
                   className="btn btn-accent"
                   type="button"
                   onClick={() => nav("/app/" + a.id)}
-                  aria-label={`${t.detail}: ${a.title}`}
+                  aria-label={`${t.detail}: ${L(a.title, lang)}`}
                 >
                   {t.detail} <Icon.arrow width={14} height={14} />
                 </button>
@@ -287,8 +291,12 @@ export function ApplicationPage() {
 
 export function ApplicationDetail({ id }) {
   const { t, lang, nav } = useContext(AppCtx);
-  const { APPS } = window.BlogData;
+  const { APPS, WORK_BODIES } = window.BlogData;
   const a = APPS.find((x) => x.id === id);
+  // Rendered at build time as { html, text } per locale, same as article bodies.
+  const body = WORK_BODIES?.[id];
+  const localizedBody = body?.[lang] || body?.ja;
+  const bodyHtml = typeof localizedBody === "string" ? localizedBody : localizedBody?.html || "";
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
@@ -304,14 +312,15 @@ export function ApplicationDetail({ id }) {
         <button className="btn btn-ghost" type="button" onClick={() => nav("/app")}>
           <Icon.back /> {t.back_app}
         </button>
-        <h1>{a.title}</h1>
+        <h1>{L(a.title, lang)}</h1>
         <div className="adetail-tagline">{L(a.tagline, lang)}</div>
-        <Ph className="adetail-hero" />
-        <div className="prose">
-          {a.detail[lang].map((para) => (
-            <p key={para}>{para}</p>
-          ))}
-        </div>
+        {a.hero ? (
+          <img className="adetail-hero" src={a.hero} alt="" loading="lazy" decoding="async" />
+        ) : (
+          <Ph className="adetail-hero" />
+        )}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: built at build time from our own Markdown */}
+        <div className="prose" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         <div className="adetail-side">
           <div className="kv">
             <span className="k">{t.stack}</span>

@@ -563,6 +563,43 @@ Markdown に書いた raw HTML は HTML 要素として解釈されません。
 脚注、定義リスト、数式、Mermaid、HTML コンポーネントには専用の変換処理がありません。
 これらの記法を記事の構造や表示に使う場合は、Markdown 変換処理とテストを追加する必要があります。
 
+## 制作物の追加
+
+Works ページの内容は `src/content/works/<スラッグ>/` に置きます。
+記事と同じく日英で1ファイルずつ、TOML front matter と Markdown 本文で構成します。
+スラッグはそのまま URL（`/app/<スラッグ>`）になるので、英小文字・数字・ハイフンで書きます。
+
+```sh
+npm run new:work -- linewatch
+```
+
+```text
+src/content/works/linewatch/
+├── assets/        # その制作物に関連する素材の置き場
+├── index.en.md
+└── index.ja.md
+```
+
+front matter の項目は次のとおりです。
+
+```toml
++++
+title = "<制作物の名前>"
+tagline = "<一覧カードと詳細ページの見出し下に出る一行説明>"
+summary = "<一覧カードに出る説明文>"
+year = 2025
+stack = ["<使用技術>"]
+thumbnail = "<一覧カードの画像パス>"
+hero = "<詳細ページの大きな画像パス>"
++++
+
+詳細ページの本文を Markdown で書く。
+```
+
+- **`title`**、**`year`** は必須です。
+- **`thumbnail`** と **`hero`** は `public/` からのパスを `/works/linewatch/hero.png` のように書きます。空にするとプレースホルダが表示されます。
+- **`stack`**、**`year`** は日本語版の値が使われます。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+
 ## 関連資料
 
 - [プロジェクト資料の索引](.project/README.md)

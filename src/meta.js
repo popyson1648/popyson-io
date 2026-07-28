@@ -17,8 +17,6 @@
    Plain ESM so it is importable from Node during the build. Post data is
    supplied by window.BlogData in the browser and configureMetaData() in Node.
    ============================================================ */
-import { APPS } from "./apps.js";
-
 export const SITE = {
   url: "https://popyson.com",
   name: "popyson.com",
@@ -29,13 +27,19 @@ export const SITE = {
 const L = (field, lang) => (field && field[lang]) || (field && field.ja) || "";
 const ROUTE_LOCALES = ["ja", "en"];
 let configuredPosts = [];
+let configuredApps = [];
 
-export function configureMetaData({ POSTS = [] } = {}) {
+export function configureMetaData({ POSTS = [], APPS = [] } = {}) {
   configuredPosts = POSTS;
+  configuredApps = APPS;
 }
 
 function posts() {
   return globalThis.window?.BlogData?.POSTS || configuredPosts;
+}
+
+function apps() {
+  return globalThis.window?.BlogData?.APPS || configuredApps;
 }
 
 // Generic, concise per-page descriptions (overridden by article / work copy).
@@ -91,7 +95,7 @@ function findPost(id) {
   return posts().find((p) => p.id === id) || null;
 }
 function findApp(id) {
-  return APPS.find((a) => a.id === id) || null;
+  return apps().find((a) => a.id === id) || null;
 }
 
 /** Page title + description for a route in a given language. */
@@ -105,7 +109,8 @@ function titleAndDesc(route, lang) {
     }
     case "appDetail": {
       const a = findApp(route.id);
-      if (a) return { title: `${a.title} | ${SITE.name}`, description: L(a.desc, lang) };
+      if (a)
+        return { title: `${L(a.title, lang)} | ${SITE.name}`, description: L(a.summary, lang) };
       break;
     }
     default:
@@ -165,7 +170,7 @@ function baseRouteEntries() {
     { dir: "blog", route: { name: "blog" } },
     ...posts().map((p) => ({ dir: `blog/${p.id}`, route: { name: "article", id: p.id } })),
     { dir: "app", route: { name: "app" } },
-    ...APPS.map((a) => ({ dir: `app/${a.id}`, route: { name: "appDetail", id: a.id } })),
+    ...apps().map((a) => ({ dir: `app/${a.id}`, route: { name: "appDetail", id: a.id } })),
     { dir: "reading", route: { name: "reading" } },
     { dir: "rss", route: { name: "rss" } },
   ];

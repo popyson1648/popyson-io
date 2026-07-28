@@ -38,7 +38,9 @@
 - `scripts/new_post.mjs`: creates a new post directory with a collision-free `YYYYMMDD-xxxxxxxx` post ID. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field.
 - `scripts/publish_post.mjs`: stages `src/content/posts/`, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. Run it with `npm run post:push`.
 - `src/readingTime.js`: estimates the reading time of a Markdown body per locale, replacing the removed `reading` front-matter field.
-- `src/apps.js`: Works (APPS) metadata; Node-importable and shared by the browser and prerenderer.
+- `src/content/works/<slug>/index.{ja,en}.md`: one work per directory, TOML front matter plus a Markdown body. The slug is the URL segment (`/app/<slug>`). Exposed as `APPS` (metadata) and `WORK_BODIES` (rendered HTML) through `virtual:site-content`.
+- `scripts/workSchema.mjs`: front matter schema for works, separate from the article one.
+- `scripts/new_work.mjs`: creates a work directory from a slug. Run it with `npm run new:work -- <slug>`.
 - `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings.
 - `src/content/theme.toml`: single source of truth for the light/dark color tokens (CSS custom properties), generated into CSS at build time.
 - `scripts/prerender.mjs`: post-`vite build` step that bakes a per-route/per-locale `<head>` into a standalone HTML file under `dist/`, injects article title/body HTML into article route `#root`, renders every other route's body from `src/prerenderRoutes.jsx` into `#root`, and emits `sitemap.xml` + `robots.txt`.

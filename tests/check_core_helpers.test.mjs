@@ -203,6 +203,7 @@ describe("allRoutes", () => {
         { id: "new-post", title: { ja: "新記事" }, summary: { ja: "要約" }, tags: [] },
         { id: "old-post", title: { ja: "旧記事" }, summary: { ja: "要約" }, tags: [] },
       ],
+      APPS: [{ id: "linewatch", title: { ja: "LineWatch" }, summary: { ja: "説明" } }],
     });
 
     const keys = allRoutes().map(

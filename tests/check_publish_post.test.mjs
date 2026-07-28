@@ -43,6 +43,16 @@ describe("commitMessage", () => {
     );
   });
 
+  test("keeps a single long title in the body once the subject drops it", () => {
+    const title = "あ".repeat(60);
+
+    const message = commitMessage([post("added", title)]);
+
+    expect(message).toBe(
+      ["chore(content): add 1 post", "", `- add: ${title} (20260728-e2c1267f)`].join("\n"),
+    );
+  });
+
   test("falls back to counts when the titles overflow the subject line", () => {
     const message = commitMessage([
       post("added", "とても長い日本語のタイトルをつけた記事", "20260728-e2c1267f"),

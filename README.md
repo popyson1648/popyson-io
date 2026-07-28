@@ -262,14 +262,17 @@ path = "/<公開ディレクトリからの画像パス>"
 
 - **`title`**：記事タイトルを指定する必須項目です。
 - **`date`**：`YYYY-MM-DD` または `"auto"` を指定する必須項目です。
-- **`reading`**：表示する読了時間を正の数で指定します。
 - **`tags`**：絞り込みと検索に使うタグを文字列の配列で指定します。
 - **`kana`**：日本語の並べ替えと検索で使う読みを指定します。
 - **`auto_tags`**：生成スクリプトに追加させるタグ数を `count` で指定します。
 - **`sumup`**：概要の処理を `text`、`none`、`auto` から選びます。
 - **`thumbnail`**：画像の処理を `file`、`none`、`auto` から選びます。
 
-`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は、コミット前に次のコマンドで解決します。
+読了時間は front matter の項目ではありません。本文の分量から `src/readingTime.js` が言語ごとに算出します。
+
+`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は未解決のままコミットして構いません。
+main へ push すると `generate-metadata.yml` が解決し、その結果をコミットします。
+手元で先に解決したいときは次のコマンドを使います。
 
 ```sh
 npm run metadata:generate:op

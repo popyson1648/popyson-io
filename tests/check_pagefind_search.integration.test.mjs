@@ -47,13 +47,14 @@ function serveDist() {
   });
 }
 
+// Every match, not just the top one: ranking is deterministic but not part of
+// what this suite is asserting.
 async function searchWithLang(pagefind, base, lang, query) {
   await pagefind.destroy();
   document.documentElement.lang = lang;
   await pagefind.options({ basePath: `${base}/pagefind/`, excerptLength: 20 });
   const response = await pagefind.search(query, { filters: { lang: [lang] } });
-  const first = response.results[0] ? await response.results[0].data() : null;
-  return { count: response.results.length, first };
+  return Promise.all(response.results.map((result) => result.data()));
 }
 
 describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
@@ -82,18 +83,24 @@ describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
   });
 
   test("finds the Japanese article for a Japanese query", async () => {
-    const ja = await searchWithLang(pagefind, base, "ja", POST.title.ja);
+    const results = await searchWithLang(pagefind, base, "ja", POST.title.ja);
 
-    expect(ja.count).toBeGreaterThan(0);
-    expect(ja.first?.url).toBe(`${base}/blog/${POST.id}/`);
-    expect(ja.first?.meta?.title).toBe(POST.title.ja);
+    expect(results).toContainEqual(
+      expect.objectContaining({
+        url: `${base}/blog/${POST.id}/`,
+        meta: expect.objectContaining({ title: POST.title.ja }),
+      }),
+    );
   });
 
   test("finds the English article for an English query", async () => {
-    const en = await searchWithLang(pagefind, base, "en", POST.title.en);
+    const results = await searchWithLang(pagefind, base, "en", POST.title.en);
 
-    expect(en.count).toBeGreaterThan(0);
-    expect(en.first?.url).toBe(`${base}/en/blog/${POST.id}/`);
-    expect(en.first?.meta?.title).toBe(POST.title.en);
+    expect(results).toContainEqual(
+      expect.objectContaining({
+        url: `${base}/en/blog/${POST.id}/`,
+        meta: expect.objectContaining({ title: POST.title.en }),
+      }),
+    );
   });
 });

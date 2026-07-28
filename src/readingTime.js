@@ -1,5 +1,5 @@
 const CJK_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/gu;
-const FENCE_RE = /^\s*(```|~~~)/;
+const FENCE_RE = /^\s*(`{3,}|~{3,})(.*)$/;
 const CJK_PER_MINUTE = 600;
 const WORDS_PER_MINUTE = 250;
 
@@ -9,13 +9,23 @@ function stripMarkdown(markdown) {
     .split("\n");
 
   const kept = [];
-  let fenced = false;
+  let fence = null;
   for (const line of lines) {
-    if (FENCE_RE.test(line)) {
-      fenced = !fenced;
-      continue;
+    const match = FENCE_RE.exec(line);
+    if (match) {
+      const [, delimiter, rest] = match;
+      if (!fence) {
+        fence = { char: delimiter[0], length: delimiter.length };
+        continue;
+      }
+      // CommonMark closes a block only on the same character, at least as
+      // long, with nothing after it — so a ``` inside a ```` block is content.
+      if (delimiter[0] === fence.char && delimiter.length >= fence.length && rest.trim() === "") {
+        fence = null;
+        continue;
+      }
     }
-    if (!fenced) kept.push(line);
+    if (!fence) kept.push(line);
   }
 
   return kept

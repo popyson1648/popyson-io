@@ -37,11 +37,13 @@ function changedPostIds() {
   return [...ids].sort();
 }
 
-// A post is added when git tracks nothing under it yet, and removed once its
-// files are gone from the working tree. Anything else is an edit.
+// A post is added when the last commit knew nothing about it, and removed once
+// its files are gone from the working tree. Anything else is an edit. This
+// reads HEAD rather than the index, so staging a post beforehand (or `git rm`)
+// does not change how it is described.
 function classify(id) {
-  const tracked = tryGit(["ls-files", "--", `${POSTS_PREFIX}${id}`]);
-  if (!tracked) return "added";
+  const inHead = tryGit(["ls-tree", "-r", "--name-only", "HEAD", "--", `${POSTS_PREFIX}${id}`]);
+  if (!inHead) return "added";
   if (!existsSync(join(ROOT, POSTS_PREFIX, id, "index.ja.md"))) return "removed";
   return "updated";
 }
@@ -81,8 +83,9 @@ export function commitMessage(posts) {
 
   const clauses = groups.map(([verb, group]) => subjectClause(verb, group));
   let subject = `chore(content): ${clauses.join(", ")}`;
+  let droppedTitles = false;
   if (subject.length > SUBJECT_LIMIT) {
-    // Fall back to counts only; the body still names every post.
+    droppedTitles = true;
     subject = `chore(content): ${groups
       .map(([verb, group]) => `${verb} ${group.length} post${group.length === 1 ? "" : "s"}`)
       .join(", ")}`;
@@ -90,12 +93,20 @@ export function commitMessage(posts) {
 
   const verbs = { added: "add", updated: "update", removed: "remove" };
   const body = posts.map((post) => `- ${verbs[post.state]}: ${post.title} (${post.id})`).join("\n");
-  return posts.length === 1 ? subject : `${subject}\n\n${body}`;
+  // The body carries the titles the subject could not: every title once there
+  // are several posts, and the one title a long subject had to drop.
+  const needsBody = posts.length > 1 || droppedTitles;
+  return needsBody ? `${subject}\n\n${body}` : subject;
 }
 
+// Always name the remote and the destination ref, so `push.default` and any
+// `remote.<name>.push` refspec cannot widen what gets sent.
 function pushArgs() {
-  if (tryGit(["rev-parse", "--abbrev-ref", "@{u}"])) return ["push"];
-  return ["push", "-u", "origin", git(["rev-parse", "--abbrev-ref", "HEAD"])];
+  const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const remote = tryGit(["config", `branch.${branch}.remote`]);
+  const upstreamRef = tryGit(["config", `branch.${branch}.merge`]);
+  if (remote && upstreamRef) return ["push", remote, `HEAD:${upstreamRef}`];
+  return ["push", "-u", "origin", `HEAD:refs/heads/${branch}`];
 }
 
 function main() {
@@ -118,9 +129,19 @@ function main() {
   }
 
   git(["add", "--all", "--", POSTS_PREFIX]);
-  // `git add` on a reverted edit can leave nothing staged.
-  if (!tryGit(["diff", "--cached", "--name-only", "--", POSTS_PREFIX])) {
+  const staged = tryGit(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+  if (staged.length === 0) {
     console.log("Nothing staged after add; working tree matches HEAD.");
+    return;
+  }
+  // `git commit` records the whole index, so anything staged earlier would ride
+  // along in a commit that claims to be about posts.
+  const outside = staged.filter((path) => !path.startsWith(POSTS_PREFIX));
+  if (outside.length > 0) {
+    console.error("Staged changes outside src/content/posts/:");
+    for (const path of outside) console.error(`  ${path}`);
+    console.error("Unstage them (git restore --staged <path>) and run again.");
+    process.exitCode = 1;
     return;
   }
 

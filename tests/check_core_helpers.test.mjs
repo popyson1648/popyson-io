@@ -315,6 +315,12 @@ describe("estimateReadingMinutes", () => {
     expect(estimateReadingMinutes(markdown)).toBe(1);
   });
 
+  test("keeps a longer fence open past a shorter inner fence", () => {
+    const markdown = ["````md", "```", "あ".repeat(1200), "```", "````"].join("\n");
+
+    expect(estimateReadingMinutes(markdown)).toBe(1);
+  });
+
   test("counts link text but not the url", () => {
     const url = "https://example.com/a/very/long/path/that/nobody/reads/out/loud";
     const markdown = `[リンク](${url})\n`.repeat(60);

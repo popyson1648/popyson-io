@@ -109,6 +109,30 @@ describe("renderArticleHtml", () => {
     ]);
   });
 
+  test.each([
+    ["a capacity", "現在の配列 (容量:4) を拡張する｡", "現在の配列 (容量:4) を拡張する｡"],
+    ["a clock time", "開始は 12:30 です｡", "開始は 12:30 です｡"],
+    ["a ratio", "比率は a:b になる｡", "比率は a:b になる｡"],
+  ])("keeps %s written with a colon out of directive parsing", async (_name, markdown, text) => {
+    const html = await renderArticleHtml(markdown);
+
+    expect(html).toContain(`<p>${text}</p>`);
+    expect(html).not.toMatch(/<div><\/div>/);
+  });
+
+  test("writes an unhandled text or leaf directive back as source", async () => {
+    const html = await renderArticleHtml(':unknown[label]{key="value"}\n\n::block[label]');
+
+    expect(html).toMatch(/:unknown\[label\]\{key="value"\}/);
+    expect(html).toMatch(/<p>::block\[label\]<\/p>/);
+  });
+
+  test("keeps a colon inside a callout body", async () => {
+    const html = await renderArticleHtml(":::note[題]\n中身 (容量:4)｡\n:::");
+
+    expectMatchesAll(html, [/class="msg msg-note"/, /<p>中身 \(容量:4\)｡<\/p>/]);
+  });
+
   test("labels plain code blocks as text", async () => {
     const html = await renderArticleHtml("```\nplain code\n```", { copyLabel: "Copy code" });
 

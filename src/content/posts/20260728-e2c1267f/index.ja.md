@@ -14,8 +14,8 @@ auto_tags = {}
 kana = "しょうきゃくけいさんりょう"
 
 [sumup]
-mode = "none"
-text = ""
+mode = "text"
+text = "償却計算量について"
 
 [thumbnail]
 mode = "auto"

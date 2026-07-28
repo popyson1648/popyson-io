@@ -150,11 +150,17 @@ function validateThumbnail(meta, filePath) {
   return [];
 }
 
+// A post is written with `auto` metadata and resolved on main by
+// generate-metadata.yml, so unresolved values are expected while drafting.
+// CI sees them only after that generation step, which is where the check
+// belongs — the same split as metadata_generate_check in verification.toml.
+const CHECKS_RESOLVED_METADATA = Boolean(process.env.CI);
+
 function fileErrors({ filePath, meta, locale }) {
   return [
     ...evaluateMetadata(meta, { filePath, locale, config }),
     ...validateTags(meta, filePath),
-    ...validateResolvedMetadata(meta, filePath),
+    ...(CHECKS_RESOLVED_METADATA ? validateResolvedMetadata(meta, filePath) : []),
     ...validateThumbnail(meta, filePath),
   ];
 }

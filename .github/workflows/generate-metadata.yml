@@ -54,6 +54,12 @@ jobs:
         run: |
           set -euo pipefail
 
+          # The verification step above writes throwaway output under .tmp/
+          # (Lighthouse reports), which `git ls-files --others` would otherwise
+          # report as an untracked change and trip the allowlist below.
+          grep -qxF '.tmp/' .git/info/exclude || echo '.tmp/' >> .git/info/exclude
+          git rm -r --cached --quiet --ignore-unmatch .tmp
+
           mapfile -t changed_files < <(
             {
               git diff --name-only HEAD

@@ -23,18 +23,33 @@ function tryGit(args) {
   }
 }
 
-// Post ids with any staged, unstaged, or untracked change under their directory.
-function changedPostIds() {
-  const output = tryGit(["status", "--porcelain", "-uall", "--", POSTS_PREFIX]);
+// Unlike git(), keeps the output verbatim. `git status --porcelain` carries the
+// index status in column 1 and the worktree status in column 2, so an unstaged
+// edit begins with a space; trimming would shift every such line left by one
+// and the path would never match.
+function gitVerbatim(args) {
+  try {
+    return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+  } catch {
+    return "";
+  }
+}
+
+export function postIdsFromStatus(output) {
   const ids = new Set();
-  for (const line of output.split("\n")) {
-    if (!line.trim()) continue;
+  for (const line of String(output).split("\n")) {
     // "XY path", and "XY old -> new" once a file has been renamed.
+    if (line.length < 4) continue;
     const path = line.slice(3).split(" -> ").at(-1).replace(/^"|"$/g, "");
     const match = POST_PATH_RE.exec(path);
     if (match) ids.add(match[1]);
   }
   return [...ids].sort();
+}
+
+// Post ids with any staged, unstaged, or untracked change under their directory.
+function changedPostIds() {
+  return postIdsFromStatus(gitVerbatim(["status", "--porcelain", "-uall", "--", POSTS_PREFIX]));
 }
 
 // A post is added when the last commit knew nothing about it, and removed once

@@ -343,6 +343,65 @@ describe("resolveMetadata auto thumbnail generation", () => {
     }
   });
 
+  test("summarizes the body for the concept when the post shows no summary", async () => {
+    const postId = "29991231-0badc0de";
+    const dir = join(tempDir, postId);
+    mkdirSync(dir, { recursive: true });
+    const jaPath = join(dir, "index.ja.md");
+    const generatedPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+    const source = [
+      "+++",
+      'title = "概要なしの記事"',
+      'date = "2026-06-22"',
+      'tags = ["js"]',
+      "",
+      "[sumup]",
+      'mode = "none"',
+      'text = ""',
+      "",
+      "[thumbnail]",
+      'mode = "auto"',
+      "+++",
+      "",
+      "ターミナル起動時にシェルを自動で立ち上げる設定の記事。",
+      "",
+    ].join("\n");
+    writeFileSync(jaPath, source);
+    rmSync(generatedPath, { force: true });
+
+    try {
+      const requests = [];
+      const result = await resolveMetadata({
+        filePath: jaPath,
+        source,
+        config,
+        provider: async (request) => {
+          requests.push(request);
+          // The summary request comes first, then the concept request built
+          // from its output.
+          if (request.schema.required.includes("summary")) {
+            return { summary: "シェルを自動起動する設定。" };
+          }
+          expect(request.prompt).toMatch(/シェルを自動起動する設定。/);
+          return { concept: "a terminal window" };
+        },
+        imageProvider: async () => Buffer.from("fake-png-bytes"),
+      });
+
+      expect(requests).toHaveLength(2);
+      expect(existsSync(generatedPath)).toBe(true);
+      // The generated summary is for the image only; the post still shows none.
+      expect(result.meta.sumup).toEqual({ mode: "none", text: "" });
+      expect(result.meta.thumbnail).toEqual({
+        mode: "file",
+        path: `/thumbnails/${postId}.png`,
+        generated: true,
+      });
+    } finally {
+      rmSync(generatedPath, { force: true });
+    }
+  });
+
   test("uses an explicit [thumbnail].concept and skips the concept provider", async () => {
     const postId = "29991231-cafebabe";
     const dir = join(tempDir, postId);

@@ -37,6 +37,7 @@
   isolation: isolate;
   overflow: hidden;
   background-color: var(--bg);
+  dynamic-range-limit: standard;
 }
 
 /* Grainy lime gradient (light theme) — coliss grainy-gradients method.
@@ -60,12 +61,12 @@
   pointer-events: none;
 }
 
-/* Luminance geometry for the crush: keep literal white/lime here — the
-   contrast/brightness crush depends on these exact values, independent of
-   the theme-driven color stack below. */
+/* Reproduce the original grain threshold with a bounded SVG transfer rather
+   than brightness(1000%). The discrete transfer keeps every intermediate
+   channel at 0 or 1, avoiding HDR-range values while preserving the dither. */
 .bg-gradient-noise {
   --grain: url("data:image/svg+xml,%3Csvg%20viewBox%3D'0%200%20200%20200'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cfilter%20id%3D'n'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.65'%20numOctaves%3D'3'%20stitchTiles%3D'stitch'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23n)'%2F%3E%3C%2Fsvg%3E");
-  filter: contrast(170%) brightness(1000%);
+  filter: url(#gg-sdr-crush);
   background:
 /* white strip across the top: keeps the topbar zone on plain paper (the
    lime body's long alpha ramp otherwise reaches the top edge and dithers
@@ -148,12 +149,9 @@
     /* 200px tile drawn enlarged to coarsen the grain */ 300px 300px;
 }
 
-/* Color stack multiplied over the crushed noise: whites come from
-   --gg-paper, the lime from var(--accent-alt) (in-between ramp shades stay
-   literal). --gg-paper is the light paper even in dark mode — the dark
-   theme renders the identical light composite and then remaps its colors
-   with the gg-dark-map filter on .bg-gradient, so every shade of the
-   gradient survives the theme switch. */
+/* Color stack multiplied over the bounded dither. --gg-paper remains light in
+   dark mode because gg-dark-map remaps the finished picture to the dark
+   palette. */
 .bg-gradient-color {
   --gg-paper: var(--bg);
   mix-blend-mode: multiply;

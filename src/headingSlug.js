@@ -2,7 +2,7 @@
 
    Both the build-time content loader (scripts/content_loader.mjs, which fills
    the TOC) and the build-time article renderer (scripts/articleHtml.mjs, which
-   sets the <h2> id) must derive the same slug from the same heading text, or
+   sets heading ids) must derive the same slug from the same heading text, or
    TOC links stop matching their target. Keep this the single source of truth. */
 
 export const SECTION_ID_PREFIX = "sec-";

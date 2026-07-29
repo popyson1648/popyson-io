@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import {
   assertLocaleParity,
   contentWatchFiles,
+  localizeMarkdown,
   loadSiteContent,
   normalizeNewsEntries,
   postIdPattern,
@@ -67,6 +68,42 @@ describe("relatedPostIds", () => {
   });
 });
 
+describe("localized article headings", () => {
+  test("keeps every heading level with locale-specific ids and depths", () => {
+    const body = localizeMarkdown(
+      ["## 親", "", "### 子", "", "#### 孫"].join("\n"),
+      ["## Parent", "", "### Child", "", "#### Grandchild"].join("\n"),
+    );
+
+    expect(body.headings).toEqual([
+      {
+        id: { ja: "親", en: "parent" },
+        text: { ja: "親", en: "Parent" },
+        depth: { ja: 2, en: 2 },
+      },
+      {
+        id: { ja: "子", en: "child" },
+        text: { ja: "子", en: "Child" },
+        depth: { ja: 3, en: 3 },
+      },
+      {
+        id: { ja: "孫", en: "grandchild" },
+        text: { ja: "孫", en: "Grandchild" },
+        depth: { ja: 4, en: 4 },
+      },
+    ]);
+  });
+
+  test("treats an article beginning at h3 as valid TOC input", () => {
+    const body = localizeMarkdown(
+      ["### 最初", "", "#### 詳細"].join("\n"),
+      ["### First", "", "#### Detail"].join("\n"),
+    );
+
+    expect(body.headings.map((heading) => heading.depth.ja)).toEqual([3, 4]);
+  });
+});
+
 describe("loadSiteContent", () => {
   const content = loadSiteContent();
 
@@ -98,18 +135,17 @@ describe("loadSiteContent", () => {
   );
 
   test.skipIf(content.POSTS.length === 0)(
-    "derives bilingual h2 heading metadata from the Markdown body",
+    "derives bilingual heading metadata from the Markdown body",
     () => {
       for (const post of content.POSTS) {
         const headings = content.ARTICLE_BODIES[post.id].headings;
         expect(Array.isArray(headings)).toBe(true);
         for (const heading of headings) {
           expect(heading.id).toBeTruthy();
-          // Both locales are zipped by position, so each side must be filled.
           expect(heading).toEqual({
-            id: expect.any(String),
-            ja: expect.any(String),
-            en: expect.any(String),
+            id: { ja: expect.any(String), en: expect.any(String) },
+            text: { ja: expect.any(String), en: expect.any(String) },
+            depth: { ja: expect.any(Number), en: expect.any(Number) },
           });
         }
       }

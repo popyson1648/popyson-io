@@ -75,7 +75,7 @@ function resolveThumbnail(meta, config) {
   return config.thumbnail?.default_path || "";
 }
 
-function extractMarkdownHeadings(markdown) {
+export function extractMarkdownHeadings(markdown) {
   const headings = [];
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const seenHeadings = new Map();
@@ -93,15 +93,13 @@ function extractMarkdownHeadings(markdown) {
     if (!match) continue;
     const depth = match[1].length;
     const text = match[2].trim();
-    if (depth === 2) {
-      headings.push({ id: slugifyHeading(text, seenHeadings), text });
-    }
+    headings.push({ id: slugifyHeading(text, seenHeadings), text, depth });
   }
 
   return headings;
 }
 
-function localizeMarkdown(jaBody, enBody) {
+export function localizeMarkdown(jaBody, enBody) {
   const jaHeadings = extractMarkdownHeadings(jaBody);
   const enHeadings = extractMarkdownHeadings(enBody);
   const max = Math.max(jaHeadings.length, enHeadings.length);
@@ -110,9 +108,18 @@ function localizeMarkdown(jaBody, enBody) {
     const ja = jaHeadings[i];
     const en = enHeadings[i];
     headings.push({
-      id: ja?.id || en?.id || `section-${i + 1}`,
-      ja: ja?.text || "",
-      en: en?.text || "",
+      id: {
+        ja: ja?.id || en?.id || `section-${i + 1}`,
+        en: en?.id || ja?.id || `section-${i + 1}`,
+      },
+      text: {
+        ja: ja?.text || en?.text || "",
+        en: en?.text || ja?.text || "",
+      },
+      depth: {
+        ja: ja?.depth || en?.depth || 1,
+        en: en?.depth || ja?.depth || 1,
+      },
     });
   }
   return { ja: jaBody, en: enBody, headings };

@@ -1313,6 +1313,7 @@
   text-decoration: underline;
   text-decoration-thickness: var(--line-w);
   text-underline-offset: 0.18em;
+  overflow-wrap: anywhere;
 }
 .prose img {
   max-width: 100%;
@@ -1336,20 +1337,43 @@
   padding-left: 0;
   list-style: none;
 }
-.prose ul li,
+.prose ul {
+  padding-left: 1.5em;
+  list-style-type: disc;
+}
+.prose ul ul {
+  list-style-type: circle;
+}
+.prose ul ul ul {
+  list-style-type: square;
+}
+.prose ul ul ul ul {
+  list-style-type: disc;
+}
+.prose ul ul ul ul ul {
+  list-style-type: circle;
+}
+.prose ul ul ul ul ul ul {
+  list-style-type: square;
+}
+.prose ul li {
+  padding-left: 0.25em;
+  margin: 4px 0;
+}
+.prose li > ul {
+  margin: 4px 0;
+}
+.prose ul li::marker {
+  color: var(--text-muted);
+  font-size: 1.2em;
+}
 .prose ol li {
   position: relative;
   padding-left: 28px;
   margin: 8px 0;
 }
 .prose ul li::before {
-  content: "";
-  position: absolute;
-  left: 6px;
-  top: 12px;
-  width: 8px;
-  height: var(--line-w);
-  background: var(--text-muted);
+  content: none;
 }
 .prose ol {
   counter-reset: li;
@@ -1373,6 +1397,10 @@
 }
 .prose .task-list-item {
   padding-left: 28px;
+}
+.prose ul.contains-task-list {
+  padding-left: 0;
+  list-style: none;
 }
 .prose .task-list-item::before {
   content: none;
@@ -1405,9 +1433,9 @@
 }
 .prose :not(pre) > code {
   font-family: var(--mono);
-  font-size: 0.9em;
+  font-size: 16px;
   padding: 0.08em 0.3em;
-  background: var(--bg-subtle);
+  background: #fbfdf4;
   border: var(--line-w) solid var(--line);
 }
 
@@ -1481,7 +1509,7 @@
 }
 .code code {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.75;
   color: var(--text-muted);
   white-space: pre;
@@ -2467,6 +2495,13 @@
 .toc-list a:hover {
   color: var(--text);
 }
+.toc-list .toc-list {
+  margin: 1px 0 2px;
+  padding-left: 14px;
+}
+.toc-list .toc-list a {
+  color: var(--text-faint);
+}
 .article-back {
   appearance: none;
   border: none;
@@ -2580,7 +2615,7 @@
   overflow-x: auto;
   background: transparent !important;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.75;
 }
 [data-theme="light"] .code-highlight .shiki span {
@@ -2626,6 +2661,13 @@
   height: 52px;
   aspect-ratio: 1 / 1;
   margin: 0;
+}
+img.rel-thumb {
+  display: block;
+  object-fit: cover;
+  padding: 0;
+  border: var(--line-w) solid var(--line-strong);
+  border-radius: var(--r);
 }
 .rel-body {
   display: flex;
@@ -5697,6 +5739,32 @@
   color: var(--accent);
 }
 
+.article-scroll-top {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  z-index: 65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  appearance: none;
+  cursor: pointer;
+  color: var(--text);
+  border: var(--line-w) solid var(--line);
+  border-radius: 999px;
+  background: var(--topbar-surface-bg);
+  background-image: var(--topbar-surface-image);
+  backdrop-filter: var(--topbar-surface-filter);
+  -webkit-backdrop-filter: var(--topbar-surface-filter);
+}
+
+.article-scroll-top:hover {
+  color: var(--accent);
+  border-color: var(--line-strong);
+}
+
 /* ============================================================
    requested window surface / article navigation refinement
    Keep these late rules together so they win over the accumulated
@@ -5832,10 +5900,19 @@
   right: max(18px, calc(50vw - 572px));
 }
 
-/* The topbar uses the same solid surface in both themes; popups can keep the
-   frosted treatment, but the bar itself should not render a gradient. */
-.topbar {
-  background-image: none !important;
+@media (max-width: 720px) {
+  .topbar,
+  .fbar-controls,
+  .fbar-results,
+  .fbar-pop,
+  .topbar .menu,
+  .fbar .menu {
+    background: var(--search-backdrop-bg) !important;
+    background-color: var(--search-backdrop-bg) !important;
+    background-image: var(--search-backdrop-image) !important;
+    backdrop-filter: var(--search-backdrop-filter) !important;
+    -webkit-backdrop-filter: var(--search-backdrop-filter) !important;
+  }
 }
 
 /* Progressive Japanese contextual spacing. Keep this scoped to body-like text:

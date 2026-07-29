@@ -55,7 +55,7 @@ describe("renderArticleHtml", () => {
 
     expect(html).not.toMatch(/react-markdown|micromark/i);
     expectMatchesAll(html, [
-      /<h1>H1<\/h1>/,
+      /<h1 id="sec-h1">H1<\/h1>/,
       /<h2 id="sec-feature-set">Feature Set<\/h2>/,
       /<blockquote>/,
       /<table>/,
@@ -84,6 +84,31 @@ describe("renderArticleHtml", () => {
       /<h2 id="sec-feature-set-2">Feature Set<\/h2>/,
       /<h2 id="sec-型で導く-cli-設計">型で導く CLI 設計<\/h2>/,
     ]);
+  });
+
+  test("gives every ATX heading level a targetable id", async () => {
+    const html = await renderArticleHtml(
+      ["# One", "## Two", "### Three", "#### Four", "##### Five", "###### Six"].join("\n\n"),
+    );
+
+    for (const [level, slug] of ["one", "two", "three", "four", "five", "six"].entries()) {
+      expect(html).toContain(`<h${level + 1} id="sec-${slug}">`);
+    }
+  });
+
+  test("renders dash, plus, and asterisk unordered-list markers as list items", async () => {
+    const html = await renderArticleHtml(["- dash", "", "+ plus", "", "* asterisk"].join("\n"));
+
+    expectMatchesAll(html, [/<li>dash<\/li>/, /<li>plus<\/li>/, /<li>asterisk<\/li>/]);
+    expect(html.match(/<ul>/g)).toHaveLength(3);
+  });
+
+  test("preserves nested unordered-list structure for depth-specific markers", async () => {
+    const html = await renderArticleHtml(["- root", "  - child", "    - grandchild"].join("\n"));
+
+    expect(html).toMatch(
+      /<ul>\s*<li>root\s*<ul>\s*<li>child\s*<ul>\s*<li>grandchild<\/li>\s*<\/ul>\s*<\/li>\s*<\/ul>\s*<\/li>\s*<\/ul>/,
+    );
   });
 
   test("renders callout directives with titles and types", async () => {

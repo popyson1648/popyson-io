@@ -80,7 +80,11 @@ type Person = {
 type ArticleBodyEntry = {
   ja?: ArticleBodyLocale;
   en?: ArticleBodyLocale;
-  headings?: Array<{ id: string; ja: string; en: string }>;
+  headings?: Array<{
+    id: LocaleMap;
+    text: LocaleMap;
+    depth: LocaleMap<number>;
+  }>;
 };
 
 type ArticleBodyLocale = { html?: string; text?: string } | string;

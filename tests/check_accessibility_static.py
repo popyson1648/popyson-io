@@ -82,6 +82,19 @@ def main() -> int:
     checks.append((
         bool(re.search(r"^[ \t]+\.prose[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE)),
         "mobile article body text must stay at least 16px"))
+    checks.append((
+        bool(re.search(r"\.code-highlight \.shiki[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE))
+        and bool(re.search(r"\.code code[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE)),
+        "fenced article code must render at 16px"))
+    checks.append((
+        bool(re.search(r"\.prose :not\(pre\) > code[ \t]*\{[^}]*?background:\s*#fbfdf4\b", app_css, re.MULTILINE | re.IGNORECASE)),
+        "inline article code must use the requested #FBFDF4 background"))
+    checks.append((
+        "className=\"article-scroll-top\"" in blog and "aria-label={t.back_to_top}" in blog,
+        "article scroll-to-top control must be a labelled native button"))
+    checks.append((
+        "className=\"rel-thumb\"" in blog and "src={p.thumbnail}" in blog,
+        "related articles must render their resolved thumbnail"))
     checks.append((not has_any(app_css, [
         ".topbar .btn-ghost { padding: 4px 7px; font-size: 11px;",
         ".post-index-meta { font-family: var(--mono); font-size: 11px;",

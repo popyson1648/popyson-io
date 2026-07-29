@@ -26,6 +26,7 @@ const SEARCH_RESULT_LIMIT = 8;
 const SEARCH_RECENT_LIMIT = 5;
 const TOOLBAR_VIEWPORT_GUTTER = 20;
 const ARTICLE_SCROLL_OFFSET = 76;
+const ARTICLE_SCROLL_TOP_THRESHOLD = 480;
 const CODE_COPY_FEEDBACK_MS = 1400;
 const COPY_ICON_HTML =
   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="copy"><rect x="9" y="9" width="11" height="11" rx="1.5"></rect><path d="M5 15V5a1 1 0 0 1 1-1h10"></path></svg>';
@@ -34,6 +35,47 @@ const CHECK_ICON_HTML =
 let pagefindLoadPromise = null;
 const pagefindInstances = new Map();
 const PAGEFIND_MODULE_URL = "/pagefind/pagefind.js";
+
+export function buildTocTree(headings) {
+  const roots = [];
+  const stack = [];
+
+  for (const heading of headings || []) {
+    const node = {
+      ...heading,
+      depth: Number(heading.depth) || 1,
+      children: [],
+    };
+    while (stack.length > 0 && stack.at(-1).depth >= node.depth) stack.pop();
+    const parent = stack.at(-1);
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+    stack.push(node);
+  }
+
+  return roots;
+}
+
+function TocList({ items, jump }) {
+  return (
+    <ol className="toc-list">
+      {items.map((heading) => (
+        <li key={heading.id}>
+          <a
+            href={"#" + sectionId(heading.id)}
+            onClick={(event) => {
+              event.preventDefault();
+              jump(heading.id);
+            }}
+          >
+            {heading.text}
+          </a>
+          {heading.children.length > 0 && <TocList items={heading.children} jump={jump} />}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function emptyFilters(initialTag = null) {
   return { tags: initialTag ? [initialTag] : [], title: "", body: "" };
@@ -827,6 +869,7 @@ export function Article({ id }) {
   const { POSTS } = window.BlogData;
   const post = POSTS.find((p) => p.id === id);
   const [tocOpen, setTocOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const proseRef = useRef(null);
   const copyTimers = useRef(new Map());
   // Collapse the mobile TOC when navigating to a different article. Resetting
@@ -840,12 +883,25 @@ export function Article({ id }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
+  useEffect(() => {
+    const update = () => setShowScrollTop(window.scrollY > ARTICLE_SCROLL_TOP_THRESHOLD);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [id]);
 
   const rawBody = window.ArticleBody.get(id) || {};
   const body = Array.isArray(rawBody) ? {} : rawBody;
   const localizedBody = body[lang] || body.ja || body.en || { html: "" };
   const bodyHtml = typeof localizedBody === "string" ? "" : localizedBody.html || "";
-  const headings = body.headings || [];
+  const headings = (body.headings || [])
+    .map((heading) => ({
+      id: L(heading.id, lang),
+      text: L(heading.text, lang),
+      depth: Number(L(heading.depth, lang)) || 1,
+    }))
+    .filter((heading) => heading.id && heading.text);
+  const tocItems = buildTocTree(headings);
 
   useEffect(() => {
     const root = proseRef.current;
@@ -905,23 +961,11 @@ export function Article({ id }) {
       });
     setTocOpen(false);
   };
-  const toc = (
-    <ol className="toc-list">
-      {headings.map((h) => (
-        <li key={h.id}>
-          <a
-            href={"#" + sectionId(h.id)}
-            onClick={(e) => {
-              e.preventDefault();
-              jump(h.id);
-            }}
-          >
-            {L({ ja: h.ja, en: h.en }, lang)}
-          </a>
-        </li>
-      ))}
-    </ol>
-  );
+  const toc = <TocList items={tocItems} jump={jump} />;
+  const scrollToTop = () => {
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  };
 
   return (
     <div className="container article-shell route-fade">
@@ -991,7 +1035,19 @@ export function Article({ id }) {
                 key={p.id}
                 onClick={() => nav("/blog/" + p.id)}
               >
-                <Ph className="rel-thumb" />
+                {p.thumbnail ? (
+                  <img
+                    className="rel-thumb"
+                    src={p.thumbnail}
+                    alt=""
+                    width="52"
+                    height="52"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <Ph className="rel-thumb" />
+                )}
                 <span className="rel-body">
                   <span className="rel-title">{L(p.title, lang)}</span>
                   <span className="rel-date">
@@ -1003,6 +1059,17 @@ export function Article({ id }) {
           </div>
         </section>
       </article>
+      {showScrollTop && (
+        <button
+          className="article-scroll-top"
+          type="button"
+          onClick={scrollToTop}
+          aria-label={t.back_to_top}
+          title={t.back_to_top}
+        >
+          <Icon.caretUp aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }

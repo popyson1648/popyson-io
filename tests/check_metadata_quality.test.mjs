@@ -196,6 +196,16 @@ describe("metadata.toml configuration", () => {
   test("passes provider, prompt-file, default thumbnail, and generation rules", () => {
     expect(configErrors()).toEqual([]);
   });
+
+  test("keeps the thumbnail background exact and foreground colorful but harmonious", () => {
+    const prompt = readFileSync(join(ROOT, config.thumbnail_generation.prompt_file), "utf8");
+
+    expect(prompt).toMatch(/Solid #F1F3EA background/);
+    expect(prompt).toMatch(/two or three distinct foreground\s+colors/);
+    expect(prompt).toMatch(/background does not count toward this three-color limit/);
+    expect(prompt).toMatch(/Any foreground hues are allowed/);
+    expect(prompt).toMatch(/tone harmonious/);
+  });
 });
 
 describe("checked-in article metadata quality", () => {

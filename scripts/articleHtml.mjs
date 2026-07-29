@@ -91,7 +91,6 @@ function remarkHeadingIds() {
   return (tree) => {
     const seen = new Map();
     visit(tree, "heading", (node) => {
-      if (node.depth !== 2) return;
       const id = sectionId(slugifyHeading(nodeText(node), seen));
       node.data = {
         ...node.data,

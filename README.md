@@ -244,8 +244,7 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 npm run post:push
 ```
 
-コミットメッセージは変更の種類から組み立てられます。
-記事を追加したときは `add`、書き換えたときは `update`、消したときは `remove` として記録します。
+コミットメッセージは変更の種類から組み立てられ、追加なら `add`、書き換えなら `update`、削除なら `remove` として記録します。
 
 push せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
 
@@ -588,24 +587,22 @@ Works ページの内容は `src/content/works/<スラッグ>/` に置きます�
 記事と同じく日英で1ファイルずつ、TOML front matter と Markdown 本文で構成します。
 
 ```sh
-npm run new:work -- linewatch
+npm run new:work -- my-app
 ```
 
 引数のスラッグはディレクトリ名になり、そのまま URL の一部になります。
 
 | | |
 | --- | --- |
-| ディレクトリ | `src/content/works/linewatch/` |
-| 日本語ページ | `https://popyson.com/app/linewatch` |
-| 英語ページ | `https://popyson.com/en/app/linewatch` |
+| ディレクトリ | `src/content/works/my-app/` |
+| 日本語ページ | `https://popyson.com/app/my-app` |
+| 英語ページ | `https://popyson.com/en/app/my-app` |
 
-使える文字は英小文字、数字、ハイフンです（`^[a-z0-9][a-z0-9-]*$`）。
-大文字やスペースは受け付けません。
+使える文字は英小文字、数字、ハイフンで、大文字やスペースは受け付けません（`^[a-z0-9][a-z0-9-]*$`）。
 制作物の名前は front matter の `title` に書くので、スラッグと揃える必要はありません。
-`LineWatch` という名前にスラッグ `linewatch` を与える形で構いません。
 
 ```text
-src/content/works/linewatch/
+src/content/works/my-app/
 ├── assets/        # その制作物に関連する素材の置き場
 ├── index.en.md
 └── index.ja.md
@@ -627,8 +624,6 @@ hero = "<詳細ページの大きな画像パス>"
 詳細ページの本文を Markdown で書く。
 ```
 
-各項目の役割は次のとおりです。
-
 - **`title`**：制作物の名前を指定する必須項目です。
 - **`year`**：公開年を指定する必須項目です。
 - **`tagline`**：一覧カードと詳細ページの見出しの下に出る一行の説明です。
@@ -642,43 +637,36 @@ hero = "<詳細ページの大きな画像パス>"
 ### 制作物の画像
 
 `thumbnail` は一覧カードの上部に、`hero` は詳細ページの見出しの下に表示されます。
-どちらの枠も 16:9 です。
 
 | 項目 | 表示幅（画面幅 1280px のとき） | 推奨サイズ |
 | --- | --- | --- |
 | `thumbnail` | 535px | 1200 × 675 |
 | `hero` | 820px | 1600 × 900 |
 
-枠の高さはピクセルで固定せず、幅から比率で決まります。
-16:9 の画像を用意すれば、切り取られずに枠へ収まります。
+どちらの枠も 16:9 で、高さは幅から決まります。
+この比率の画像なら切り取られずに収まり、比率が違う画像は枠を埋めるように中央から切り取られます。
 推奨サイズを表示幅のおよそ2倍にしているのは、画素密度の高い画面で粗く見えないようにするためです。
-
-比率の違う画像でも表示は崩れません。
-枠を埋めるように中央から切り取られます。
 2つの枠は同じ比率なので、1枚の画像を両方に指定することもできます。
 
 画像は `public/` に置き、front matter にはそこからのパスを書きます。
 
 ```text
-public/works/linewatch/
+public/works/my-app/
 ├── hero.png
 └── thumb.png
 ```
 
 ```toml
-thumbnail = "/works/linewatch/thumb.png"
-hero = "/works/linewatch/hero.png"
+thumbnail = "/works/my-app/thumb.png"
+hero = "/works/my-app/hero.png"
 ```
 
-パスは `/` から始めます。
-`//` から始まる形は外部ホストへの参照として解釈されるため、受け付けません。
-空文字にすると、その枠にはプレースホルダが表示されます。
-片方だけ指定することもできます。
+パスは `/` から始めます（`//` は外部ホストへの参照として解釈されるため受け付けません）。
+空文字にするとプレースホルダが表示され、片方だけ指定することもできます。
 
 ## 制作物の公開
 
-記事と同じ手順です。
-`src/content/works/` 配下の変更だけをステージし、コミットして push します。
+記事と同じ手順で、`src/content/works/` 配下の変更だけをステージし、コミットして push します。
 
 ```sh
 npm run work:push

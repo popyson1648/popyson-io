@@ -7,7 +7,7 @@
 # sumup      mode = "text" | "auto" | "none"。text は text が必須
 # thumbnail  mode = "auto" | "file" | "none"。file は path が必須
 
-title = Wezterm起動時にwslを自動的に起動させる "
+title = "Wezterm起動時にwslを自動的に起動させる"
 date = "auto"
 tags = []
 auto_tags = {}

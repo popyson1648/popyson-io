@@ -11,6 +11,9 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 // Drafting aid only: the comment block describes the fields for whoever writes
 // the work next.
+// year, stack, thumbnail and hero are read from the Japanese file, so only that
+// one carries them. Writing them into the English file too would offer edits
+// that never reach the page.
 const TEMPLATE_TEXT = {
   ja: {
     fields: [
@@ -31,10 +34,8 @@ const TEMPLATE_TEXT = {
       "title      Work name. Required, must not be empty",
       "tagline    One line shown on the index card and under the detail heading",
       "summary    Description shown on the index card",
-      "year       Year of release. Required",
-      "stack      Technologies used. Rendered as chips",
-      "thumbnail  Index card image, path from public/. Empty renders a placeholder",
-      "hero       Detail page image, path from public/. Empty renders a placeholder",
+      "",
+      "year, stack, thumbnail and hero are taken from index.ja.md.",
     ],
     tagline: "Write a one-line description.",
     summary: "Write the description shown on the index card.",
@@ -44,18 +45,15 @@ const TEMPLATE_TEXT = {
 
 function markdownTemplate(locale, slug, year) {
   const text = TEMPLATE_TEXT[locale];
-  const fields = text.fields.map((field) => `# ${field}`).join("\n");
+  const fields = text.fields.map((field) => (field ? `# ${field}` : "#")).join("\n");
+  const shared = locale === "ja" ? `year = ${year}\nstack = []\nthumbnail = ""\nhero = ""\n` : "";
   return `+++
 ${fields}
 
 title = "${slug}"
 tagline = "${text.tagline}"
 summary = "${text.summary}"
-year = ${year}
-stack = []
-thumbnail = ""
-hero = ""
-+++
+${shared}+++
 
 ${text.body}
 `;

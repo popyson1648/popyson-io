@@ -42,6 +42,8 @@ const invalidCases = [
   { field: "summary", toml: `title = "W"\nyear = 2025\nsummary = 1` },
   { field: "thumbnail", toml: `title = "W"\nyear = 2025\nthumbnail = "works/a.png"` },
   { field: "hero", toml: `title = "W"\nyear = 2025\nhero = "../a.png"` },
+  { field: "thumbnail", toml: `title = "W"\nyear = 2025\nthumbnail = "//example.com/a.png"` },
+  { field: "hero", toml: `title = "W"\nyear = 2025\nhero = "//example.com/a.png"` },
   { field: "detail", toml: `title = "W"\nyear = 2025\ndetail = ["legacy"]` },
 ];
 
@@ -52,6 +54,22 @@ describe("validateWorkMetadata", () => {
 
   test.each(invalidCases)("reports a $field error", ({ toml, field }) => {
     expect(errorsFor(toml)).toContain(field);
+  });
+
+  test("requires year in the Japanese file", () => {
+    expect(validateWorkMetadata({ title: "W" }, { locale: "ja" })).toEqual([
+      { field: "year", reason: "is required" },
+    ]);
+  });
+
+  test("does not require year in the English file, which never supplies it", () => {
+    expect(validateWorkMetadata({ title: "W" }, { locale: "en" })).toEqual([]);
+  });
+
+  test("still rejects a malformed year in the English file", () => {
+    expect(validateWorkMetadata({ title: "W", year: "2025" }, { locale: "en" })).toEqual([
+      { field: "year", reason: "must be an integer" },
+    ]);
   });
 
   test("rejects a non-table frontmatter", () => {

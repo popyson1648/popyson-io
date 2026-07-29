@@ -216,8 +216,12 @@ function readWork(dirName) {
   const enFile = parseMarkdownFrontmatter(readFileSync(enPath, "utf8"), enPath, {
     validate: false,
   });
-  const ja = /** @type {WorkMetadata} */ (assertValidWorkMetadata(jaFile.meta, jaPath));
-  const en = /** @type {WorkMetadata} */ (assertValidWorkMetadata(enFile.meta, enPath));
+  const ja = /** @type {WorkMetadata} */ (
+    assertValidWorkMetadata(jaFile.meta, jaPath, { locale: "ja" })
+  );
+  const en = /** @type {WorkMetadata} */ (
+    assertValidWorkMetadata(enFile.meta, enPath, { locale: "en" })
+  );
   // Japanese wins for the values that are not per-locale, matching readPost().
   const common = { ...en, ...ja };
   const work = {

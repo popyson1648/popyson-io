@@ -2,9 +2,6 @@
 
 [popyson.com](https://popyson.com) のソースコードです。
 
-**サイトのシステムは実装済みですが、About、記事、制作物の説明などのコンテンツは準備中です。**
-**現在のコンテンツには、表示と動作を確認するためのサンプルが一部含まれています。**
-
 React で画面遷移を処理しつつ、ビルド時には各 URL の本文とメタデータを静的 HTML へ書き出します。
 日本語ページはルート直下、英語ページは `/en` 以下で配信します。
 
@@ -36,6 +33,7 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
   - [HTML と URL の制限](#html-と-url-の制限)
   - [専用処理を持たない記法](#専用処理を持たない記法)
 - [制作物の追加](#制作物の追加)
+  - [制作物の画像](#制作物の画像)
 - [制作物の公開](#制作物の公開)
 - [関連資料](#関連資料)
 
@@ -98,7 +96,6 @@ python3 scripts/verify.py
 ## ディレクトリ構成
 
 次のツリーは、開発時に参照するディレクトリと主要ファイルを示します。
-コメントは各項目の役割を表します。
 
 ```text
 popyson-io/                         # サイトのソースと開発設定を収めるリポジトリ
@@ -126,8 +123,11 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── content_loader.mjs          # 記事と TOML コンテンツを読み込む共通処理
 │   ├── fetch_instapaper.mjs        # Instapaper から読書リストを取得する処理
 │   ├── generate_metadata.mjs       # 記事メタデータと画像を補完する処理
-│   ├── metadataSchema.mjs          # front matter の検証規則
+│   ├── metadataSchema.mjs          # 記事 front matter の検証規則
+│   ├── workSchema.mjs              # 制作物 front matter の検証規則
 │   ├── new_post.mjs                # 日英の記事ファイルを新規作成する処理
+│   ├── new_work.mjs                # 日英の制作物ファイルを新規作成する処理
+│   ├── publish_content.mjs         # 記事または制作物の変更をコミットして push する処理
 │   ├── prerender.mjs               # ルート別の HTML と SEO 用ファイルを生成する処理
 │   └── verify.py                   # 検証フェーズをまとめて実行するランナー
 ├── src/                            # React アプリケーションとサイトデータ
@@ -154,8 +154,8 @@ popyson-io/                         # サイトのソースと開発設定を収
 ├── AGENTS.md                       # このリポジトリで作業するエージェント向け規則
 ├── index.html                      # Vite と事前描画処理が使う HTML の原型
 ├── package.json                    # npm スクリプトと依存パッケージ
-├── vite.config.js                 # React、仮想モジュール、RSS のビルド設定
-└── vitest.config.js               # テスト種別と実行環境の設定
+├── vite.config.js                  # React、仮想モジュール、RSS のビルド設定
+└── vitest.config.js                # テスト種別と実行環境の設定
 ```
 
 ## ビルド処理の構成
@@ -174,17 +174,15 @@ Markdown と TOML
 言語別の静的検索索引
 ```
 
-各 HTML には実際の本文が含まれます。
-そのため、JavaScript を実行しないクローラーもページの本文と URL 固有のメタデータを取得できます。
+各 HTML には実際の本文が含まれるため、JavaScript を実行しないクローラーもページの本文と URL 固有のメタデータを取得できます。
 ブラウザーで読み込んだ後は、React が History API を使ってページ遷移を処理します。
 
 ## 技術的な工夫
 
 ### 静的 HTML とクライアント遷移の併用
 
-事前描画処理は、記事以外の画面を実際の React コンポーネントから静的 HTML へ変換します。
-記事はビルド時に生成した HTML を直接埋め込み、初期表示とクローラー向けの本文を確保します。
-同じ画面を静的配信しながら、読み込み後の遷移は SPA として処理できます。
+事前描画処理は記事以外の画面を実際の React コンポーネントから静的 HTML へ変換し、記事にはビルド時に生成した HTML を直接埋め込みます。
+どの画面も本文を含んだ状態で配信しながら、読み込み後の遷移は SPA として処理できます。
 
 ### メタデータの共有
 
@@ -237,20 +235,21 @@ src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記
 
 ## 記事の公開
 
-次のコマンドは `src/content/posts/` 配下の変更だけを add し、コミットして push します。
-コミットメッセージは変更の種類から組み立てられ、記事の追加・編集・削除をそれぞれ `add` / `update` / `remove` として記録します。
+次のコマンドは `src/content/posts/` 配下の変更だけをステージし、コミットして push します。
 
 ```sh
 npm run post:push
 ```
 
-送信せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
+コミットメッセージは変更の種類から組み立てられ、追加なら `add`、書き換えなら `update`、削除なら `remove` として記録します。
+
+push せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
 
 ```sh
 npm run post:push -- --dry-run
 ```
 
-制作物には `npm run work:push` を使います（[制作物の公開](#制作物の公開)）。
+制作物には [`npm run work:push`](#制作物の公開) を使います。
 
 ## 記事の front matter
 
@@ -284,7 +283,7 @@ path = "/<公開ディレクトリからの画像パス>"
 - **`sumup`**：概要の処理を `text`、`none`、`auto` から選びます。
 - **`thumbnail`**：画像の処理を `file`、`none`、`auto` から選びます。
 
-読了時間は front matter の項目ではありません。本文の分量から `src/readingTime.js` が言語ごとに算出します。
+記事一覧と記事画面に出る読了時間は、本文の分量から言語ごとに算出します。
 
 `date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は未解決のままコミットして構いません。
 main へ push すると `generate-metadata.yml` が解決し、その結果をコミットします。
@@ -549,15 +548,13 @@ npm run build
 :::
 ```
 
-タイトルは角括弧または `title` 属性で指定できます。
-タイトルを省略したコールアウトも使用できます。
+タイトルは角括弧または `title` 属性で指定でき、省略もできます。
 `warning` は表示時に `warn` のスタイルへ変換されます。
 
 ### HTML と URL の制限
 
 リンクと画像には、`http`、`https`、`mailto`、ページ内リンク、サイト内の絶対パス、相対パスを使用できます。
-リンクに許可していない URL を指定した場合は、リンクを外して表示テキストだけを残します。
-画像に許可していない URL を指定した場合は、画像全体を出力しません。
+これ以外の URL を指定すると、リンクは外れて表示テキストだけが残り、画像は出力されません。
 
 ```markdown
 [安全なリンク](https://example.com)
@@ -583,14 +580,24 @@ Markdown に書いた raw HTML は HTML 要素として解釈されません。
 
 Works ページの内容は `src/content/works/<スラッグ>/` に置きます。
 記事と同じく日英で1ファイルずつ、TOML front matter と Markdown 本文で構成します。
-スラッグはそのまま URL（`/app/<スラッグ>`）になるので、英小文字・数字・ハイフンで書きます。
 
 ```sh
-npm run new:work -- linewatch
+npm run new:work -- my-app
 ```
 
+引数のスラッグはディレクトリ名になり、そのまま URL の一部になります。
+
+| | |
+| --- | --- |
+| ディレクトリ | `src/content/works/my-app/` |
+| 日本語ページ | `https://popyson.com/app/my-app` |
+| 英語ページ | `https://popyson.com/en/app/my-app` |
+
+使える文字は英小文字、数字、ハイフンで、大文字やスペースは受け付けません（`^[a-z0-9][a-z0-9-]*$`）。
+制作物の名前は front matter の `title` に書くので、スラッグと揃える必要はありません。
+
 ```text
-src/content/works/linewatch/
+src/content/works/my-app/
 ├── assets/        # その制作物に関連する素材の置き場
 ├── index.en.md
 └── index.ja.md
@@ -612,21 +619,57 @@ hero = "<詳細ページの大きな画像パス>"
 詳細ページの本文を Markdown で書く。
 ```
 
-- **`title`**、**`year`** は必須です。
-- **`thumbnail`** と **`hero`** は `public/` からのパスを `/works/linewatch/hero.png` のように書きます。空にするとプレースホルダが表示されます。
-- **`year`**、**`stack`**、**`thumbnail`**、**`hero`** は日本語版から読まれるので、英語版には書きません。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+- **`title`**：制作物の名前を指定する必須項目です。
+- **`year`**：公開年を指定する必須項目です。
+- **`tagline`**：一覧カードと詳細ページの見出しの下に出る一行の説明です。
+- **`summary`**：一覧カードに出る説明文です。
+- **`stack`**：使用技術を文字列の配列で指定します。一覧と詳細にチップで並びます。
+- **`thumbnail`**、**`hero`**：画像のパスです。[制作物の画像](#制作物の画像)を参照してください。
+
+`year`、`stack`、`thumbnail`、`hero` は日本語版から読まれるため、英語版には書きません。
+`title`、`tagline`、`summary` と本文は言語ごとに書き分けます。
+
+### 制作物の画像
+
+`thumbnail` は一覧カードの上部に、`hero` は詳細ページの見出しの下に表示されます。
+
+| 項目 | 表示幅（画面幅 1280px のとき） | 推奨サイズ |
+| --- | --- | --- |
+| `thumbnail` | 535px | 1200 × 675 |
+| `hero` | 820px | 1600 × 900 |
+
+どちらの枠も 16:9 で、高さは幅から決まります。
+この比率の画像なら切り取られずに収まり、比率が違う画像は枠を埋めるように中央から切り取られます。
+推奨サイズを表示幅のおよそ2倍にしているのは、画素密度の高い画面で粗く見えないようにするためです。
+2つの枠は同じ比率なので、1枚の画像を両方に指定することもできます。
+
+画像は `public/` に置き、front matter にはそこからのパスを書きます。
+
+```text
+public/works/my-app/
+├── hero.png
+└── thumb.png
+```
+
+```toml
+thumbnail = "/works/my-app/thumb.png"
+hero = "/works/my-app/hero.png"
+```
+
+パスは `/` から始めます（`//` は外部ホストへの参照として解釈されるため受け付けません）。
+空文字にするとプレースホルダが表示され、片方だけ指定することもできます。
 
 ## 制作物の公開
 
-記事と同じ形で、`src/content/works/` 配下の変更だけを add し、コミットして push します。
+記事と同じ手順で、`src/content/works/` 配下の変更だけをステージし、コミットして push します。
 
 ```sh
 npm run work:push
 npm run work:push -- --dry-run   # コミットメッセージだけ確認する
 ```
 
-main へ push すると、記事と同様に英語版が自動翻訳されます。
-取りこぼしたときは Actions の Translate content を `work_slug` を指定して実行できます。
+main へ push すると、記事と同じように英語版が自動で翻訳されます。
+翻訳されないまま残ったときは、Actions の Translate content に `work_slug` を渡して実行します。
 
 ## 関連資料
 

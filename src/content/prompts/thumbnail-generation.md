@@ -6,8 +6,9 @@ Generate a single centered abstract object that represents {CONCEPT}.
 
 - No text, letters, numbers, logo, or watermark.
 - One single object only, centered in the frame.
-- Solid single-color background.
-- Use at most three colors in total.
+- Solid #F1F3EA background — a pale warm off-white with a faint green tint.
+  Use this exact color, and no other color, behind the object.
+- Use at most three colors in total, including the background.
 - Simple, bold silhouette.
 - No thin lines.
 - No drawn outline, stroke, or border around the object.

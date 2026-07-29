@@ -10,12 +10,17 @@ import { renderArticleBody } from "./articleHtml.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { dateToIsoDate } from "./metadataSchema.mjs";
+import { assertValidWorkMetadata } from "./workSchema.mjs";
+
+/** @typedef {import("./workSchema.mjs").WorkMetadata} WorkMetadata */
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const POSTS_DIR = join(ROOT, "src/content/posts");
+const WORKS_DIR = join(ROOT, "src/content/works");
 const ABOUT_DIR = join(ROOT, "src/content/about");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 const POST_ID_RE = /^\d{8}-[a-f0-9]{8}$/;
+const WORK_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 function readMetadataConfig() {
   if (!existsSync(METADATA_CONFIG_FILE)) {
@@ -195,6 +200,49 @@ function newsWatchFiles() {
   return files;
 }
 
+// A work is addressed by its slug, which becomes the URL segment, so it stays
+// lowercase and hyphenated rather than the date-and-hash form posts use.
+function readWork(dirName) {
+  if (!WORK_ID_RE.test(dirName)) {
+    throw new Error(`Invalid work directory name: ${dirName}`);
+  }
+  const dir = join(WORKS_DIR, dirName);
+  const jaPath = join(dir, "index.ja.md");
+  const enPath = join(dir, "index.en.md");
+  // Parsed without the post schema, then validated against the work one.
+  const jaFile = parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath, {
+    validate: false,
+  });
+  const enFile = parseMarkdownFrontmatter(readFileSync(enPath, "utf8"), enPath, {
+    validate: false,
+  });
+  const ja = /** @type {WorkMetadata} */ (assertValidWorkMetadata(jaFile.meta, jaPath));
+  const en = /** @type {WorkMetadata} */ (assertValidWorkMetadata(enFile.meta, enPath));
+  // Japanese wins for the values that are not per-locale, matching readPost().
+  const common = { ...en, ...ja };
+  const work = {
+    id: dirName,
+    title: { ja: ja.title || "", en: en.title || "" },
+    tagline: { ja: ja.tagline || "", en: en.tagline || "" },
+    summary: { ja: ja.summary || "", en: en.summary || "" },
+    stack: Array.isArray(common.stack) ? common.stack.map(String) : [],
+    year: Number(common.year),
+    thumbnail: String(common.thumbnail || ""),
+    hero: String(common.hero || ""),
+  };
+  return { work, body: { ja: jaFile.body, en: enFile.body } };
+}
+
+function readWorkEntries() {
+  if (!existsSync(WORKS_DIR)) return [];
+  return readdirSync(WORKS_DIR, { withFileTypes: true })
+    .filter((dirent) => dirent.isDirectory())
+    .map((dirent) => dirent.name)
+    .sort()
+    .map(readWork)
+    .sort((a, b) => b.work.year - a.work.year || a.work.id.localeCompare(b.work.id));
+}
+
 function postDirectories() {
   if (!existsSync(POSTS_DIR)) return [];
   return readdirSync(POSTS_DIR, { withFileTypes: true })
@@ -298,6 +346,7 @@ export function loadSiteContent() {
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = articleBodiesFromEntries(entries);
   const tags = uniqueTags(posts);
+  const workEntries = readWorkEntries();
   const ja = readAbout("ja");
   const en = readAbout("en");
   const person = localizeAbout(ja.person, en.person);
@@ -305,7 +354,17 @@ export function loadSiteContent() {
   // News is not index-zipped, but a locale missing entries silently empties the
   // News section on that language's page, so hold both files to the same count.
   assertLocaleParity("news", news.ja, news.en, "news");
-  return { POSTS: posts, TAGS: tags, ARTICLE_BODIES: articleBodies, PERSON: person, NEWS: news };
+  return {
+    POSTS: posts,
+    TAGS: tags,
+    ARTICLE_BODIES: articleBodies,
+    PERSON: person,
+    NEWS: news,
+    // Named APPS because the Works page routes under /app; the content lives in
+    // src/content/works/.
+    APPS: workEntries.map((entry) => entry.work),
+    WORK_BODIES: Object.fromEntries(workEntries.map((entry) => [entry.work.id, entry.body])),
+  };
 }
 
 export async function renderArticleBodies(content) {
@@ -320,9 +379,19 @@ export async function renderArticleBodies(content) {
       },
     ]),
   );
+  const works = await Promise.all(
+    Object.entries(content.WORK_BODIES || {}).map(async ([id, body]) => [
+      id,
+      {
+        ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
+        en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
+      },
+    ]),
+  );
   return {
     ...content,
     ARTICLE_BODIES: Object.fromEntries(entries),
+    WORK_BODIES: Object.fromEntries(works),
   };
 }
 
@@ -336,13 +405,19 @@ export function contentWatchFiles() {
   const metadataConfig = existsSync(METADATA_CONFIG_FILE) ? readMetadataConfig() : {};
   const promptFile = metadataConfig.tag_generation?.prompt_file;
   if (promptFile) files.push(join(ROOT, promptFile));
-  if (!existsSync(POSTS_DIR)) return files;
-  for (const dirent of readdirSync(POSTS_DIR, { withFileTypes: true })) {
-    if (!dirent.isDirectory()) continue;
-    const dir = join(POSTS_DIR, dirent.name);
-    files.push(join(dir, "index.ja.md"), join(dir, "index.en.md"));
+  for (const contentDir of [POSTS_DIR, WORKS_DIR]) {
+    if (!existsSync(contentDir)) continue;
+    for (const dirent of readdirSync(contentDir, { withFileTypes: true })) {
+      if (!dirent.isDirectory()) continue;
+      const dir = join(contentDir, dirent.name);
+      files.push(join(dir, "index.ja.md"), join(dir, "index.en.md"));
+    }
   }
   return files;
+}
+
+export function worksDir() {
+  return WORKS_DIR;
 }
 
 export function postIdPattern() {

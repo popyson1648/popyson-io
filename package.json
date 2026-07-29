@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "build": "vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
@@ -21,6 +21,7 @@
     "metadata:generate:op": "op run --env-file=.op.env -- node scripts/generate_metadata.mjs",
     "metadata:preview-prompts": "node scripts/generate_metadata.mjs --preview-prompts",
     "new:post": "node scripts/new_post.mjs",
+    "new:work": "node scripts/new_work.mjs",
     "post:push": "node scripts/publish_post.mjs",
     "lighthouse": "python3 scripts/run_lighthouse.py",
     "reading:fetch": "node scripts/fetch_instapaper.mjs",

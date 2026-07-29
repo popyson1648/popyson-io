@@ -2901,8 +2901,33 @@
   margin: 0 auto;
 }
 
+/* The thumbnail sits beside the text, so the card becomes a row. Text keeps
+   its own column layout through .post-index-main. */
 .post-index-card {
   padding: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* Square, sized to the height of a card whose summary and tags each take one
+   line — the shape generated thumbnails already have (1024x1024; the 1200x630
+   fallback OGP image is cropped to fit).
+   The side cannot follow the card's height and stay square at the same time:
+   the width would set the text column's width, which sets the text's height,
+   which sets the card's height, which would set the width again.
+   The top is aligned to the date as it is seen. Its row is 13px on a 1.6
+   line-height, so 3.9px of half-leading sits above the glyphs. */
+.post-index-thumb {
+  --thumb-side: 107px;
+  flex: none;
+  font-size: 13px;
+  margin-top: calc((1.6em - 1em) / 2);
+  width: var(--thumb-side);
+  height: var(--thumb-side);
+  object-fit: cover;
+  border: var(--line-w) solid var(--line-strong);
+  border-radius: var(--r);
 }
 
 .post-index-card:first-child {
@@ -3024,6 +3049,12 @@
 
   .post-index-card {
     padding: 0;
+    gap: 14px;
+  }
+
+  /* Smaller square, so the tags still fit on one line. */
+  .post-index-thumb {
+    --thumb-side: 84px;
   }
 
   .post-index-title {

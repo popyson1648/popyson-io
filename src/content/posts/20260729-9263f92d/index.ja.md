@@ -1,24 +1,18 @@
 +++
-# title      記事タイトル。必須、空文字不可
-# date       "auto" | "YYYY-MM-DD"。auto は初回コミット日に置換される
-# tags       手書きのタグ
-# auto_tags  AI にタグを追加させる。{} で既定 3 個。追加しないなら行ごと削除
-# kana       五十音順ソートに使う読み仮名
-# sumup      mode = "text" | "auto" | "none"。text は text が必須
-# thumbnail  mode = "auto" | "file" | "none"。file は path が必須
-
 title = "結合度･凝集度 (TypeScript)"
-date = "auto"
-tags = []
-auto_tags = {}
+date = "2026-07-29"
+tags = [ "ソフトウェア設計", "TypeScript", "設計原則" ]
 kana = "けつごうど･ぎょうしゅうど (TypeScript)"
 
 [sumup]
-mode = "auto"
-text = ""
+mode = "text"
+text = "ソフトウェア設計における結合度と凝集度について、それぞれの種類とTypeScriptでの具体例を挙げて解説する。"
+generated = true
 
 [thumbnail]
-mode = "auto"
+mode = "file"
+path = "/thumbnails/20260729-9263f92d.png"
+generated = true
 +++
 
 # 結合度 (coupling)

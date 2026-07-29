@@ -1,16 +1,7 @@
 +++
-# title      Article title. Required, must not be empty
-# date       "auto" | "YYYY-MM-DD". auto is replaced with the first commit date
-# tags       Hand-written tags
-# auto_tags  Let the generator add tags. {} uses the default 3. Delete the line to skip
-# kana       Reading used for Japanese kana sorting
-# sumup      mode = "text" | "auto" | "none". text requires text
-# thumbnail  mode = "auto" | "file" | "none". file requires path
-
 title = "New Post"
-date = "auto"
-tags = []
-auto_tags = {}
+date = "2026-07-29"
+tags = [ "programming", "learning", "読書ノート" ]
 kana = ""
 
 [sumup]
@@ -18,7 +9,9 @@ mode = "text"
 text = "Write a short summary."
 
 [thumbnail]
-mode = "auto"
+mode = "file"
+path = "/thumbnails/20260729-9263f92d.png"
+generated = true
 +++
 
 ## Heading

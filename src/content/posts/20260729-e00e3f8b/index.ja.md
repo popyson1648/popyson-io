@@ -1,16 +1,7 @@
 +++
-# title      記事タイトル。必須、空文字不可
-# date       "auto" | "YYYY-MM-DD"。auto は初回コミット日に置換される
-# tags       手書きのタグ
-# auto_tags  AI にタグを追加させる。{} で既定 3 個。追加しないなら行ごと削除
-# kana       五十音順ソートに使う読み仮名
-# sumup      mode = "text" | "auto" | "none"。text は text が必須
-# thumbnail  mode = "auto" | "file" | "none"。file は path が必須
-
 title = "Wezterm起動時にwslを自動的に起動させる"
-date = "auto"
-tags = []
-auto_tags = {}
+date = "2026-07-29"
+tags = [ "WSL", "Wezterm", "設定" ]
 kana = "Weztermきどうじにwslをじどうてきにきどうさせる"
 
 [sumup]
@@ -18,7 +9,9 @@ mode = "none"
 text = ""
 
 [thumbnail]
-mode = "auto"
+mode = "file"
+path = "/thumbnails/20260729-e00e3f8b.png"
+generated = true
 +++
 
 

@@ -8,9 +8,9 @@ preserving the site's overall visual system.
 ## Scope
 
 - Keep thumbnail backgrounds at `#F1F3EA`; make the foreground colorful with
-  at most three foreground colors whose hues may vary but whose tone remains
-  harmonious; and regenerate the three green thumbnails created after the
-  background prompt changed.
+  two or three distinct foreground colors whose hues may vary but whose tone
+  remains harmonious; and regenerate the three green thumbnails created after
+  the background prompt changed.
 - Render Markdown unordered lists authored with `-`, `+`, or `*` as proper list
   items with a normal bullet marker instead of a literal-looking dash.
 - Set fenced code blocks to `16px` and inline-code backgrounds to `#FBFDF4`.
@@ -51,8 +51,8 @@ preserving the site's overall visual system.
 ## Steps
 
 1. Update the thumbnail-generation prompt to preserve the exact background and
-   require a colorful, harmonious foreground using at most three foreground
-   colors, with a test that protects the palette rules.
+   require a colorful, harmonious foreground using two or three distinct
+   foreground colors, with a test that protects the palette rules.
 2. Regenerate only the three affected thumbnails through the existing metadata
    provider flow, preserving their paths and resolved front matter.
 3. Extend heading extraction and rendered heading IDs from the current
@@ -91,8 +91,7 @@ preserving the site's overall visual system.
   - confirm TOC nesting and navigation for articles starting at `#`, `##`, and
     `###`.
 - Inspect regenerated thumbnail pixels and visually confirm the fixed
-  `#F1F3EA` background with a colorful foreground of no more than three
-  harmoniously toned colors.
+  `#F1F3EA` background with two or three harmoniously toned foreground colors.
 
 ## Open Issues
 

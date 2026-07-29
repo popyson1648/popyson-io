@@ -1314,7 +1314,6 @@
   text-decoration-thickness: var(--line-w);
   text-underline-offset: 0.18em;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 .prose img {
   max-width: 100%;

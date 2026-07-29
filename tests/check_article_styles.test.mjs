@@ -14,7 +14,6 @@ function ruleBody(selector) {
 describe("article prose refinements", () => {
   test("wraps long article links without widening the viewport", () => {
     expect(ruleBody(".prose a")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(ruleBody(".prose a")).toMatch(/word-break:\s*break-word/);
   });
 
   test("uses larger, depth-sensitive unordered-list markers", () => {

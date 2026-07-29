@@ -505,14 +505,36 @@ function readJaSummary(filePath, meta) {
   return jaMeta.sumup?.mode === "text" ? String(jaMeta.sumup.text || "").trim() : "";
 }
 
-async function resolveThumbnailConcept(meta, { filePath, config, provider }) {
+// The Japanese body, from memory when this is the Japanese file and from disk
+// when it is the English one.
+function readJaBody(filePath, body) {
+  const jaPath = join(dirname(filePath), "index.ja.md");
+  if (filePath === jaPath) return body;
+  if (!existsSync(jaPath)) return "";
+  return parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath).body;
+}
+
+/**
+ * A summary written only to derive the image subject. `[sumup] mode = "none"`
+ * says the post shows no summary, not that the post cannot be drawn, so one is
+ * generated here and discarded rather than written back to the front matter.
+ */
+async function summaryForConcept(meta, { filePath, body, config, provider }) {
+  const jaBody = readJaBody(filePath, body);
+  if (!jaBody.trim()) return "";
+  const result = await provider(summaryGenerationRequest({ filePath, meta, body: jaBody, config }));
+  return String(result.summary || "").trim();
+}
+
+async function resolveThumbnailConcept(meta, context) {
+  const { filePath, config, provider } = context;
   const explicit = typeof meta.thumbnail?.concept === "string" ? meta.thumbnail.concept.trim() : "";
   if (explicit) return explicit;
 
-  const summary = readJaSummary(filePath, meta);
+  const summary = readJaSummary(filePath, meta) || (await summaryForConcept(meta, context));
   if (!summary) {
     throw new Error(
-      `${filePath}: thumbnail concept needs a resolved Japanese summary or an explicit [thumbnail].concept`,
+      `${filePath}: thumbnail concept needs a Japanese body, a resolved summary, or an explicit [thumbnail].concept`,
     );
   }
   const result = await provider(conceptGenerationRequest({ config, summary }));
@@ -522,7 +544,7 @@ async function resolveThumbnailConcept(meta, { filePath, config, provider }) {
   return concept;
 }
 
-async function resolveAutoThumbnail(meta, { filePath, config, provider, imageProvider }) {
+async function resolveAutoThumbnail(meta, { filePath, body, config, provider, imageProvider }) {
   if (meta.thumbnail?.mode !== "auto") return false;
 
   const postId = postIdFromPath(filePath);
@@ -530,7 +552,7 @@ async function resolveAutoThumbnail(meta, { filePath, config, provider, imagePro
   const targetPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
 
   if (!existsSync(targetPath)) {
-    const concept = await resolveThumbnailConcept(meta, { filePath, config, provider });
+    const concept = await resolveThumbnailConcept(meta, { filePath, body, config, provider });
     const prompt = buildThumbnailPrompt({ concept, config });
     const bytes = await imageProvider(thumbnailGenerationRequest({ config, prompt }));
     mkdirSync(dirname(targetPath), { recursive: true });

@@ -33,7 +33,10 @@ function addError(errors, field, reason) {
   errors.push({ field, reason });
 }
 
-export function validateWorkMetadata(meta) {
+// `year` is only required in the Japanese file, which is where the loader reads
+// it and `stack` from. An English file may still carry them — older works do —
+// but the values are ignored, so they are not demanded there.
+export function validateWorkMetadata(meta, { locale = "ja" } = {}) {
   const errors = [];
 
   if (!isPlainObject(meta)) {
@@ -53,7 +56,7 @@ export function validateWorkMetadata(meta) {
   }
 
   if (!("year" in meta)) {
-    addError(errors, "year", "is required");
+    if (locale === "ja") addError(errors, "year", "is required");
   } else if (!Number.isInteger(meta.year)) {
     addError(errors, "year", "must be an integer");
   }
@@ -73,19 +76,22 @@ export function validateWorkMetadata(meta) {
   }
 
   // Images are served from public/, so the path is site-absolute. An empty
-  // string is how a work says it has no image yet.
+  // string is how a work says it has no image yet. A leading "//" is rejected
+  // too: it looks site-absolute but a browser reads it as a host, which would
+  // load the image from somewhere else entirely.
   for (const field of IMAGE_FIELDS) {
     const value = meta[field];
-    if (typeof value === "string" && value !== "" && !value.startsWith("/")) {
-      addError(errors, field, "must start with /");
+    if (typeof value !== "string" || value === "") continue;
+    if (!value.startsWith("/") || value.startsWith("//")) {
+      addError(errors, field, "must be a path under public/, starting with a single /");
     }
   }
 
   return errors;
 }
 
-export function assertValidWorkMetadata(meta, filePath = "frontmatter") {
-  const errors = validateWorkMetadata(meta);
+export function assertValidWorkMetadata(meta, filePath = "frontmatter", options = {}) {
+  const errors = validateWorkMetadata(meta, options);
   if (errors.length === 0) return meta;
   const details = errors.map((error) => `${filePath}: ${error.field}: ${error.reason}`).join("\n");
   throw new Error(details);

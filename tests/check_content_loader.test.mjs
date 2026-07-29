@@ -276,8 +276,13 @@ describe("normalizeNewsEntries", () => {
 
 describe("postIdPattern", () => {
   test.each([
+    // Time of day, as scaffolded now
+    ["20260729-165412", true],
+    // Random hex, as posts published before that were named
     ["20260521-a1b2c3d4", true],
     ["20260521-A1B2C3D4", false],
+    ["20260729-16541", false],
+    ["20260729-1654123", false],
     ["draft", false],
   ])("matches %s -> %s", (id, expected) => {
     expect(postIdPattern().test(id)).toBe(expected);

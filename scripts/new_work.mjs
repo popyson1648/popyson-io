@@ -25,9 +25,6 @@ const TEMPLATE_TEXT = {
       "thumbnail  一覧カードの画像。public/ からのパス。空ならプレースホルダ",
       "hero       詳細ページの大きな画像。public/ からのパス。空ならプレースホルダ",
     ],
-    tagline: "一行の説明を書く。",
-    summary: "一覧カードに出る説明を書く。",
-    body: "作品の説明を書く。",
   },
   en: {
     fields: [
@@ -37,12 +34,10 @@ const TEMPLATE_TEXT = {
       "",
       "year, stack, thumbnail and hero are taken from index.ja.md.",
     ],
-    tagline: "Write a one-line description.",
-    summary: "Write the description shown on the index card.",
-    body: "Write about the work.",
   },
 };
 
+// Only defaults, matching new_post.mjs: the author fills in every value.
 function markdownTemplate(locale, slug, year) {
   const text = TEMPLATE_TEXT[locale];
   const fields = text.fields.map((field) => (field ? `# ${field}` : "#")).join("\n");
@@ -50,12 +45,11 @@ function markdownTemplate(locale, slug, year) {
   return `+++
 ${fields}
 
-title = "${slug}"
-tagline = "${text.tagline}"
-summary = "${text.summary}"
+title = ""
+tagline = ""
+summary = ""
 ${shared}+++
 
-${text.body}
 `;
 }
 

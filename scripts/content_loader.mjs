@@ -19,7 +19,9 @@ const POSTS_DIR = join(ROOT, "src/content/posts");
 const WORKS_DIR = join(ROOT, "src/content/works");
 const ABOUT_DIR = join(ROOT, "src/content/about");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
-const POST_ID_RE = /^\d{8}-[a-f0-9]{8}$/;
+// YYYYMMDD-HHMMSS for posts scaffolded now, and the earlier YYYYMMDD-<hex8>
+// form for the ones already published under it.
+const POST_ID_RE = /^\d{8}-(?:\d{6}|[a-f0-9]{8})$/;
 const WORK_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 function readMetadataConfig() {

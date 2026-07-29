@@ -1,6 +1,5 @@
 import { mkdirSync, existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -8,18 +7,27 @@ const POSTS_DIR = process.env.NEW_POSTS_DIR
   ? resolve(process.env.NEW_POSTS_DIR)
   : join(ROOT, "src/content/posts");
 
-function todayStamp() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
+function pad(value, width = 2) {
+  return String(value).padStart(width, "0");
 }
 
+function dateStamp(at) {
+  return `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`;
+}
+
+function timeStamp(at) {
+  return `${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`;
+}
+
+// The id ends in the time of day rather than random hex, so listing the posts
+// directory shows the day's drafts in the order they were created. Two runs
+// within the same second step forward until the directory is free, which keeps
+// that order rather than breaking it with a random suffix.
 function newPostId() {
-  const date = process.env.NEW_POST_DATE || todayStamp();
+  const startedAt = new Date();
   for (let i = 0; i < 256; i += 1) {
-    const id = `${date}-${randomBytes(4).toString("hex")}`;
+    const at = new Date(startedAt.getTime() + i * 1000);
+    const id = `${process.env.NEW_POST_DATE || dateStamp(at)}-${timeStamp(at)}`;
     if (!existsSync(join(POSTS_DIR, id))) return id;
   }
   throw new Error("Could not generate a collision-free post ID");
@@ -38,10 +46,6 @@ const TEMPLATE_TEXT = {
       'sumup      mode = "text" | "auto" | "none"。text は text が必須',
       'thumbnail  mode = "auto" | "file" | "none"。file は path が必須',
     ],
-    title: "新しい記事",
-    summary: "記事の概要を書く。",
-    heading: "見出し",
-    body: "本文を書く。",
   },
   en: {
     fields: [
@@ -53,20 +57,17 @@ const TEMPLATE_TEXT = {
       'sumup      mode = "text" | "auto" | "none". text requires text',
       'thumbnail  mode = "auto" | "file" | "none". file requires path',
     ],
-    title: "New Post",
-    summary: "Write a short summary.",
-    heading: "Heading",
-    body: "Write the body.",
   },
 };
 
+// Only defaults: every value the author has to write is left empty, so nothing
+// placeholder-looking can reach a published post by being forgotten.
 function markdownTemplate(locale) {
-  const text = TEMPLATE_TEXT[locale];
-  const fields = text.fields.map((field) => `# ${field}`).join("\n");
+  const fields = TEMPLATE_TEXT[locale].fields.map((field) => `# ${field}`).join("\n");
   return `+++
 ${fields}
 
-title = "${text.title}"
+title = ""
 date = "auto"
 tags = []
 auto_tags = {}
@@ -74,15 +75,12 @@ kana = ""
 
 [sumup]
 mode = "text"
-text = "${text.summary}"
+text = ""
 
 [thumbnail]
 mode = "auto"
 +++
 
-## ${text.heading}
-
-${text.body}
 `;
 }
 

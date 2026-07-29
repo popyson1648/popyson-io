@@ -215,7 +215,8 @@ CI の検査は外部の生成 API を呼ばず、未解決の自動項目が残
 
 ## 記事の追加
 
-次のコマンドは、`YYYYMMDD-xxxxxxxx` 形式の重複しない記事 ID を作り、日英の Markdown と素材用ディレクトリを生成します。
+次のコマンドは `YYYYMMDD-HHMMSS` 形式の記事 ID を作り、日英の Markdown と素材用ディレクトリを生成します。
+ID の後半は作成時刻なので、同じ日に何本作っても一覧が作成順に並びます。
 
 ```sh
 npm run new:post
@@ -224,7 +225,7 @@ npm run new:post
 生成先は次の形です。
 
 ```text
-src/content/posts/20260717-a1b2c3d4/  # URL と日英記事を結び付ける記事ディレクトリ
+src/content/posts/20260729-165412/    # URL と日英記事を結び付ける記事ディレクトリ
 ├── assets/                          # その記事に関連する素材の配置先
 ├── index.en.md                      # 英語版の記事と front matter
 └── index.ja.md                      # 日本語版の記事と front matter
@@ -243,10 +244,15 @@ npm run post:push
 
 コミットメッセージは変更の種類から組み立てられ、追加なら `add`、書き換えなら `update`、削除なら `remove` として記録します。
 
-push せずにコミットメッセージだけ確認するときは `--dry-run` を付けます。
+コミットの前に検証が走ります。
+CI と同じ整形、lint、型、ビルド、テスト、アクセシビリティを手元で通すので、front matter の書き損じのように CI で落ちる内容はここで止まります。
+失敗した場合は何もコミットされません。
+
+push せずにコミットメッセージだけ確認するときは `--dry-run` を、検証を飛ばすときは `--skip-verify` を付けます。
 
 ```sh
 npm run post:push -- --dry-run
+npm run post:push -- --skip-verify
 ```
 
 制作物には [`npm run work:push`](#制作物の公開) を使います。

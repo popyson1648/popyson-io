@@ -5,14 +5,19 @@ on:
     branches: [main]
     paths:
       - "src/content/posts/**/index.ja.md"
+      - "src/content/works/**/index.ja.md"
       - "src/content/about/about.ja.toml"
-  # Repair path for a post whose English version was never written — a push
+  # Repair path for content whose English version was never written — a push
   # that predates translation running on the metadata commit, or a run that
   # failed partway.
   workflow_dispatch:
     inputs:
       post_id:
-        description: "Post id to translate. Empty translates every post with no English file."
+        description: "Post id to translate. Empty translates everything with no English file."
+        required: false
+        default: ""
+      work_slug:
+        description: "Work slug to translate. Empty translates everything with no English file."
         required: false
         default: ""
 
@@ -51,10 +56,17 @@ jobs:
         id: detect
         shell: bash
         env:
-          # Through the environment, so the value is never spliced into the script.
+          # Through the environment, so the values are never spliced into the script.
           POST_ID: ${{ inputs.post_id }}
+          WORK_SLUG: ${{ inputs.work_slug }}
         run: |
           set -euo pipefail
+
+          japanese_sources=(
+            ":(glob)src/content/posts/**/index.ja.md"
+            ":(glob)src/content/works/**/index.ja.md"
+            "src/content/about/about.ja.toml"
+          )
 
           english_target() {
             if [[ "$1" == "src/content/about/about.ja.toml" ]]; then
@@ -69,25 +81,24 @@ jobs:
             # is whatever landed last, and metadata generation rewrites both
             # locales in one commit, so timestamps cannot tell a stale English
             # file from a fresh one. Translate what the operator names, or
-            # every post that has no English file at all.
-            post_id="${POST_ID}"
+            # everything that has no English file at all.
             changed_sources=()
-            if [[ -n "$post_id" ]]; then
-              source="src/content/posts/${post_id}/index.ja.md"
+            for named in "src/content/posts/${POST_ID}:${POST_ID}:post" \
+                         "src/content/works/${WORK_SLUG}:${WORK_SLUG}:work"; do
+              id="${named#*:}"; id="${id%:*}"
+              [[ -n "$id" ]] || continue
+              source="${named%%:*}/index.ja.md"
               if [[ ! -f "$source" ]]; then
-                echo "No such post: $post_id" >&2
+                echo "No such ${named##*:}: $id" >&2
                 exit 1
               fi
               changed_sources+=("$source")
-            else
+            done
+
+            if [[ "${#changed_sources[@]}" -eq 0 ]]; then
               while read -r source; do
                 [[ -f "$(english_target "$source")" ]] || changed_sources+=("$source")
-              done < <(
-                git ls-files -- \
-                  ":(glob)src/content/posts/**/index.ja.md" \
-                  "src/content/about/about.ja.toml" |
-                  sort -u
-              )
+              done < <(git ls-files -- "${japanese_sources[@]}" | sort -u)
             fi
           else
             before="${{ github.event.before }}"
@@ -103,10 +114,7 @@ jobs:
             fi
 
             mapfile -t changed_sources < <(
-              git diff --name-only "$before" "$after" -- \
-                ":(glob)src/content/posts/**/index.ja.md" \
-                "src/content/about/about.ja.toml" |
-                sort -u
+              git diff --name-only "$before" "$after" -- "${japanese_sources[@]}" | sort -u
             )
           fi
 
@@ -121,9 +129,8 @@ jobs:
           : > "$targets_file"
 
           for source in "${changed_sources[@]}"; do
-            if [[ "$source" =~ ^src/content/posts/([^/]+)/index\.ja\.md$ ]]; then
-              post_id="${BASH_REMATCH[1]}"
-              target="src/content/posts/${post_id}/index.en.md"
+            if [[ "$source" =~ ^src/content/(posts|works)/([^/]+)/index\.ja\.md$ ]]; then
+              target="src/content/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/index.en.md"
             elif [[ "$source" == "src/content/about/about.ja.toml" ]]; then
               target="src/content/about/about.en.toml"
             else

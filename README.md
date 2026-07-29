@@ -236,6 +236,8 @@ npm run post:push
 npm run post:push -- --dry-run
 ```
 
+制作物には `npm run work:push` を使います（[制作物の公開](#制作物の公開)）。
+
 ## 記事の front matter
 
 記事ファイルは `+++` で囲んだ TOML front matter から始めます。
@@ -598,7 +600,19 @@ hero = "<詳細ページの大きな画像パス>"
 
 - **`title`**、**`year`** は必須です。
 - **`thumbnail`** と **`hero`** は `public/` からのパスを `/works/linewatch/hero.png` のように書きます。空にするとプレースホルダが表示されます。
-- **`stack`**、**`year`** は日本語版の値が使われます。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+- **`year`**、**`stack`**、**`thumbnail`**、**`hero`** は日本語版から読まれるので、英語版には書きません。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+
+## 制作物の公開
+
+記事と同じ形で、`src/content/works/` 配下の変更だけを add し、コミットして push します。
+
+```sh
+npm run work:push
+npm run work:push -- --dry-run   # コミットメッセージだけ確認する
+```
+
+main へ push すると、記事と同様に英語版が自動翻訳されます。
+取りこぼしたときは Actions の Translate content を `work_slug` を指定して実行できます。
 
 ## 関連資料
 

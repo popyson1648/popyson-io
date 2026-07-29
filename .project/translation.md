@@ -22,6 +22,16 @@ Use these rules when updating English content from Japanese source content.
 - Do not change article IDs or directory names.
 - Do not write post IDs into Markdown metadata.
 
+## Works
+
+Works live in `src/content/works/<slug>/index.{ja,en}.md`.
+
+- Translate `title`, `tagline`, `summary`, and the body.
+- Do not add `year`, `stack`, `thumbnail`, or `hero` to the English file. The
+  loader reads all four from the Japanese one, so a copy in the English file is
+  ignored and only invites edits that never reach the page.
+- Keep the comment block that names the fields, translated into English.
+
 ## Syntax Preservation
 
 - Preserve Markdown structure.

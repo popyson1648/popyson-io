@@ -16,6 +16,7 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 - [ビルド処理の構成](#ビルド処理の構成)
 - [技術的な工夫](#技術的な工夫)
 - [記事の追加](#記事の追加)
+- [記事の公開](#記事の公開)
 - [記事の front matter](#記事の-front-matter)
 - [記事本文の Markdown](#記事本文の-markdown)
   - [段落と改行](#段落と改行)
@@ -34,6 +35,8 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
   - [コールアウト](#コールアウト)
   - [HTML と URL の制限](#html-と-url-の制限)
   - [専用処理を持たない記法](#専用処理を持たない記法)
+- [制作物の追加](#制作物の追加)
+- [制作物の公開](#制作物の公開)
 - [関連資料](#関連資料)
 
 ## 機能
@@ -82,6 +85,16 @@ python3 scripts/verify.py
 | `npm run test:integration` | 本番ビルド後に統合テストを実行する |
 | `npm run lighthouse` | ローカルの静的サイトを Lighthouse で測定する |
 
+コンテンツを扱うコマンドは次のとおりです。
+
+| コマンド | 処理 |
+| --- | --- |
+| `npm run new:post` | [記事](#記事の追加)の雛形を作る |
+| `npm run post:push` | [記事の変更](#記事の公開)だけをコミットして push する |
+| `npm run new:work -- <スラッグ>` | [制作物](#制作物の追加)の雛形を作る |
+| `npm run work:push` | [制作物の変更](#制作物の公開)だけをコミットして push する |
+| `npm run metadata:generate:op` | 記事の自動メタデータを手元で解決する |
+
 ## ディレクトリ構成
 
 次のツリーは、開発時に参照するディレクトリと主要ファイルを示します。
@@ -121,6 +134,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── content/                    # 人が編集する構造化コンテンツ
 │   │   ├── about/                  # 日英のプロフィール TOML
 │   │   ├── posts/                  # 記事 ID ごとの日英 Markdown
+│   │   ├── works/                  # 制作物スラッグごとの日英 Markdown
 │   │   ├── prompts/                # メタデータと画像の生成プロンプト
 │   │   ├── metadata.toml           # 自動生成モデルと既定値の設定
 │   │   └── theme.toml              # ライトとダークの色トークン
@@ -235,6 +249,8 @@ npm run post:push
 ```sh
 npm run post:push -- --dry-run
 ```
+
+制作物には `npm run work:push` を使います（[制作物の公開](#制作物の公開)）。
 
 ## 記事の front matter
 
@@ -598,7 +614,19 @@ hero = "<詳細ページの大きな画像パス>"
 
 - **`title`**、**`year`** は必須です。
 - **`thumbnail`** と **`hero`** は `public/` からのパスを `/works/linewatch/hero.png` のように書きます。空にするとプレースホルダが表示されます。
-- **`stack`**、**`year`** は日本語版の値が使われます。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+- **`year`**、**`stack`**、**`thumbnail`**、**`hero`** は日本語版から読まれるので、英語版には書きません。**`title`**、**`tagline`**、**`summary`** と本文は言語ごとに書き分けます。
+
+## 制作物の公開
+
+記事と同じ形で、`src/content/works/` 配下の変更だけを add し、コミットして push します。
+
+```sh
+npm run work:push
+npm run work:push -- --dry-run   # コミットメッセージだけ確認する
+```
+
+main へ push すると、記事と同様に英語版が自動翻訳されます。
+取りこぼしたときは Actions の Translate content を `work_slug` を指定して実行できます。
 
 ## 関連資料
 

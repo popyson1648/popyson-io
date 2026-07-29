@@ -35,7 +35,7 @@
 - `tests/check_metadata_quality.test.mjs`: static quality checks for generated tags and summaries.
 - `tests/check_metadata_schema.test.mjs`: schema unit checks for valid and invalid metadata examples.
 - `tests/check_generate_metadata.test.mjs`: metadata generation unit checks with a mock provider.
-- `scripts/new_post.mjs`: creates a new post directory with a collision-free `YYYYMMDD-xxxxxxxx` post ID. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field.
+- `scripts/new_post.mjs`: creates a new post directory named `YYYYMMDD-HHMMSS`, so a day's drafts list in creation order. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field and no values beyond the defaults. Post ids from before this form (`YYYYMMDD-<hex8>`) are still accepted.
 - `scripts/publish_content.mjs`: stages one content directory, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. The kind it works on comes from its first argument: `npm run post:push` for `src/content/posts/`, `npm run work:push` for `src/content/works/`.
 - `src/readingTime.js`: estimates the reading time of a Markdown body per locale, replacing the removed `reading` front-matter field.
 - `src/content/works/<slug>/index.{ja,en}.md`: one work per directory, TOML front matter plus a Markdown body. The slug is the URL segment (`/app/<slug>`). Exposed as `APPS` (metadata) and `WORK_BODIES` (rendered HTML) through `virtual:site-content`.

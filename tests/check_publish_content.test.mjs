@@ -45,6 +45,12 @@ describe("contentIdsFromStatus", () => {
     expect(contentIdsFromStatus(output, KINDS.post.idPattern)).toEqual([]);
   });
 
+  test("finds a post id in the time-of-day form", () => {
+    const output = " M src/content/posts/20260729-165412/index.ja.md\n";
+
+    expect(contentIdsFromStatus(output, KINDS.post.idPattern)).toEqual(["20260729-165412"]);
+  });
+
   test("reads a work slug with the work pattern", () => {
     const output = " M src/content/works/linewatch/index.ja.md\n";
 

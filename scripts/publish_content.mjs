@@ -15,7 +15,7 @@ export const KINDS = {
   post: {
     noun: "post",
     prefix: "src/content/posts/",
-    idPattern: /^src\/content\/posts\/(\d{8}-[a-f0-9]{8})\//,
+    idPattern: /^src\/content\/posts\/(\d{8}-(?:\d{6}|[a-f0-9]{8}))\//,
   },
   work: {
     noun: "work",
@@ -144,9 +144,29 @@ function pushArgs() {
   return ["push", "-u", "origin", `HEAD:refs/heads/${branch}`];
 }
 
+// The same phases CI runs, minus the ones that cannot pass before a push:
+// metadata_generate_check rejects the `auto` values a new post is supposed to
+// carry, and the Lighthouse run needs a build of its own. What is left catches
+// what actually breaks CI from a content change — broken front matter, a post
+// that fails to render, a test that no longer holds.
+function runVerification() {
+  console.log("Verifying before commit (npm run post:push -- --skip-verify to skip)…\n");
+  try {
+    execFileSync("python3", [join(ROOT, "scripts/verify.py"), "--mode", "standard"], {
+      cwd: ROOT,
+      stdio: "inherit",
+    });
+    return true;
+  } catch {
+    console.error("\nVerification failed. Nothing was committed.");
+    return false;
+  }
+}
+
 function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
+  const skipVerify = args.includes("--skip-verify");
   const kindName = args.find((arg) => !arg.startsWith("--")) || "post";
   const kind = KINDS[kindName];
   if (!kind) {
@@ -169,6 +189,11 @@ function main() {
 
   if (dryRun) {
     console.log(message);
+    return;
+  }
+
+  if (!skipVerify && !runVerification()) {
+    process.exitCode = 1;
     return;
   }
 

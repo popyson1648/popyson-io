@@ -107,3 +107,19 @@ describe("dark gradient endpoint mapping", () => {
     expect(toHex(mapBlue(10))).toBe(DARK_LIME);
   });
 });
+
+describe("SDR background compositing", () => {
+  test("keeps the grain crush within reference-white channel values", () => {
+    const css = readFileSync(join(ROOT, "src/app.css"), "utf8");
+    const appSource = readFileSync(join(ROOT, "src/app.jsx"), "utf8");
+    const noiseRule = css.match(/\.bg-gradient-noise\s*\{([\s\S]*?)\}/);
+
+    expect(css).toContain("dynamic-range-limit: standard");
+    expect(noiseRule).not.toBeNull();
+    expect(noiseRule[1]).toContain("filter: url(#gg-sdr-crush)");
+    expect(noiseRule[1]).not.toMatch(/brightness\s*\(/);
+    expect(appSource).toMatch(
+      /<filter id="gg-sdr-crush"[\s\S]*?<feFuncR type="discrete" tableValues="0 1 1 1 1"/,
+    );
+  });
+});

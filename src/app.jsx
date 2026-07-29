@@ -209,6 +209,16 @@ export default function App() {
       </div>
       <div className="app">
         <svg className="grain-filter-defs" aria-hidden="true" focusable="false">
+          {/* SDR-safe replacement for contrast(170%) brightness(1000%).
+              It thresholds each sRGB channel without producing values above
+              reference white, while retaining the original coarse dither. */}
+          <filter id="gg-sdr-crush" colorInterpolationFilters="sRGB">
+            <feComponentTransfer>
+              <feFuncR type="discrete" tableValues="0 1 1 1 1" />
+              <feFuncG type="discrete" tableValues="0 1 1 1 1" />
+              <feFuncB type="discrete" tableValues="0 1 1 1 1" />
+            </feComponentTransfer>
+          </filter>
           {/* Dark-mode remap for the finished light gradient (.bg-gradient):
               in the light palette the blue channel runs the paper↔lime axis
               (#fdfff7 B=247 … #d4ff0a B=10). Dark mode keeps the identical

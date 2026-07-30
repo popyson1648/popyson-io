@@ -128,7 +128,11 @@ describe("loadSiteContent", () => {
         expect(post.title.ja).toBeTruthy();
         expect(post.title.en).toBeTruthy();
         expect(post.summary).toEqual({ ja: expect.any(String), en: expect.any(String) });
-        expect(Array.isArray(post.tags)).toBe(true);
+        expect(post.tags).toEqual({
+          ja: expect.any(Array),
+          en: expect.any(Array),
+        });
+        expect(post.tags.ja).toHaveLength(post.tags.en.length);
         expect(post.thumbnail).toBeTruthy();
       }
     },
@@ -152,13 +156,14 @@ describe("loadSiteContent", () => {
     },
   );
 
-  test("collects unique tags in first-seen order", () => {
-    const seen = [];
-    for (const post of content.POSTS) {
-      for (const tag of post.tags) if (!seen.includes(tag)) seen.push(tag);
+  test("collects unique localized tags in first-seen order", () => {
+    for (const lang of ["ja", "en"]) {
+      const seen = [];
+      for (const post of content.POSTS) {
+        for (const tag of post.tags[lang]) if (!seen.includes(tag)) seen.push(tag);
+      }
+      expect(content.TAGS[lang]).toEqual(seen);
     }
-
-    expect(content.TAGS).toEqual(seen);
   });
 
   // These assert the shape the loader produces, not the author's own wording:

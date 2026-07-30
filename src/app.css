@@ -1004,6 +1004,11 @@
   height: 44px;
   flex: none;
 }
+img.sug-thumb {
+  object-fit: cover;
+  border: var(--line-w) solid var(--line-strong);
+  border-radius: var(--r-sm);
+}
 .sug-main {
   min-width: 0;
   flex: 1 1 auto;
@@ -5388,6 +5393,7 @@ img.rel-thumb {
    The duration is set per-direction in JS (enter longer, exit shorter); the
    easing here is Material's "emphasized" curve (quick start, gentle settle). */
 .fbar-controls {
+  width: 120px;
   height: 42px;
   overflow: hidden;
   will-change: width;

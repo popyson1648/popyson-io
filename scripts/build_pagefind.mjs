@@ -5,6 +5,7 @@ import * as pagefind from "pagefind";
 
 import { loadSiteContent, renderArticleBodies } from "./content_loader.mjs";
 import { localized } from "../src/meta.js";
+import { localizedTags } from "../src/postTags.js";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const DIST = join(ROOT, "dist");
@@ -16,10 +17,11 @@ function localizedField(field, lang) {
 }
 
 function articleContent(post, body, lang) {
+  const tags = localizedTags(post.tags, lang);
   return [
     localizedField(post.title, lang),
     localizedField(post.summary, lang),
-    ...(post.tags || []),
+    ...tags,
     body?.text || "",
   ]
     .filter(Boolean)
@@ -38,6 +40,7 @@ async function main() {
     for (const post of content.POSTS) {
       for (const lang of LOCALES) {
         const body = content.ARTICLE_BODIES[post.id]?.[lang] || content.ARTICLE_BODIES[post.id]?.ja;
+        const tags = localizedTags(post.tags, lang);
         const response = await index.addCustomRecord({
           url: localized(`/blog/${post.id}/`, lang),
           content: articleContent(post, body, lang),
@@ -48,7 +51,7 @@ async function main() {
           },
           filters: {
             lang: [lang],
-            tag: post.tags || [],
+            tag: tags,
           },
           sort: {
             date: post.date,

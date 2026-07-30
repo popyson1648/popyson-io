@@ -36,6 +36,16 @@ generation is needed. `OPENAI_API_KEY` must be billing-enabled. CI runs `node
 scripts/generate_metadata.mjs --check`, which is a static check and does not call
 any AI provider.
 
+To deliberately replace all canonical article thumbnails marked as generated,
+then rebuild their responsive variants, run:
+
+```sh
+npm run thumbnail:regenerate:op
+```
+
+This command is billed and has a strict canonical-path/locale-pair allowlist; it
+does not run as part of a normal build.
+
 On push to `main`, `.github/workflows/generate-metadata.yml` runs the same
 generation step automatically and commits the resolved metadata and generated
 thumbnails. See `.project/metadata.md`.
@@ -88,6 +98,9 @@ See the Deploy section below.
 
 The site is deployed to Cloudflare Pages via Direct Upload (`wrangler pages
 deploy`) from two decoupled workflows; Cloudflare's Git integration is not used.
+Cloudflare reads `public/_headers` from the build output and serves Vite's
+fingerprinted `/assets/*` with a one-year immutable browser cache. Stable-name
+HTML, thumbnails, and Pagefind indexes keep the default revalidation behavior.
 
 - `.github/workflows/deploy.yml` — on push to `main` (and `workflow_dispatch`).
   Builds and deploys blog/about/code. It does a best-effort Instapaper fetch and
@@ -106,4 +119,4 @@ See `.decisions/instapaper-reading-list.md` and
 - If metadata generation fails with `GEMINI_API_KEY is required` or
   `OPENAI_API_KEY is required`, add the key to `.op.env` locally or to the
   matching GitHub Actions secret for generation workflows.
-- Lighthouse uses a local static server through LHCI and requires Chrome/Chromium.
+- Lighthouse uses the compressed Vite production preview and requires Chrome/Chromium.

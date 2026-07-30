@@ -17,9 +17,12 @@
     "test:component": "vitest run --project component",
     "test:integration": "npm run build && vitest run --project integration",
     "coverage": "vitest run --project unit --project component --coverage",
-    "metadata:generate": "node scripts/generate_metadata.mjs",
-    "metadata:generate:op": "op run --env-file=.op.env -- node scripts/generate_metadata.mjs",
+    "metadata:generate": "node scripts/generate_metadata.mjs && node scripts/generate_thumbnail_variants.mjs",
+    "metadata:generate:op": "op run --env-file=.op.env -- npm run metadata:generate",
     "metadata:preview-prompts": "node scripts/generate_metadata.mjs --preview-prompts",
+    "thumbnail:regenerate": "node scripts/generate_metadata.mjs --regenerate-thumbnails && node scripts/generate_thumbnail_variants.mjs",
+    "thumbnail:regenerate:op": "op run --env-file=.op.env -- npm run thumbnail:regenerate",
+    "thumbnail:variants": "node scripts/generate_thumbnail_variants.mjs",
     "new:post": "node scripts/new_post.mjs",
     "new:work": "node scripts/new_work.mjs",
     "post:push": "node scripts/publish_content.mjs post",
@@ -30,7 +33,6 @@
     "instapaper:auth:op": "op run --env-file=.op.env.auth -- node scripts/instapaper_auth.mjs"
   },
   "dependencies": {
-    "@tanstack/react-table": "^8.21.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -56,6 +58,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
+    "sharp": "0.35.3",
     "shiki": "^4.3.1",
     "smol-toml": "^1.7.1",
     "typescript": "^7.0.2",

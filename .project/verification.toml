@@ -29,7 +29,7 @@ reason = "Now a Vitest spec (tests/check_frontmatter.test.mjs) run by the test_u
 
 [phases.metadata_generate_check]
 enabled = true
-command = "node scripts/generate_metadata.mjs --check"
+command = "node scripts/generate_metadata.mjs --check && node scripts/generate_thumbnail_variants.mjs --check"
 # Posts are committed with unresolved `auto` metadata on purpose:
 # generate-metadata.yml resolves it on main and commits the result. Running
 # this on pre-commit would reject every new post, so it is CI-only. See

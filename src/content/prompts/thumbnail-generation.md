@@ -18,5 +18,8 @@ Generate a single centered abstract object that represents {CONCEPT}.
 - No drawn outline, stroke, or border around the object.
 - Minimal, abstract risograph print style: halftone grain, paper tooth, ink
   texture.
-- No multiple objects, no scenery, no shadows, no gradients, no 3D, no
-  photography.
+- Absolutely no shadows or shadow-like lighting of any kind. Do not use cast
+  shadows, drop shadows, contact shadows, inner shadows, ambient shading,
+  directional lighting, vignettes, glow, depth shading, or tonal falloff. Keep
+  every color area flat apart from the allowed risograph print texture.
+- No multiple objects, no scenery, no gradients, no 3D, no photography.

@@ -10,7 +10,7 @@ Suppress `react-hooks/incompatible-library` for `useReactTable` instead of split
 
 ## Status
 
-Accepted
+Superseded by `.decisions/remove-tanstack-table-from-blog-list.md`.
 
 ## Decision
 

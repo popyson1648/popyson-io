@@ -175,6 +175,13 @@ function localePairErrors(dir, { ja, en }) {
   if (jaThumb !== enThumb) {
     errors.push(`${dir}: thumbnail.path: Japanese and English metadata must match`);
   }
+  const jaTags = Array.isArray(ja.meta.tags) ? ja.meta.tags : [];
+  const enTags = Array.isArray(en.meta.tags) ? en.meta.tags : [];
+  if (jaTags.length !== enTags.length) {
+    errors.push(
+      `${dir}: tags: Japanese and English arrays must have the same length and semantic order`,
+    );
+  }
   return errors;
 }
 
@@ -206,6 +213,23 @@ describe("metadata.toml configuration", () => {
     expect(prompt).toMatch(/Any foreground hues are allowed/);
     expect(prompt).toMatch(/tone harmonious/);
   });
+
+  test("prohibits every shadow-like lighting treatment", () => {
+    const prompt = readFileSync(join(ROOT, config.thumbnail_generation.prompt_file), "utf8");
+    const normalizedPrompt = prompt.toLowerCase().replace(/\s+/g, " ");
+
+    for (const treatment of [
+      "cast shadows",
+      "drop shadows",
+      "contact shadows",
+      "inner shadows",
+      "ambient shading",
+      "directional lighting",
+      "vignettes",
+    ]) {
+      expect(normalizedPrompt).toContain(treatment);
+    }
+  });
 });
 
 describe("checked-in article metadata quality", () => {
@@ -230,7 +254,10 @@ describe("locale parity", () => {
     expect(incomplete).toEqual([]);
   });
 
-  test.each(localePairs)("%s has matching date and thumbnail across locales", (dir, pair) => {
-    expect(localePairErrors(dir, pair)).toEqual([]);
-  });
+  test.each(localePairs)(
+    "%s has matching date, thumbnail, and tag count across locales",
+    (dir, pair) => {
+      expect(localePairErrors(dir, pair)).toEqual([]);
+    },
+  );
 });

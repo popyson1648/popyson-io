@@ -6,6 +6,7 @@ import { parse as parseToml } from "smol-toml";
 import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
 import { slugifyHeading } from "../src/headingSlug.js";
 import { estimateReadingMinutes } from "../src/readingTime.js";
+import { localizedTags } from "../src/postTags.js";
 import { renderArticleBody } from "./articleHtml.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
@@ -142,7 +143,10 @@ function readPost(dirName, config) {
     date,
     dateLabel: makeDateLabel(date),
     reading: { ja: estimateReadingMinutes(ja.body), en: estimateReadingMinutes(en.body) },
-    tags: Array.isArray(common.tags) ? common.tags.map(String) : [],
+    tags: {
+      ja: Array.isArray(ja.meta.tags) ? ja.meta.tags.map(String) : [],
+      en: Array.isArray(en.meta.tags) ? en.meta.tags.map(String) : [],
+    },
     kana: String(common.kana || ""),
     summary: { ja: resolveSummary(ja.meta), en: resolveSummary(en.meta) },
     thumbnail: resolveThumbnail(common, config),
@@ -274,20 +278,20 @@ function articleBodiesFromEntries(entries) {
   return Object.fromEntries(entries.map((entry) => [entry.post.id, entry.body]));
 }
 
-function uniqueTags(posts) {
-  return [...new Set(posts.flatMap((post) => post.tags))];
+function uniqueTags(posts, lang) {
+  return [...new Set(posts.flatMap((post) => localizedTags(post.tags, lang)))];
 }
 
 export function relatedPostIds(post, posts, limit = 3) {
   if (!post || !Array.isArray(posts)) return [];
-  const postTags = Array.isArray(post.tags) ? post.tags : [];
+  // Related-post order predates localized tags. Rank against Japanese tags so
+  // adding the English representation cannot alter the existing experience.
+  const postTags = localizedTags(post.tags, "ja");
   return posts
     .filter((candidate) => candidate && candidate.id !== post.id)
     .map((candidate) => ({
       post: candidate,
-      score: (Array.isArray(candidate.tags) ? candidate.tags : []).filter((tag) =>
-        postTags.includes(tag),
-      ).length,
+      score: localizedTags(candidate.tags, "ja").filter((tag) => postTags.includes(tag)).length,
     }))
     .sort(
       (a, b) =>
@@ -358,7 +362,10 @@ export function loadSiteContent() {
   const entries = readPostEntries(metadataConfig);
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = articleBodiesFromEntries(entries);
-  const tags = uniqueTags(posts);
+  const tags = {
+    ja: uniqueTags(posts, "ja"),
+    en: uniqueTags(posts, "en"),
+  };
   const workEntries = readWorkEntries();
   const ja = readAbout("ja");
   const en = readAbout("en");

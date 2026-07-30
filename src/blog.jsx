@@ -10,16 +10,19 @@ import {
   useRef,
   useState,
 } from "react";
+import { filterAndSortBlogRows } from "./blogList.js";
 import {
-  createColumnHelper,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+  mergePostSearchResults,
+  normalizeSearchText,
+  searchLocalPosts,
+  searchPagefindAnyTerms,
+  tokenizeSearchQuery,
+} from "./blogSearch.js";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
 import { sectionId } from "./headingSlug.js";
+import { localizedTags } from "./postTags.js";
+import { thumbnailSrcSet } from "./thumbnail.js";
 
 const FILTER_PROPS = ["tags", "title", "body"];
 const SEARCH_RESULT_LIMIT = 8;
@@ -106,21 +109,10 @@ function textFromHtml(value) {
     .trim();
 }
 
-function normalizeSearchText(value) {
-  return String(value || "")
-    .normalize("NFKC")
-    .toLowerCase();
-}
-
 function queryMatches(value, query) {
   const text = normalizeSearchText(value);
-  const q = normalizeSearchText(query).trim();
-  if (!text || !q) return false;
-  if (text.includes(q)) return true;
-  return q
-    .split(/\s+/)
-    .filter(Boolean)
-    .some((token) => text.includes(token));
+  const tokens = tokenizeSearchQuery(query);
+  return Boolean(text && tokens.some((token) => text.includes(token)));
 }
 
 function inferMatchLocation(doc, query) {
@@ -140,8 +132,13 @@ function postIdFromSearchUrl(url) {
 
 async function searchPagefindPosts(query, lang, postsById, docsById, limit) {
   const pagefind = await loadPagefind(lang);
-  const response = await pagefind.search(query, { filters: { lang: [lang] } });
-  const records = await Promise.all(response.results.map(async (result) => result.data()));
+  const mergedResults = await searchPagefindAnyTerms(
+    pagefind,
+    query,
+    { filters: { lang: [lang] } },
+    Number.POSITIVE_INFINITY,
+  );
+  const records = await Promise.all(mergedResults.map(async (result) => result.data()));
   const output = [];
   for (const data of records) {
     const id = postIdFromSearchUrl(data.url);
@@ -183,22 +180,25 @@ function FilterPill({ prop, filters, setFilters, t }) {
 export function BlogList() {
   const { t, lang, nav, route } = useContext(AppCtx);
   const { POSTS, TAGS } = window.BlogData;
+  const availableTags = localizedTags(TAGS, lang);
   // A tag can arrive via the query (/blog?tag=foo) when navigating from an
   // article's tag — seed the tag filter from it (ignoring unknown tags).
-  const initialTag = route?.tag && TAGS.includes(route.tag) ? route.tag : null;
+  const initialTag = route?.tag && availableTags.includes(route.tag) ? route.tag : null;
   const [filters, setFilters] = useState(emptyFilters(initialTag));
   // Keep in sync if the route tag changes while this list stays mounted.
   useEffect(() => {
-    if (route?.tag && TAGS.includes(route.tag)) {
+    if (route?.tag && availableTags.includes(route.tag)) {
+      // Synchronize an externally supplied route tag with the local filter UI.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilters((f) => (f.tags.includes(route.tag) ? f : { ...f, tags: [route.tag] }));
     }
-  }, [route?.tag]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [route?.tag, availableTags]);
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc"); // asc | desc
   const [openPanel, setOpenPanel] = useState(null); // null | "search" | "filter" | "sort"
   const [filterProp, setFilterProp] = useState("tags"); // active filter tab: tags | title | body
   const [searchQuery, setSearchQuery] = useState("");
-  const [pagefindResults, setPagefindResults] = useState([]);
+  const [pagefindSearch, setPagefindSearch] = useState({ query: "", results: [] });
   const [searchActive, setSearchActive] = useState(0); // highlighted result index
   const deferredQuery = useDeferredValue(searchQuery); // debounce result computation while typing
   const panelRef = useRef(null); // .fbar-wrap — outside-click boundary
@@ -212,6 +212,7 @@ export function BlogList() {
   const lastOpenedRef = useRef(null); // which trigger opened the bar
   const restoreFocusRef = useRef(false); // restore focus to trigger on close (keyboard only)
   const prevOpenRef = useRef(null); // previous openPanel, to detect open/close edges
+  const toolbarReadyRef = useRef(false); // CSS owns the settled 120px initial width
 
   const closePanel = () => {
     setOpenPanel(null);
@@ -247,6 +248,10 @@ export function BlogList() {
     return Math.min(span + extra, window.innerWidth - TOOLBAR_VIEWPORT_GUTTER);
   };
   useLayoutEffect(() => {
+    if (!toolbarReadyRef.current) {
+      toolbarReadyRef.current = true;
+      return;
+    }
     const el = controlsRef.current;
     if (!el) return;
     const inner = el.firstElementChild;
@@ -275,14 +280,15 @@ export function BlogList() {
   useEffect(() => {
     const onResize = () => {
       const el = controlsRef.current;
-      if (el) el.style.width = measureToolbarWidth(el) + "px";
+      if (openPanel && el) el.style.width = measureToolbarWidth(el) + "px";
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [openPanel]);
 
   // Custom fonts can reflow the row after the first measure; re-pin once they load.
   useEffect(() => {
+    if (!openPanel) return undefined;
     let live = true;
     document.fonts?.ready.then(() => {
       const el = controlsRef.current;
@@ -291,7 +297,7 @@ export function BlogList() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [openPanel]);
 
   // Move focus into the bar when it expands; return it to the trigger when it
   // collapses via keyboard/back (WAI-ARIA disclosure focus management). Only act
@@ -341,12 +347,13 @@ export function BlogList() {
       POSTS.map((p) => {
         const title = L(p.title, lang);
         const body = `${L(p.summary, lang)} ${bodyText(p.id, lang)}`;
+        const tags = localizedTags(p.tags, lang);
         return {
           p,
           title,
           body,
-          tags: p.tags,
-          tagsText: p.tags.map((tag) => `#${tag}`).join(" "),
+          tags,
+          tagsText: tags.map((tag) => `#${tag}`).join(" "),
         };
       }),
     [POSTS, lang],
@@ -363,63 +370,13 @@ export function BlogList() {
       })),
     [postDocs],
   );
-  const columns = useMemo(() => {
-    const column = createColumnHelper();
-    return [
-      column.accessor("title", {
-        id: "title",
-        filterFn: "includesString",
-      }),
-      column.accessor("body", {
-        id: "body",
-        filterFn: "includesString",
-      }),
-      column.accessor("tags", {
-        id: "tags",
-        filterFn: (row, columnId, value) => {
-          if (!value?.length) return true;
-          const tags = row.getValue(columnId);
-          return value.some((tag) => tags.includes(tag));
-        },
-      }),
-      column.accessor("date", {
-        id: "date",
-        sortingFn: "text",
-      }),
-      column.accessor("kana", {
-        id: "kana",
-        sortingFn: (a, b, columnId) =>
-          a.getValue(columnId).localeCompare(b.getValue(columnId), "ja"),
-      }),
-    ];
-  }, []);
-  const columnFilters = useMemo(
-    () => [
-      ...(filters.tags.length ? [{ id: "tags", value: filters.tags }] : []),
-      ...(filters.title ? [{ id: "title", value: filters.title }] : []),
-      ...(filters.body ? [{ id: "body", value: filters.body }] : []),
-    ],
-    [filters],
+  const list = useMemo(
+    () =>
+      filterAndSortBlogRows(rows, filters, sortKey, sortDir).map(
+        (row) => /** @type {{ raw: Post }} */ (row).raw,
+      ),
+    [rows, filters, sortKey, sortDir],
   );
-  const sorting = useMemo(() => [{ id: sortKey, desc: sortDir === "desc" }], [sortKey, sortDir]);
-  // TanStack Table's useReactTable() returns functions with interior mutability
-  // that React Compiler cannot memoize safely, so it skips compiling BlogList.
-  // There is no compiler-compatible alternative API yet (planned for TanStack
-  // Table v9); accepting the skip is the upstream-recommended handling. Remove
-  // this directive once v9 ships compiler-safe APIs.
-  // https://react.dev/reference/eslint-plugin-react-hooks/lints/incompatible-library
-  // eslint-disable-next-line react-hooks/incompatible-library -- no compiler-compatible TanStack Table API yet (v9 planned)
-  const table = useReactTable({
-    data: rows,
-    columns,
-    state: { columnFilters, sorting },
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
-  const list = table
-    .getRowModel()
-    .rows.map((row) => /** @type {{ raw: Post }} */ (row.original).raw);
 
   const activeProps = [];
   if (filters.tags.length) activeProps.push("tags");
@@ -462,26 +419,34 @@ export function BlogList() {
         .map((p) => ({ p, where: null, snippet: "" })),
     [POSTS],
   );
+  const localSearchResults = useMemo(
+    () => searchLocalPosts(searchDocs, deferredQuery, SEARCH_RESULT_LIMIT),
+    [deferredQuery, searchDocs],
+  );
   const searchResults = useMemo(() => {
     const term = deferredQuery.trim();
-    return term ? pagefindResults : recentSearchResults;
-  }, [deferredQuery, pagefindResults, recentSearchResults]);
+    if (!term) return recentSearchResults;
+    const indexedResults = pagefindSearch.query === term ? pagefindSearch.results : [];
+    return mergePostSearchResults(indexedResults, localSearchResults, SEARCH_RESULT_LIMIT);
+  }, [deferredQuery, localSearchResults, pagefindSearch, recentSearchResults]);
 
   useEffect(() => {
     const term = deferredQuery.trim();
     let live = true;
     if (!term) {
-      setPagefindResults([]);
+      // Reset results when the external Pagefind query becomes empty.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPagefindSearch({ query: "", results: [] });
       return () => {
         live = false;
       };
     }
     searchPagefindPosts(term, lang, postById, searchDocById, SEARCH_RESULT_LIMIT)
       .then((results) => {
-        if (live) setPagefindResults(results);
+        if (live) setPagefindSearch({ query: term, results });
       })
       .catch(() => {
-        if (live) setPagefindResults([]);
+        if (live) setPagefindSearch({ query: term, results: [] });
       });
     return () => {
       live = false;
@@ -489,6 +454,8 @@ export function BlogList() {
   }, [deferredQuery, lang, postById, searchDocById]);
 
   useEffect(() => {
+    // A new query always starts keyboard selection at the first result.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchActive(0);
   }, [deferredQuery]);
   // aria-activedescendant doesn't auto-scroll; keep the active option in view
@@ -504,6 +471,8 @@ export function BlogList() {
     nav("/blog/" + p.id);
   };
   const onSearchKey = (e) => {
+    const nativeEvent = e.nativeEvent || e;
+    if (nativeEvent.isComposing || nativeEvent.keyCode === 229 || e.keyCode === 229) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSearchActive((a) => Math.min(a + 1, searchResults.length - 1));
@@ -516,9 +485,6 @@ export function BlogList() {
     } else if (e.key === "End") {
       e.preventDefault();
       setSearchActive(searchResults.length - 1);
-    } else if (e.key === "Enter" && searchResults[searchActive]) {
-      e.preventDefault();
-      goSearch(searchResults[searchActive].p);
     }
     // Escape is handled by the bar's global handler (collapse + restore focus)
   };
@@ -735,7 +701,21 @@ export function BlogList() {
                           onMouseEnter={() => setSearchActive(i)}
                           onClick={() => goSearch(p)}
                         >
-                          <Ph className="sug-thumb" />
+                          {p.thumbnail ? (
+                            <img
+                              className="sug-thumb"
+                              src={p.thumbnail}
+                              srcSet={thumbnailSrcSet(p.thumbnail)}
+                              sizes="(max-width: 560px) 38px, 44px"
+                              alt=""
+                              width="44"
+                              height="44"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <Ph className="sug-thumb" />
+                          )}
                           <div className="sug-main">
                             <div className="sug-title">{highlight(L(p.title, lang), query)}</div>
                             {snippet && (
@@ -745,9 +725,13 @@ export function BlogList() {
                               <span className="sug-date">{localizedDateLabel(p, lang)}</span>
                               <span
                                 className="sug-tags"
-                                title={p.tags.map((tg) => `#${tg}`).join(" ")}
+                                title={localizedTags(p.tags, lang)
+                                  .map((tg) => `#${tg}`)
+                                  .join(" ")}
                               >
-                                {p.tags.map((tg) => `#${tg}`).join(" ")}
+                                {localizedTags(p.tags, lang)
+                                  .map((tg) => `#${tg}`)
+                                  .join(" ")}
                               </span>
                               {where && where !== "title" && (
                                 <span className="sug-match">
@@ -769,7 +753,7 @@ export function BlogList() {
               <div className="fbar-pop" role="region" aria-label={t.filter_add}>
                 {filterProp === "tags" ? (
                   <div className="fbar-chips" role="group" aria-label={t.f_tag}>
-                    {TAGS.map((tg) => {
+                    {availableTags.map((tg) => {
                       const on = filters.tags.includes(tg);
                       return (
                         <button
@@ -825,7 +809,7 @@ export function BlogList() {
         <div className="empty">{t.no_results}</div>
       ) : (
         <div className="post-index">
-          {list.map((p) => (
+          {list.map((p, index) => (
             <button
               className="post-index-card"
               type="button"
@@ -836,10 +820,13 @@ export function BlogList() {
                 <img
                   className="post-index-thumb"
                   src={p.thumbnail}
+                  srcSet={thumbnailSrcSet(p.thumbnail)}
+                  sizes="(max-width: 860px) 84px, 107px"
                   alt=""
                   width="96"
                   height="96"
-                  loading="lazy"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "auto"}
                   decoding="async"
                 />
               ) : null}
@@ -850,7 +837,7 @@ export function BlogList() {
                 <span className="post-index-title">{L(p.title, lang)}</span>
                 <span className="post-index-summary">{L(p.summary, lang)}</span>
                 <span className="post-index-tags">
-                  {p.tags.map((tg) => (
+                  {localizedTags(p.tags, lang).map((tg) => (
                     <span key={tg}>#{tg}</span>
                   ))}
                 </span>
@@ -1007,7 +994,7 @@ export function Article({ id }) {
             </span>
           </div>
           <div className="article-tags">
-            {post.tags.map((tg) => (
+            {localizedTags(post.tags, lang).map((tg) => (
               <button
                 key={tg}
                 type="button"
@@ -1039,6 +1026,8 @@ export function Article({ id }) {
                   <img
                     className="rel-thumb"
                     src={p.thumbnail}
+                    srcSet={thumbnailSrcSet(p.thumbnail)}
+                    sizes="52px"
                     alt=""
                     width="52"
                     height="52"
@@ -1051,7 +1040,10 @@ export function Article({ id }) {
                 <span className="rel-body">
                   <span className="rel-title">{L(p.title, lang)}</span>
                   <span className="rel-date">
-                    {localizedDateLabel(p, lang)} · {p.tags.map((tg) => "#" + tg).join(" ")}
+                    {localizedDateLabel(p, lang)} ·{" "}
+                    {localizedTags(p.tags, lang)
+                      .map((tg) => "#" + tg)
+                      .join(" ")}
                   </span>
                 </span>
               </button>

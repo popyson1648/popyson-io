@@ -29,6 +29,70 @@ function postMarkdownFiles() {
     ]);
 }
 
+function thumbnailMeta(source, filePath) {
+  return parseMarkdownFrontmatter(source, filePath).meta.thumbnail;
+}
+
+/**
+ * Resolve only generated, canonical article thumbnails that are safe to
+ * overwrite. Both locale files must explicitly agree so a stale or hand-edited
+ * path cannot be replaced by accident.
+ */
+export function generatedThumbnailTargets(files = postMarkdownFiles()) {
+  const byDirectory = new Map();
+  for (const filePath of files) {
+    const locale = filePath.endsWith("index.ja.md")
+      ? "ja"
+      : filePath.endsWith("index.en.md")
+        ? "en"
+        : "";
+    if (!locale) continue;
+    const directory = dirname(filePath);
+    if (!byDirectory.has(directory)) byDirectory.set(directory, {});
+    byDirectory.get(directory)[locale] = {
+      filePath,
+      source: readFileSync(filePath, "utf8"),
+    };
+  }
+
+  const targets = [];
+  for (const [directory, pair] of byDirectory) {
+    if (!pair.ja || !pair.en) {
+      throw new Error(`${directory}: thumbnail regeneration requires both locale files`);
+    }
+    const postId = basename(directory);
+    const publicRef = `/thumbnails/${postId}.png`;
+    const jaThumbnail = thumbnailMeta(pair.ja.source, pair.ja.filePath);
+    const enThumbnail = thumbnailMeta(pair.en.source, pair.en.filePath);
+    const thumbnails = [jaThumbnail, enThumbnail];
+    const referencesCanonicalGeneratedImage = thumbnails.some(
+      (thumbnail) =>
+        thumbnail?.path === publicRef ||
+        (thumbnail?.generated === true &&
+          typeof thumbnail.path === "string" &&
+          thumbnail.path.startsWith("/thumbnails/")),
+    );
+    if (!referencesCanonicalGeneratedImage) continue;
+
+    const safe = thumbnails.every(
+      (thumbnail) =>
+        thumbnail?.mode === "file" && thumbnail.generated === true && thumbnail.path === publicRef,
+    );
+    if (!safe) {
+      throw new Error(
+        `${directory}: generated thumbnail locales must both use ${publicRef} before regeneration`,
+      );
+    }
+    targets.push({
+      postId,
+      filePath: pair.ja.filePath,
+      source: pair.ja.source,
+      targetPath: join(ROOT, "public", "thumbnails", `${postId}.png`),
+    });
+  }
+  return targets.sort((a, b) => a.postId.localeCompare(b.postId));
+}
+
 function firstAddedGitDate(filePath) {
   const relPath = relative(ROOT, filePath);
   try {
@@ -744,17 +808,65 @@ export async function runGenerateMetadata({
   return changedFiles;
 }
 
+export async function regenerateGeneratedThumbnails({
+  files = postMarkdownFiles(),
+  config = readMetadataConfig(),
+  provider = geminiGenerateJson,
+  imageProvider = openaiGenerateImage,
+  writeImage = (targetPath, bytes) => {
+    mkdirSync(dirname(targetPath), { recursive: true });
+    writeFileSync(targetPath, bytes);
+  },
+} = {}) {
+  const targets = generatedThumbnailTargets(files);
+  const generated = [];
+
+  // Finish every billed provider call before replacing a checked-in image. If
+  // any request fails, the existing complete set stays untouched.
+  for (const target of targets) {
+    const parsed = parseMarkdownFrontmatter(target.source, target.filePath);
+    const context = {
+      filePath: target.filePath,
+      body: parsed.body,
+      config,
+      provider,
+    };
+    const concept = await resolveThumbnailConcept(parsed.meta, context);
+    const prompt = buildThumbnailPrompt({ concept, config });
+    const bytes = await imageProvider(thumbnailGenerationRequest({ config, prompt }));
+    generated.push({ ...target, bytes });
+  }
+
+  for (const item of generated) writeImage(item.targetPath, item.bytes);
+  return generated.map(({ postId, targetPath }) => ({ postId, targetPath }));
+}
+
 function parseArgs(argv) {
   return {
     check: argv.includes("--check"),
     preview: argv.includes("--preview-prompts"),
+    regenerateThumbnails: argv.includes("--regenerate-thumbnails"),
   };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = parseArgs(process.argv.slice(2));
-  runGenerateMetadata(args)
+  const conflictingModes = [args.check, args.preview, args.regenerateThumbnails].filter(
+    Boolean,
+  ).length;
+  if (conflictingModes > 1) {
+    console.error("--check, --preview-prompts, and --regenerate-thumbnails are mutually exclusive");
+    process.exit(1);
+  }
+  const operation = args.regenerateThumbnails
+    ? regenerateGeneratedThumbnails()
+    : runGenerateMetadata(args);
+  operation
     .then((changedFiles) => {
+      if (args.regenerateThumbnails) {
+        console.log(`regenerated ${changedFiles.length} canonical thumbnail(s)`);
+        return;
+      }
       if (args.preview) {
         return;
       }

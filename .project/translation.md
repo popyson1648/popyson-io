@@ -9,7 +9,11 @@ Use these rules when updating English content from Japanese source content.
 - Do not summarize.
 - Do not add facts.
 - Keep technical terms natural for software engineers.
-- Translate human-facing metadata values such as `title`, `description`, and `[sumup].text`.
+- Translate human-facing metadata values such as `title`, `tags`, `description`,
+  and `[sumup].text`.
+- Keep the English `tags` array the same length and semantic order as the
+  Japanese array. Each position is the same concept in the other locale; the
+  site uses this pairing when a filtered Blog page changes language.
 
 ## File Boundaries
 

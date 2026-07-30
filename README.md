@@ -92,6 +92,7 @@ python3 scripts/verify.py
 | `npm run new:work -- <スラッグ>` | [制作物](#制作物の追加)の雛形を作る |
 | `npm run work:push` | [制作物の変更](#制作物の公開)だけをコミットして push する |
 | `npm run metadata:generate:op` | 記事の自動メタデータを手元で解決する |
+| `npm run thumbnail:variants` | 元画像から表示用サムネイルを再生成する |
 
 ## ディレクトリ構成
 
@@ -115,7 +116,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   └── verification.toml           # 検証ランナーが読むフェーズ定義
 ├── .template/                      # プロジェクト資料と設定の原本
 ├── public/                         # 加工せず公開する静的ファイル
-│   ├── thumbnails/                 # 記事 ID ごとの生成済みサムネイル
+│   ├── thumbnails/                 # 元サムネイルと表示用 WebP
 │   └── provisional_ogp_image.png   # 既定の OGP 画像
 ├── scripts/                        # コンテンツ処理、ビルド、検証のスクリプト
 │   ├── articleHtml.mjs             # Markdown を安全な記事 HTML へ変換する処理
@@ -123,6 +124,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── content_loader.mjs          # 記事と TOML コンテンツを読み込む共通処理
 │   ├── fetch_instapaper.mjs        # Instapaper から読書リストを取得する処理
 │   ├── generate_metadata.mjs       # 記事メタデータと画像を補完する処理
+│   ├── generate_thumbnail_variants.mjs # 表示用サムネイルを生成する処理
 │   ├── metadataSchema.mjs          # 記事 front matter の検証規則
 │   ├── workSchema.mjs              # 制作物 front matter の検証規則
 │   ├── new_post.mjs                # 日英の記事ファイルを新規作成する処理
@@ -140,6 +142,8 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   │   └── theme.toml              # ライトとダークの色トークン
 │   ├── app.jsx                     # ルーティング、言語、テーマ、画面構成
 │   ├── blog.jsx                    # 記事一覧、検索、目次、記事画面
+│   ├── blogList.js                 # 一覧の絞り込みと並べ替え
+│   ├── blogSearch.js               # 複数語検索と検索結果の統合
 │   ├── components.jsx              # ナビゲーションなどの共通 UI
 │   ├── i18n.js                     # UI 文言の日英辞書
 │   ├── meta.js                     # URL ごとのメタデータと事前描画対象
@@ -147,6 +151,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── prerenderRoutes.jsx         # React 画面を静的 HTML に変換する入口
 │   ├── reading.json                # Instapaper から生成した読書リスト
 │   ├── styles.css                  # 全体のレイアウトと基本スタイル
+│   ├── thumbnail.js                # 表示用画像候補のパスを組み立てる処理
 │   └── app.css                     # 各画面とコンポーネントのスタイル
 ├── tests/                          # 単体、コンポーネント、統合テスト
 │   ├── fixtures/                   # テストで共有する Markdown などの入力例

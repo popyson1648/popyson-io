@@ -8,6 +8,7 @@ import {
   loadSiteContent,
   renderArticleBodies,
 } from "./scripts/content_loader.mjs";
+import { localizedTags } from "./src/postTags.js";
 
 const SITE_URL = "https://popyson.com";
 const SITE_TITLE = "popyson.com";
@@ -39,7 +40,7 @@ function buildFeed() {
         `      <guid isPermaLink="true">${escapeXml(link)}</guid>`,
         `      <pubDate>${pubDate}</pubDate>`,
         `      <description>${escapeXml(p.summary.ja)}</description>`,
-        ...p.tags.map((t) => `      <category>${escapeXml(t)}</category>`),
+        ...localizedTags(p.tags, "ja").map((tag) => `      <category>${escapeXml(tag)}</category>`),
         "    </item>",
       ].join("\n");
     })

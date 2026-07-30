@@ -63,9 +63,10 @@ const body = {
   ],
 };
 
-function renderArticle() {
+function renderArticle({ lang = "ja", posts = [post, related] } = {}) {
+  window.BlogData = { POSTS: posts };
   return render(
-    <AppCtx.Provider value={{ t, lang: "ja", nav: vi.fn() }}>
+    <AppCtx.Provider value={{ t, lang, nav: vi.fn() }}>
       <Article id="current" />
     </AppCtx.Provider>,
   );
@@ -122,5 +123,19 @@ describe("Article", () => {
     await userEvent.click(button);
 
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: "smooth" });
+  });
+
+  test("uses localized tags in the article header and related cards", () => {
+    renderArticle({
+      lang: "en",
+      posts: [
+        { ...post, tags: { ja: ["テスト"], en: ["test"] } },
+        { ...related, tags: { ja: ["関連"], en: ["related"] } },
+      ],
+    });
+
+    expect(screen.getByRole("button", { name: "#test の記事一覧を見る" })).toBeInTheDocument();
+    expect(screen.getByText(/#related/)).toBeInTheDocument();
+    expect(screen.queryByText(/#関連/)).toBeNull();
   });
 });

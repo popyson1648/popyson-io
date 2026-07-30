@@ -6,8 +6,10 @@ import { parse as parseToml } from "smol-toml";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
   evaluateMetadata,
+  generatedThumbnailTargets,
   pendingMetadataReasons,
   previewPrompts,
+  regenerateGeneratedThumbnails,
   resolveMetadata,
 } from "../scripts/generate_metadata.mjs";
 
@@ -477,5 +479,131 @@ describe("resolveMetadata auto thumbnail generation", () => {
 
     expect(previews.map((item) => item.kind)).toEqual(["thumbnail-concept", "thumbnail"]);
     expect(previews[1].prompt).toMatch(/\{CONCEPT\}/);
+  });
+});
+
+describe("intentional thumbnail regeneration", () => {
+  function resolvedThumbnailSource(postId, locale, overrides = {}) {
+    const thumbnail = {
+      mode: "file",
+      path: `/thumbnails/${postId}.png`,
+      generated: true,
+      ...overrides,
+    };
+    return [
+      "+++",
+      `title = "${locale === "ja" ? "再生成記事" : "Regenerated article"}"`,
+      'date = "2026-06-23"',
+      `tags = ["${locale === "ja" ? "設計" : "design"}"]`,
+      "",
+      "[sumup]",
+      'mode = "text"',
+      `text = "${locale === "ja" ? "影のない設計図を説明する記事。" : "An article about a shadowless blueprint."}"`,
+      "",
+      "[thumbnail]",
+      `mode = "${thumbnail.mode}"`,
+      `path = "${thumbnail.path}"`,
+      `generated = ${thumbnail.generated}`,
+      "+++",
+      "",
+      "本文。",
+      "",
+    ].join("\n");
+  }
+
+  function writeLocalePair(postId, overrides = {}) {
+    const directory = join(tempDir, postId);
+    mkdirSync(directory, { recursive: true });
+    const files = ["ja", "en"].map((locale) => {
+      const filePath = join(directory, `index.${locale}.md`);
+      writeFileSync(filePath, resolvedThumbnailSource(postId, locale, overrides[locale]));
+      return filePath;
+    });
+    return files;
+  }
+
+  test("selects only locale-agreed generated canonical paths", () => {
+    const generatedId = "29991231-11111111";
+    const defaultId = "29991231-22222222";
+    const files = [
+      ...writeLocalePair(generatedId),
+      ...writeLocalePair(defaultId, {
+        ja: { path: "/default.png" },
+        en: { path: "/default.png" },
+      }),
+    ];
+
+    expect(generatedThumbnailTargets(files)).toEqual([
+      expect.objectContaining({
+        postId: generatedId,
+        filePath: expect.stringContaining(`${generatedId}/index.ja.md`),
+        targetPath: join(ROOT, "public", "thumbnails", `${generatedId}.png`),
+      }),
+    ]);
+  });
+
+  test("rejects mismatched locale paths before calling a provider", async () => {
+    const postId = "29991231-33333333";
+    const files = writeLocalePair(postId, { en: { path: "/thumbnails/other.png" } });
+
+    expect(() => generatedThumbnailTargets(files)).toThrow(
+      new RegExp(`both use /thumbnails/${postId}\\.png`),
+    );
+  });
+
+  test("generates every image before atomically replacing the eligible set", async () => {
+    const firstId = "29991231-44444444";
+    const secondId = "29991231-55555555";
+    const files = [...writeLocalePair(firstId), ...writeLocalePair(secondId)];
+    const imageRequests = [];
+    const writes = [];
+
+    const result = await regenerateGeneratedThumbnails({
+      files,
+      config,
+      provider: async () => ({ concept: "a flat blueprint" }),
+      imageProvider: async (request) => {
+        imageRequests.push(request);
+        return Buffer.from(`png-${imageRequests.length}`);
+      },
+      writeImage: (targetPath, bytes) => writes.push([targetPath, bytes.toString()]),
+    });
+
+    expect(imageRequests).toHaveLength(2);
+    expect(imageRequests.every((request) => request.prompt.includes("a flat blueprint"))).toBe(
+      true,
+    );
+    expect(imageRequests.every((request) => request.prompt.includes("Absolutely no shadows"))).toBe(
+      true,
+    );
+    expect(writes).toEqual([
+      [join(ROOT, "public", "thumbnails", `${firstId}.png`), "png-1"],
+      [join(ROOT, "public", "thumbnails", `${secondId}.png`), "png-2"],
+    ]);
+    expect(result.map((item) => item.postId)).toEqual([firstId, secondId]);
+  });
+
+  test("leaves all checked-in images untouched when any generation fails", async () => {
+    const files = [
+      ...writeLocalePair("29991231-66666666"),
+      ...writeLocalePair("29991231-77777777"),
+    ];
+    const writes = [];
+    let call = 0;
+
+    await expect(
+      regenerateGeneratedThumbnails({
+        files,
+        config,
+        provider: async () => ({ concept: "a flat object" }),
+        imageProvider: async () => {
+          call += 1;
+          if (call === 2) throw new Error("provider failed");
+          return Buffer.from("first");
+        },
+        writeImage: (...args) => writes.push(args),
+      }),
+    ).rejects.toThrow("provider failed");
+    expect(writes).toEqual([]);
   });
 });

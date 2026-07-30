@@ -15,7 +15,10 @@
 - `src/main.jsx`: Vite React entry point.
 - `src/app.jsx`: path-based routing (History API; About is the default landing page, language carried in the URL — `/en` prefix for English), theme state, the runtime `<head>` (OGP/Twitter/hreflang) updater, and the app shell.
 - `src/components.jsx`: shared UI components, icons (incl. Simple Icons brand glyphs), and helpers.
-- `src/blog.jsx`: blog list, filters, Pagefind search combobox, article shell, TOC behavior, and delegated article code-copy interaction. Article body HTML is generated at build time.
+- `src/blog.jsx`: blog list, filters, Pagefind search combobox, article shell, TOC behavior, responsive thumbnail markup, and delegated article code-copy interaction. Article body HTML is generated at build time.
+- `src/blogList.js`: pure Blog list filtering and stable sorting helpers.
+- `src/blogSearch.js`: normalized multi-word Blog search, deterministic Pagefind result merging, and an immediate in-memory fallback when the static index is unavailable.
+- `src/thumbnail.js`: canonical thumbnail-to-responsive-variant path helpers.
 - `src/pages.jsx`: about (default landing), application, reading, and RSS pages.
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
@@ -25,13 +28,15 @@
 - `src/content/prompts/summary-generation.md`: system instruction used by automatic summary generation.
 - `src/content/prompts/thumbnail-concept.md`: system instruction that derives the thumbnail concept from the Japanese summary.
 - `src/content/prompts/thumbnail-generation.md`: OpenAI image prompt with a `{CONCEPT}` placeholder for auto thumbnails.
-- `public/thumbnails/<post-id>.png`: generated article thumbnails (one per post id, shared by both locales).
+- `public/thumbnails/<post-id>.png`: canonical generated article thumbnails (one per post id, shared by both locales).
+- `public/thumbnails/<post-id>-{192,384}.webp`: deterministic lossless display variants generated from each canonical thumbnail.
 - `src/content/about/about.{ja,en}.toml`: per-locale About page content.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, and generates search plain text.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
 - `tests/check_frontmatter.test.mjs`: metadata lint for every article Markdown file.
-- `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, `[thumbnail] mode = "auto"` (OpenAI image generation into `public/thumbnails/`), and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check.
+- `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, `[thumbnail] mode = "auto"` (OpenAI image generation into `public/thumbnails/`), and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check. Its explicit `--regenerate-thumbnails` mode overwrites only locale-agreed canonical images marked as generated.
+- `scripts/generate_thumbnail_variants.mjs`: creates and verifies the committed 192- and 384-pixel lossless WebP display variants for generated thumbnails.
 - `tests/check_metadata_quality.test.mjs`: static quality checks for generated tags and summaries.
 - `tests/check_metadata_schema.test.mjs`: schema unit checks for valid and invalid metadata examples.
 - `tests/check_generate_metadata.test.mjs`: metadata generation unit checks with a mock provider.

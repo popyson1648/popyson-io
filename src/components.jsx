@@ -3,6 +3,7 @@
    ============================================================ */
 import { useState, useEffect, useRef, useMemo, useContext, createContext, useId } from "react";
 import { localized, routeToPath } from "./meta.js";
+import { translatePostTag } from "./postTags.js";
 
 export const AppCtx = createContext(null);
 
@@ -275,7 +276,11 @@ export function TopBar() {
   // preserving an active tag filter. URL is the source of truth for language.
   const toggleLang = () => {
     const other = lang === "ja" ? "en" : "ja";
-    const path = routeToPath(route) + (route.tag ? `?tag=${encodeURIComponent(route.tag)}` : "");
+    const translatedTag = route.tag
+      ? translatePostTag(window.BlogData?.POSTS, route.tag, lang, other)
+      : "";
+    const path =
+      routeToPath(route) + (translatedTag ? `?tag=${encodeURIComponent(translatedTag)}` : "");
     nav(path, other);
   };
   return (
@@ -434,7 +439,7 @@ function findQueryMatch(text, q) {
   if (!source || !query) return null;
   const lower = source.normalize("NFKC").toLowerCase();
   const normalizedQuery = query.toLowerCase();
-  const fragments = [normalizedQuery, ...normalizedQuery.split(" ").filter(Boolean)];
+  const fragments = [normalizedQuery, ...normalizedQuery.split(/\s+/).filter(Boolean)];
   const chars = [...normalizedQuery.replace(/\s/g, "")];
   if (chars.length === 1) fragments.push(chars[0]);
   for (let i = 0; i < chars.length - 1; i += 1) fragments.push(chars[i] + chars[i + 1]);

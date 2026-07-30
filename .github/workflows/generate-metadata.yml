@@ -76,8 +76,9 @@ jobs:
             exit 0
           fi
 
-          # Metadata generation may only touch article frontmatter and the
-          # generated thumbnail images. Anything else is a bug, so fail loudly.
+          # Metadata generation may only touch article frontmatter, canonical
+          # thumbnails, and their responsive variants. Anything else is a bug,
+          # so fail loudly.
           for file in "${changed_files[@]}"; do
             case "$file" in
               src/content/posts/*|public/thumbnails/*) ;;

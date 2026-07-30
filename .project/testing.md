@@ -20,17 +20,23 @@ check (`tests/check_accessibility_static.py`) stays a standalone phase.
 - Lint: ESLint over JavaScript and JSX source.
 - Unit (`unit` project): core route/meta/date helpers, content loader, metadata
   schema/edges/generation, Markdown rendering, article frontmatter validation,
-  and metadata quality (tag/summary length, markup, duplicates, unresolved
-  placeholders, thumbnail paths, prompt/config files, locale parity).
+  Blog list filtering/sorting, multi-word search result merging, responsive
+  thumbnail generation, Cloudflare header policy, and metadata quality
+  (tag/summary length, markup, duplicates, unresolved placeholders, thumbnail
+  paths, prompt/config files, locale parity).
 - Component (`component` project): React components rendered with Testing Library
   in happy-dom.
 - Integration (`integration` project): runs after the build — Pagefind search
-  against the built Japanese/English indexes, and a prerender smoke check that
-  every route/locale bakes its primary body into the static `#root`.
-- Metadata generation check: statically verifies generated metadata is written back.
+  against the built Japanese/English indexes including multi-word queries, and a
+  prerender smoke check that every route/locale bakes its primary body into the
+  static `#root`.
+- Metadata generation check: verifies generated metadata is written back and
+  responsive thumbnail variants are present and current.
 - Build: Vite production build.
 - Secret scan: Gitleaks over pushed and proposed changes.
-- Performance: Lighthouse CI against the built static app.
+- Performance: Lighthouse against the compressed Vite production preview for
+  About, Blog, and a representative Article route. Set `LIGHTHOUSE_RUNS=3` to
+  collect three reports per route under `.tmp/lhci/`.
 
 ## Running Tests Directly
 

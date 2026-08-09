@@ -1,0 +1,22 @@
+.preview-site-main {
+  min-height: 100vh;
+}
+
+.preview-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.preview-toc-depth-3,
+.preview-toc-depth-4 {
+  padding-left: 14px;
+}
+
+button:disabled {
+  color: inherit;
+  cursor: default;
+  opacity: 1;
+}

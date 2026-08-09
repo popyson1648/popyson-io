@@ -3,7 +3,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
   {
-    ignores: ["dist/**", ".tmp/**", ".vite/**"],
+    ignores: ["dist/**", "editor/dist/**", ".tmp/**", ".vite/**"],
   },
   {
     files: ["**/*.{js,jsx}"],

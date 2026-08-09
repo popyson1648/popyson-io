@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 declare module "virtual:theme.css";
 declare module "*.css";
 declare module "/pagefind/pagefind.js";

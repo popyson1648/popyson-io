@@ -1,12 +1,18 @@
 /* ============================================================
    App shell: routing, theme, language
    ============================================================ */
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AppCtx, Footer, TopBar } from "./components.jsx";
 import { AboutPage, ApplicationDetail, ApplicationPage, ReadingPage, RssPage } from "./pages.jsx";
-import { Article, BlogList } from "./blog.jsx";
 import { headModel, localized } from "./meta.js";
 import { parseRoute } from "./routing.js";
+
+const BlogList = lazy(() =>
+  import("./blogRoute.jsx").then((module) => ({ default: module.BlogList })),
+);
+const Article = lazy(() =>
+  import("./blogRoute.jsx").then((module) => ({ default: module.Article })),
+);
 
 const RISOGRAPH_DEFAULTS = {
   bgNoiseOpacity: 30,
@@ -258,7 +264,15 @@ export default function App() {
         </svg>
         <TopBar />
         <main id="main" className="app-main" tabIndex={-1}>
-          {page}
+          <Suspense
+            fallback={
+              <div className="container route-fade">
+                {lang === "ja" ? "読み込み中…" : "Loading…"}
+              </div>
+            }
+          >
+            {page}
+          </Suspense>
         </main>
         <Footer />
       </div>

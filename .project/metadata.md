@@ -3,6 +3,17 @@
 Blog posts live in `src/content/posts/<post-id>/index.{ja,en}.md`.
 Each Markdown file must start with TOML front matter delimited by `+++`.
 
+Before publication, editor-managed Markdown and body images live under
+`.drafts/posts/<post-id>/`, with images in its `assets/` directory. Saving a
+draft does not change the published copy under `src/content/`. Markdown refers
+to the build-stable URL `/content-assets/posts/<post-id>/<file>`; the editor
+server resolves that URL from the draft first, then from published content.
+
+Publishing validates both locales and promotes the complete draft directory,
+including assets, to `src/content/posts/<post-id>/`. Production builds copy only
+published assets. Do not move editor-managed images to `public/`. The `.drafts/`
+tree is Git-ignored local state and is not backed up or synchronized.
+
 ## Required Fields
 
 - `title`: non-empty string.

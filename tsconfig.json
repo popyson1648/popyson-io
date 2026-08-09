@@ -16,10 +16,11 @@
   "include": [
     "eslint.config.js",
     "vite.config.js",
+    "editor/vite.config.js",
     "scripts/**/*.mjs",
     "src/**/*.js",
     "src/**/*.jsx",
     "src/**/*.d.ts"
   ],
-  "exclude": ["dist", ".tmp", ".vite", "node_modules"]
+  "exclude": ["dist", "editor/dist", ".tmp", ".vite", "node_modules"]
 }

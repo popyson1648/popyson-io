@@ -5,8 +5,13 @@ import "virtual:theme.css"; // color tokens generated from src/content/theme.tom
 import "./app.css";
 import "./data.js";
 import "./i18n.js";
-import "./articleBody.js";
 import App from "./app.jsx";
+
+// Keep prerendered Blog/article HTML visible while its lazy route chunk loads on
+// a direct visit. Other entry routes avoid downloading that chunk altogether.
+if (/^\/(?:en\/)?blog(?:\/|$)/.test(window.location.pathname)) {
+  await import("./blogRoute.jsx").catch(() => {});
+}
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

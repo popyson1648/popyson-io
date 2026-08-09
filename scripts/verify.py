@@ -18,6 +18,7 @@ DEFAULT_ORDER = [
     "metadata_quality",
     "typecheck",
     "build",
+    "editor_build",
     "test_unit",
     "test_integration",
     "test_e2e",

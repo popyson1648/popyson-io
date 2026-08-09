@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { parse as parseToml } from "smol-toml";
+import { contentAssetsPlugin } from "./scripts/contentAssetsPlugin.mjs";
+import { editorApiPlugin } from "./scripts/editorApiPlugin.mjs";
 import {
   contentWatchFiles,
   loadSiteContent,
@@ -91,7 +93,7 @@ function generateThemeCss() {
 
 // `import "virtual:theme.css"` -> CSS generated from theme.toml at
 // build/dev time, so colors ship in the bundled (and prerendered) CSS.
-function themeCssPlugin() {
+export function themeCssPlugin() {
   return {
     name: "theme-css",
     resolveId(id) {
@@ -152,5 +154,17 @@ function rssFeed() {
 }
 
 export default defineConfig({
-  plugins: [react(), themeCssPlugin(), siteContentPlugin(), tomlImportPlugin(), rssFeed()],
+  plugins: [
+    react(),
+    contentAssetsPlugin({ preferDrafts: process.env.CONTENT_EDITOR_ENABLED === "1" }),
+    editorApiPlugin({
+      enabled: process.env.CONTENT_EDITOR_ENABLED === "1",
+      trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,
+      tailscaleLogin: process.env.CONTENT_EDITOR_TAILSCALE_LOGIN,
+    }),
+    themeCssPlugin(),
+    siteContentPlugin(),
+    tomlImportPlugin(),
+    rssFeed(),
+  ],
 });

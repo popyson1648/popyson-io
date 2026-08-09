@@ -24,6 +24,18 @@ export const KINDS = {
   },
 };
 
+export function contentScope(kindName, id = "") {
+  const kind = KINDS[kindName];
+  if (!kind) throw new Error(`Unknown content kind: ${kindName}`);
+  if (!id) return kind.prefix;
+  const scope = `${kind.prefix}${id}/`;
+  const match = kind.idPattern.exec(scope);
+  if (!match || match[0] !== scope || match[1] !== id) {
+    throw new Error(`Invalid ${kind.noun} id: ${id}`);
+  }
+  return scope;
+}
+
 function git(args) {
   return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 }
@@ -61,8 +73,8 @@ export function contentIdsFromStatus(output, idPattern) {
 }
 
 // Ids with any staged, unstaged, or untracked change under their directory.
-function changedIds(kind) {
-  const output = gitVerbatim(["status", "--porcelain", "-uall", "--", kind.prefix]);
+function changedIds(kind, scope = kind.prefix) {
+  const output = gitVerbatim(["status", "--porcelain", "-uall", "--", scope]);
   return contentIdsFromStatus(output, kind.idPattern);
 }
 
@@ -150,6 +162,7 @@ function pushArgs() {
 // what actually breaks CI from a content change — broken front matter, a post
 // that fails to render, a test that no longer holds.
 function runVerification() {
+  console.log("::editor-publish-phase::verification");
   console.log("Verifying before commit (npm run post:push -- --skip-verify to skip)…\n");
   try {
     execFileSync("python3", [join(ROOT, "scripts/verify.py"), "--mode", "standard"], {
@@ -163,11 +176,23 @@ function runVerification() {
   }
 }
 
+function argumentValue(args, name) {
+  const index = args.indexOf(name);
+  return index === -1 ? "" : args[index + 1] || "";
+}
+
+function stagedPaths() {
+  return tryGit(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const skipVerify = args.includes("--skip-verify");
-  const kindName = args.find((arg) => !arg.startsWith("--")) || "post";
+  const positional = args.filter(
+    (arg, index) => !arg.startsWith("--") && args[index - 1] !== "--id",
+  );
+  const kindName = positional[0] || "post";
   const kind = KINDS[kindName];
   if (!kind) {
     console.error(`Unknown content kind: ${kindName}. Expected one of ${Object.keys(KINDS)}.`);
@@ -175,9 +200,37 @@ function main() {
     return;
   }
 
-  const ids = changedIds(kind);
+  const requestedId = argumentValue(args, "--id");
+  let scope;
+  try {
+    scope = contentScope(kindName, requestedId);
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+    return;
+  }
+  const ids = changedIds(kind, scope);
   if (ids.length === 0) {
-    console.log(`No ${kind.noun} changes under ${kind.prefix}.`);
+    console.log(`No ${kind.noun} changes under ${scope}.`);
+    // The editor retains its draft when a commit succeeds but its push fails.
+    // A retry materializes the same bytes, so there is no new diff; push the
+    // existing local commit instead of reporting a false success.
+    if (requestedId && !dryRun) {
+      const alreadyStagedOutside = stagedPaths().filter((path) => !path.startsWith(scope));
+      if (alreadyStagedOutside.length > 0) {
+        console.error(`Staged changes outside ${scope}:`);
+        for (const path of alreadyStagedOutside) console.error(`  ${path}`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log("Retrying push of the current branch…");
+      execFileSync("git", pushArgs(), { cwd: ROOT, stdio: "inherit" });
+    }
+    return;
+  }
+  if (requestedId && (ids.length !== 1 || ids[0] !== requestedId)) {
+    console.error(`Could not isolate ${kind.noun} ${requestedId}.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -197,25 +250,37 @@ function main() {
     return;
   }
 
-  git(["add", "--all", "--", kind.prefix]);
-  const staged = tryGit(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+  const alreadyStagedOutside = stagedPaths().filter((path) => !path.startsWith(scope));
+  if (alreadyStagedOutside.length > 0) {
+    console.error(`Staged changes outside ${scope}:`);
+    for (const path of alreadyStagedOutside) console.error(`  ${path}`);
+    console.error("Unstage them (git restore --staged <path>) and run again.");
+    process.exitCode = 1;
+    return;
+  }
+
+  git(["add", "--all", "--", scope]);
+  const staged = stagedPaths();
   if (staged.length === 0) {
     console.log("Nothing staged after add; working tree matches HEAD.");
     return;
   }
   // `git commit` records the whole index, so anything staged earlier would ride
   // along in a commit that claims to be about this content kind.
-  const outside = staged.filter((path) => !path.startsWith(kind.prefix));
+  const outside = staged.filter((path) => !path.startsWith(scope));
   if (outside.length > 0) {
-    console.error(`Staged changes outside ${kind.prefix}:`);
+    console.error(`Staged changes outside ${scope}:`);
     for (const path of outside) console.error(`  ${path}`);
     console.error("Unstage them (git restore --staged <path>) and run again.");
     process.exitCode = 1;
     return;
   }
 
+  console.log("::editor-publish-phase::commit");
   execFileSync("git", ["commit", "-m", message], { cwd: ROOT, stdio: "inherit" });
+  console.log("::editor-publish-phase::push");
   execFileSync("git", pushArgs(), { cwd: ROOT, stdio: "inherit" });
+  console.log("::editor-publish-phase::deployment_pending");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

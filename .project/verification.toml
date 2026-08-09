@@ -54,6 +54,14 @@ command = "npm run build"
 run_pre_push = true
 run_in_ci = true
 
+[phases.editor_build]
+enabled = true
+command = "npm run editor:build"
+run_on_edit = false
+run_standard = true
+run_pre_push = true
+run_in_ci = true
+
 [phases.test_unit]
 enabled = true
 command = "npx vitest run --project unit"

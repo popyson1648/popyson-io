@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { commitMessage, contentIdsFromStatus, KINDS } from "../scripts/publish_content.mjs";
+import {
+  commitMessage,
+  contentIdsFromStatus,
+  contentScope,
+  KINDS,
+} from "../scripts/publish_content.mjs";
 
 const post = (state, title, id = "20260728-e2c1267f") => ({ id, state, title });
 
@@ -144,5 +149,23 @@ describe("commitMessage", () => {
 
     expect(subject).toBe("chore(content): add 1 post, update 1 post");
     expect(subject.length).toBeLessThanOrEqual(72);
+  });
+});
+
+describe("contentScope", () => {
+  test("limits an editor publish to one post directory", () => {
+    expect(contentScope("post", "20260729-165412")).toBe("src/content/posts/20260729-165412/");
+  });
+
+  test("limits an editor publish to one work directory", () => {
+    expect(contentScope("work", "linewatch")).toBe("src/content/works/linewatch/");
+  });
+
+  test.each([
+    ["post", "../works/linewatch"],
+    ["work", "LineWatch"],
+    ["work", "a/b"],
+  ])("rejects an unsafe %s id", (kind, id) => {
+    expect(() => contentScope(kind, id)).toThrow(/Invalid/);
   });
 });

@@ -1,0 +1,69 @@
+import { readFileSync } from "node:fs";
+import { extname } from "node:path";
+
+import {
+  EditorContentError,
+  listContentAssets,
+  resolveContentAsset,
+} from "./contentEditorModel.mjs";
+
+const CONTENT_TYPES = {
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+};
+
+function assetRequest(pathname) {
+  const match = /^\/content-assets\/(posts|works)\/([^/]+)\/([^/]+)$/.exec(pathname);
+  if (!match) return null;
+  return { segment: match[1], id: match[2], name: match[3] };
+}
+
+export function contentAssetsPlugin({ preferDrafts = false, emitAssets = true } = {}) {
+  const configureMiddleware = (server) => {
+    server.middlewares.use((request, response, next) => {
+      const pathname = new URL(request.url || "/", "http://editor.local").pathname;
+      const asset = assetRequest(pathname);
+      if (!asset) return next();
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        response.statusCode = 405;
+        response.end("Method not allowed");
+        return;
+      }
+      try {
+        const filePath = resolveContentAsset(asset.segment, asset.id, asset.name, {
+          preferDraft: preferDrafts,
+        });
+        response.statusCode = 200;
+        response.setHeader(
+          "Content-Type",
+          CONTENT_TYPES[extname(filePath).toLowerCase()] || "application/octet-stream",
+        );
+        response.setHeader("Cache-Control", "no-store");
+        response.end(request.method === "HEAD" ? undefined : readFileSync(filePath));
+      } catch (error) {
+        response.statusCode = error instanceof EditorContentError ? error.status : 500;
+        response.end(error.message);
+      }
+    });
+  };
+
+  return {
+    name: "content-assets",
+    configureServer: configureMiddleware,
+    configurePreviewServer: configureMiddleware,
+    generateBundle() {
+      if (!emitAssets) return;
+      for (const asset of listContentAssets()) {
+        this.addWatchFile(asset.filePath);
+        this.emitFile({
+          type: "asset",
+          fileName: asset.outputPath,
+          source: readFileSync(asset.filePath),
+        });
+      }
+    },
+  };
+}

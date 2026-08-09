@@ -28,7 +28,7 @@ check (`tests/check_accessibility_static.py`) stays a standalone phase.
   against the built Japanese/English indexes, and a prerender smoke check that
   every route/locale bakes its primary body into the static `#root`.
 - Metadata generation check: statically verifies generated metadata is written back.
-- Build: Vite production build.
+- Build: Vite production builds for the public site and the isolated local editor.
 - Secret scan: Gitleaks over pushed and proposed changes.
 - Performance: Lighthouse CI against the built static app.
 

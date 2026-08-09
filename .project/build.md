@@ -109,10 +109,13 @@ immediately. All private Markdown and images live under the Git-ignored
 commits, or pushes. This directory is local authoring state: it is not backed up
 or synchronized, so copy it separately if unpublished work needs a backup.
 
-`Publish` validates the complete Japanese and English pair, promotes only the
-open draft to `src/content/`, runs standard verification, commits only that
-item's content directory, and pushes the current branch. The private draft is
-removed only after the push succeeds. Publishing never merges.
+`Publish` is available only when the editor runs from `main`. It validates the
+complete Japanese and English pair, promotes only the open draft to
+`src/content/`, runs standard verification, commits only that item's content
+directory, and pushes `main`. The private draft is removed only after the push
+succeeds; the resulting site deployment is reported as pending. Before-commit
+failures restore the prior public content, and later failures retain the draft
+for recovery. Publishing never merges.
 
 The local bundle is regenerated at normal startup and is not a source or backup
 directory. Build it without starting the server with `npm run editor:build`.

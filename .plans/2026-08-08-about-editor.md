@@ -29,6 +29,7 @@ already used for Blog and Works.
 - Render About preview with the same `AboutPage` component and public CSS used
   by the production site, rather than maintaining duplicate preview markup.
 - Publish the four About TOML files and About assets as one isolated commit.
+- Treat the Japanese and English repeatable rows as one persistence unit: reject existing or submitted parity mismatches before editing or saving, then atomically replace all four TOML files so a partial locale write cannot drift the pairs.
 
 ## Non-goals
 
@@ -41,8 +42,12 @@ already used for Blog and Works.
 
 - "Aboutを編集" includes both the profile and the News section because both
   are authored under `src/content/about/` and rendered on the About page.
-- Japanese and English array rows remain paired by position. The UI will edit
-  them as shared rows with locale-specific values so parity cannot drift.
+- Japanese and English array rows remain paired by position. Loading and saving
+  validate equal row counts before the shared-row UI is exposed, and a mismatch
+  is a blocking validation error rather than data the editor silently repairs.
+- Saving writes the Japanese and English profile and News TOML files to temporary
+  siblings first, validates the complete set, and replaces the four live files
+  as one operation with rollback if any replacement fails.
 - Existing About TOML comments may be normalized when the structured data is
   first saved; the semantic data and public output remain unchanged.
 
@@ -51,8 +56,9 @@ already used for Blog and Works.
 1. Add the stable Tailscale Serve URL, loopback-only Vite binding, Tailscale
    identity and Origin authorization, strict editor port, documentation, and
    security tests.
-2. Add an About draft model for the four TOML files, revisions, validation,
-   checkpoints, restore, discard, asset conversion, and atomic promotion.
+2. Add an About draft model for the four TOML files, revisions, strict locale-row
+   parity validation on load and save, checkpoints, restore, discard, asset
+   conversion, atomic paired-locale saves, and atomic promotion.
 3. Extend the editor API, content list, asset serving/build emission, and
    publish command with the fixed About identifier and isolated content scope.
 4. Add structured SmartHR UI forms for profile, paired repeatable sections,
@@ -66,8 +72,10 @@ already used for Blog and Works.
 
 ## Verification
 
-- Test TOML round trips, locale row parity, invalid dates/URLs, revision
-  conflicts, history restoration, discard, and failed promotion rollback.
+- Test TOML round trips, rejection of pre-existing and submitted locale-row
+  parity mismatches, rollback after each possible partial four-file save,
+  invalid dates/URLs, revision conflicts, history restoration, discard, and
+  failed promotion rollback.
 - Test loopback address and host handling, Tailscale host/login enforcement,
   same-origin mutation enforcement, token removal, and strict-port behavior.
 - Test About-only Git scope and ensure Blog/Works/public site behavior does not

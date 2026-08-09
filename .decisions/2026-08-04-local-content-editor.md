@@ -28,11 +28,13 @@ Private saves remain Markdown with TOML front matter under the Git-ignored
 `/content-assets/<kind>/<id>/<file>`, while production emits only published
 assets from `src/content/`, so preview and production use one stable URL.
 
-Publishing validates both locale files, promotes the selected draft to
-`src/content/`, verifies the repository, then commits and pushes only the
-currently open content directory. It removes the private draft only after a
-successful push. It never merges, stages unrelated paths, or enables a backend
-in the deployed site.
+Publishing is available only from `main`. It validates both locale files,
+promotes the selected draft to `src/content/`, verifies the repository, then
+commits and pushes only the currently open content directory. It removes the
+private draft only after a successful push and reports deployment as pending.
+Before-commit failures restore the prior public content, while later failures
+retain the draft for recovery. It never merges, stages unrelated paths, or
+enables a backend in the deployed site.
 
 ## Context
 

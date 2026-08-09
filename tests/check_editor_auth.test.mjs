@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { contentAssetsPlugin } from "../scripts/contentAssetsPlugin.mjs";
 import {
   editorRequestAccess,
   isLoopbackAddress,
@@ -11,6 +12,7 @@ import {
   editorStartupMessages,
   parseTailscaleIdentity,
   tailscaleServeArguments,
+  tailscaleServeOffArguments,
   viteEditorPreviewOptions,
   viteEditorServerOptions,
 } from "../scripts/editorServer.mjs";
@@ -41,6 +43,27 @@ const accessOptions = {
   trustedHost: "wsl-ubuntu.tail29f20.ts.net",
   tailscaleLogin: "popyson1648@github",
 };
+
+function assetResponse() {
+  return {
+    headers: {},
+    statusCode: 0,
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    end(body) {
+      this.body = body;
+    },
+  };
+}
+
+function contentAssetMiddleware(options) {
+  let middleware;
+  contentAssetsPlugin(options).configureServer({
+    middlewares: { use: (candidate) => (middleware = candidate) },
+  });
+  return middleware;
+}
 
 describe("editor Tailscale Serve authorization", () => {
   test.each(["127.0.0.1", "127.12.34.56", "::1", "::ffff:127.0.0.1"])(
@@ -123,20 +146,49 @@ describe("editor Tailscale Serve authorization", () => {
     ],
     [
       "a different Tailscale host",
-      { host: "other.tail29f20.ts.net:4173", tailscaleLogin: "popyson1648@github" },
+      {
+        host: "other.tail29f20.ts.net:4173",
+        tailscaleLogin: "popyson1648@github",
+      },
     ],
     ["a missing Tailscale identity", { host: "wsl-ubuntu.tail29f20.ts.net:4173" }],
     [
       "a different Tailscale user",
-      { host: "wsl-ubuntu.tail29f20.ts.net:4173", tailscaleLogin: "other@example.com" },
+      {
+        host: "wsl-ubuntu.tail29f20.ts.net:4173",
+        tailscaleLogin: "other@example.com",
+      },
     ],
     ["a missing mutation origin", { method: "POST" }],
     [
       "a cross-origin mutation",
-      { method: "POST", origin: "https://attacker.example", fetchSite: "cross-site" },
+      {
+        method: "POST",
+        origin: "https://attacker.example",
+        fetchSite: "cross-site",
+      },
     ],
   ])("denies access from %s", (_name, values) => {
     expect(editorRequestAccess(request(values), accessOptions).authorized).toBe(false);
+  });
+
+  test("protects draft content assets with the same editor authorization", () => {
+    const serveAsset = contentAssetMiddleware({
+      preferDrafts: true,
+      ...accessOptions,
+    });
+    const response = assetResponse();
+    serveAsset(
+      {
+        ...request({ address: "100.91.26.6" }),
+        url: "/content-assets/posts/private-draft/photo.png",
+      },
+      response,
+      () => {},
+    );
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toBe("Unauthorized");
+    expect(response.headers["Cache-Control"]).toBe("no-store");
   });
 });
 
@@ -230,6 +282,16 @@ describe("editor server startup", () => {
       "--yes",
       "--https=4173",
       "http://127.0.0.1:4173",
+    ]);
+  });
+
+  test("removes only the editor HTTPS listener on shutdown", () => {
+    expect(tailscaleServeOffArguments({ httpsPort: 4173 })).toEqual([
+      "serve",
+      "--bg",
+      "--yes",
+      "--https=4173",
+      "off",
     ]);
   });
 

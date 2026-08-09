@@ -148,7 +148,11 @@ function rssFeed() {
   return {
     name: "rss-feed",
     generateBundle() {
-      this.emitFile({ type: "asset", fileName: "feed.xml", source: buildFeed() });
+      this.emitFile({
+        type: "asset",
+        fileName: "feed.xml",
+        source: buildFeed(),
+      });
     },
   };
 }
@@ -156,7 +160,11 @@ function rssFeed() {
 export default defineConfig({
   plugins: [
     react(),
-    contentAssetsPlugin({ preferDrafts: process.env.CONTENT_EDITOR_ENABLED === "1" }),
+    contentAssetsPlugin({
+      preferDrafts: process.env.CONTENT_EDITOR_ENABLED === "1",
+      trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,
+      tailscaleLogin: process.env.CONTENT_EDITOR_TAILSCALE_LOGIN,
+    }),
     editorApiPlugin({
       enabled: process.env.CONTENT_EDITOR_ENABLED === "1",
       trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,

@@ -144,7 +144,10 @@ function appendJobLog(job, chunk) {
 }
 
 function git(args) {
-  return execFileSync("git", args, { cwd: editorRootDir(), encoding: "utf8" }).trim();
+  return execFileSync("git", args, {
+    cwd: editorRootDir(),
+    encoding: "utf8",
+  }).trim();
 }
 
 function currentBranch() {
@@ -220,47 +223,80 @@ function startPublish(kind, id) {
   jobs.set(job.id, job);
   activePublishJob = job.id;
 
-  const child = spawn(
-    process.execPath,
-    [join(editorRootDir(), "scripts/publish_content.mjs"), kind, "--id", id],
-    {
-      cwd: editorRootDir(),
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  child.stdout.on("data", (chunk) => appendJobLog(job, chunk));
-  child.stderr.on("data", (chunk) => appendJobLog(job, chunk));
-  child.on("error", (error) => {
-    appendJobLog(job, `${error.message}\n`);
-  });
-  child.on("close", (code) => {
+  let finalized = false;
+  const finalize = (code, startupError = null) => {
+    if (finalized) return;
+    finalized = true;
     job.exitCode = code;
-    job.status = code === 0 ? "succeeded" : "failed";
-    job.phase = code === 0 ? "deployment_pending" : job.phase;
-    job.deploymentStatus = code === 0 ? "pending" : "not_started";
-    if (code === 0) {
+    job.status = code === 0 && !startupError ? "succeeded" : "failed";
+    job.phase = job.status === "succeeded" ? "deployment_pending" : job.phase;
+    job.deploymentStatus = job.status === "succeeded" ? "pending" : "not_started";
+
+    try {
+      if (job.status === "succeeded") {
+        try {
+          removeEditorDraft(kind, id);
+          appendJobLog(job, "\nLocal draft removed after successful push.\n");
+        } catch (error) {
+          appendJobLog(
+            job,
+            `\nPush succeeded, but the local draft could not be removed: ${error.message}\n`,
+          );
+        }
+        return;
+      }
+
+      let currentHead = "";
       try {
-        removeEditorDraft(kind, id);
-        appendJobLog(job, "\nLocal draft removed after successful push.\n");
+        currentHead = git(["rev-parse", "HEAD"]);
       } catch (error) {
         appendJobLog(
           job,
-          `\nPush succeeded, but the local draft could not be removed: ${error.message}\n`,
+          `\nUnable to inspect Git state; public content was not restored automatically: ${error.message}\n`,
         );
       }
-    } else if (git(["rev-parse", "HEAD"]) === rollback.head) {
-      try {
-        rollback.restore();
-        appendJobLog(job, "\nPublish failed before commit; public content was restored.\n");
-      } catch (error) {
-        appendJobLog(job, `\nPublic content restoration failed: ${error.message}\n`);
+      if (currentHead === rollback.head) {
+        try {
+          rollback.restore();
+          appendJobLog(job, "\nPublish failed before commit; public content was restored.\n");
+        } catch (error) {
+          appendJobLog(job, `\nPublic content restoration failed: ${error.message}\n`);
+        }
       }
+    } finally {
+      try {
+        rollback.cleanup();
+      } catch (error) {
+        appendJobLog(job, `\nPublish backup cleanup failed: ${error.message}\n`);
+      }
+      job.updatedAt = new Date().toISOString();
+      if (activePublishJob === job.id) activePublishJob = "";
     }
-    rollback.cleanup();
-    job.updatedAt = new Date().toISOString();
-    activePublishJob = "";
+  };
+
+  let child;
+  try {
+    child = spawn(
+      process.execPath,
+      [join(editorRootDir(), "scripts/publish_content.mjs"), kind, "--id", id],
+      {
+        cwd: editorRootDir(),
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+  } catch (error) {
+    appendJobLog(job, `Unable to start publish process: ${error.message}\n`);
+    finalize(null, error);
+    return job;
+  }
+  child.stdout.on("data", (chunk) => appendJobLog(job, chunk));
+  child.stderr.on("data", (chunk) => appendJobLog(job, chunk));
+  child.on("error", (error) => {
+    appendJobLog(job, `Unable to start publish process: ${error.message}\n`);
+    finalize(null, error);
   });
+  child.on("close", (code) => finalize(code));
   return job;
 }
 
@@ -278,7 +314,9 @@ async function handleApi(request, response, pathname) {
   if (request.method === "POST" && pathname === "/api/editor/preview") {
     const body = await readJson(request);
     const copyLabel = body.locale === "ja" ? "コードをコピー" : "Copy code";
-    sendJson(response, 200, { html: await renderArticleHtml(body.markdown, { copyLabel }) });
+    sendJson(response, 200, {
+      html: await renderArticleHtml(body.markdown, { copyLabel }),
+    });
     return;
   }
 
@@ -300,7 +338,9 @@ async function handleApi(request, response, pathname) {
       sendJson(
         response,
         200,
-        saveEditorContent(kind, id, body.files, { checkpoint: Boolean(body.checkpoint) }),
+        saveEditorContent(kind, id, body.files, {
+          checkpoint: Boolean(body.checkpoint),
+        }),
       );
       return;
     }

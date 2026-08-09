@@ -61,8 +61,9 @@ absolute development URLs and editor APIs.
 - Tailscale must be installed, connected, and permitted to configure Serve in
   WSL before `npm run editor` starts successfully.
 - The bookmarked URL includes HTTPS port 4173.
-- `npm run editor:stop` stops the Vite process. The persistent Serve mapping may
-  remain configured and returns no editor while the backend is stopped.
+- `npm run editor:stop` removes only the dedicated HTTPS port-4173 Serve listener
+  and then stops Vite. Startup failures also attempt that listener cleanup; the
+  existing port-443 service is never reset.
 - Tailnet policy remains an administrator-managed control outside this
   repository.
 - Production builds and the normal site remain unaware of the editor.

@@ -6,6 +6,7 @@ import {
   listContentAssets,
   resolveContentAsset,
 } from "./contentEditorModel.mjs";
+import { editorRequestAccess } from "./editorApiPlugin.mjs";
 
 const CONTENT_TYPES = {
   ".gif": "image/gif",
@@ -21,7 +22,12 @@ function assetRequest(pathname) {
   return { segment: match[1], id: match[2], name: match[3] };
 }
 
-export function contentAssetsPlugin({ preferDrafts = false, emitAssets = true } = {}) {
+export function contentAssetsPlugin({
+  preferDrafts = false,
+  emitAssets = true,
+  trustedHost = "",
+  tailscaleLogin = "",
+} = {}) {
   const configureMiddleware = (server) => {
     server.middlewares.use((request, response, next) => {
       const pathname = new URL(request.url || "/", "http://editor.local").pathname;
@@ -30,6 +36,15 @@ export function contentAssetsPlugin({ preferDrafts = false, emitAssets = true } 
       if (request.method !== "GET" && request.method !== "HEAD") {
         response.statusCode = 405;
         response.end("Method not allowed");
+        return;
+      }
+      if (
+        preferDrafts &&
+        !editorRequestAccess(request, { trustedHost, tailscaleLogin }).authorized
+      ) {
+        response.statusCode = 401;
+        response.setHeader("Cache-Control", "no-store");
+        response.end("Unauthorized");
         return;
       }
       try {
@@ -45,7 +60,10 @@ export function contentAssetsPlugin({ preferDrafts = false, emitAssets = true } 
         response.end(request.method === "HEAD" ? undefined : readFileSync(filePath));
       } catch (error) {
         response.statusCode = error instanceof EditorContentError ? error.status : 500;
-        response.end(error.message);
+        if (!(error instanceof EditorContentError)) {
+          console.error("Unable to serve a content asset", error);
+        }
+        response.end(error instanceof EditorContentError ? error.message : "Unable to serve asset");
       }
     });
   };

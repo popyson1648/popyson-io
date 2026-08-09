@@ -30,12 +30,12 @@ Add a simple, responsive web editor for authoring the repository's bilingual Blo
 - Add responsive behavior:
   - Desktop: content sidebar, metadata panel, and resizable write/preview workspace with write, split, and preview modes.
   - Mobile: stacked screens, sticky actions, horizontally scrollable formatting controls, and explicit write/preview switching.
-- Protect write APIs with a random token generated for each editor-server run. Bind to the local network by default for phone access and document an explicit loopback-only option.
+- Bind Vite to loopback only. Permit remote use exclusively through the dedicated Tailscale Serve listener after validating its DNS host, injected owner login, and same-origin mutations; keep localhost as the recovery path and do not put a token in the bookmarked URL.
 - Add a `Save and publish` action for the content currently open in the editor:
   - save and validate both locale files;
   - run the repository's standard verification;
   - stage only that content directory, including its `assets/` files;
-  - create the existing content-style commit message and push the current branch through the existing configured remote/upstream rules;
+  - require the `main` deployment branch, create the existing content-style commit message, and push `main` through the configured remote/upstream rules;
   - stream progress and return actionable verification, Git, and push errors in the UI.
 - Keep `Save` and `Save and publish` as separate explicit actions, with a confirmation dialog before publishing and protection against concurrent publish jobs.
 - Add component, unit, and API-level tests for editor state, serialization, path validation, preview, save conflicts, uploads, and responsive controls.
@@ -57,16 +57,17 @@ Add a simple, responsive web editor for authoring the repository's bilingual Blo
 - Japanese and English files continue to be created together, but each locale may be edited independently.
 - Manual save is authoritative. A small browser recovery draft may be kept locally to recover from refresh/crash, but it does not write repository files until the user saves.
 - `smarthr-ui` version 99 is compatible with the repository's React 19 setup; required `react-intl` and `styled-components` peer dependencies will be added.
-- Phone access is expected on a trusted local network. The standard command binds to the LAN and retains per-run token protection; authors can explicitly request a loopback-only bind.
+- Phone access uses a stable Tailscale Serve HTTPS URL. Vite remains bound to `127.0.0.1`; requests forwarded by Serve are accepted only for the detected Tailscale DNS host and owner login, while localhost remains available for recovery.
 - Uploaded images are limited to PNG, JPEG, WebP, and GIF with a conservative size limit; SVG and arbitrary files are rejected. Names are sanitized and collisions receive deterministic suffixes instead of overwriting an existing asset.
-- Publishing is intentionally limited to the currently open Blog post or Work. Existing staged changes outside that content directory, a detached branch, a missing upstream/remote, verification failures, and push failures stop the operation without widening the Git scope.
-- The editor never merges a branch. A successful publish means commit and push to the current branch, matching the repository's existing content publishing behavior.
+- Publishing is intentionally limited to the currently open Blog post or Work and to `main`. Existing staged changes outside that content directory, a detached or non-`main` branch, a missing upstream/remote, verification failures, and push failures stop the operation without widening the Git scope.
+- The editor never merges a branch. A successful publish means verification, an isolated commit, and a successful push to `main`; deployment is then reported as pending because the editor does not wait for the hosting workflow.
+- The private draft is retained through verification, commit, and push. It is removed only after the push succeeds. Before-commit failures restore the prior public content from a temporary backup, while later failures retain the draft for recovery and retry.
 
 ## Steps
 
-1. Add and document the accepted editor-server architecture, content API contract, asset URL/build mapping, publish boundary, session-token handling, and frontend route isolation.
+1. Add and document the accepted editor-server architecture, content API contract, asset URL/build mapping, main-only publish boundary, Tailscale identity handling, and frontend route isolation.
 2. Refactor the existing post/work scaffold and frontmatter serialization logic into reusable, tested modules without changing current CLI behavior.
-3. Implement the editor server entry point and token-protected APIs for listing, reading, creating, previewing, saving, uploading assets, and publishing the current content item.
+3. Implement the editor server entry point and Tailscale/localhost-authorized APIs for listing, reading, creating, previewing, saving, uploading assets, and publishing the current content item.
 4. Add a development-only `/editor` frontend entry, SmartHR UI providers, responsive application shell, content navigation, and loading/error/empty states.
 5. Build the schema-aware metadata forms, locale switching, draft model, dirty/conflict handling, keyboard shortcuts, and save feedback.
 6. Build the Markdown toolbar, selection transforms, drag/paste upload flow, live preview, writing metrics, and desktop/mobile layout modes.
@@ -80,11 +81,11 @@ Add a simple, responsive web editor for authoring the repository's bilingual Blo
 - `python3 scripts/verify.py`
 - Start `npm run editor`, then verify create/open/edit/preview/save/reload for one Blog post and one Work without committing the temporary content changes.
 - Upload, paste, and drag one image into each content kind; verify the source file lands in that entry's `assets/` directory and the same stable URL renders in editor preview, Vite development, and the production build.
-- Verify invalid slugs, traversal attempts, unsupported uploads, invalid metadata, stale revisions, and missing/incorrect tokens are rejected without modifying files.
-- Exercise publishing against a disposable local Git remote: verify only the open entry and its assets are staged, verification runs before commit, the expected content-style commit is pushed, and failures leave unrelated files and staged changes untouched.
+- Verify invalid slugs, traversal attempts, unsupported uploads, invalid metadata, stale revisions, and unauthorized host/login/origin combinations are rejected without modifying files.
+- Exercise publishing from `main` against a disposable local Git remote: verify only the open entry and its assets are staged, verification runs before commit, the expected content-style commit is pushed, deployment is reported as pending, the draft is removed only after push success, and failures leave unrelated files and staged changes untouched while preserving a recoverable draft.
 - Verify the public production build has no active editor write API and existing About, Blog, Works, Reading, article, RSS, and English routes still build and render.
 - Inspect the editor in desktop and phone-sized viewports, including keyboard navigation, visible labels, focus behavior, overflow, editor/preview switching, uploads, and save status.
 
 ## Open Issues
 
-- None. AI-assisted metadata and translation remain in the existing CLI/CI workflows. The editor publish action reuses the repository's verification and Git rules but never merges branches.
+- The original LAN binding, per-run URL token, and current-branch publish assumptions were superseded by the accepted loopback-plus-Tailscale and main-only publication decisions. AI-assisted metadata and translation remain in the existing CLI/CI workflows.

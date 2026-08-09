@@ -60,7 +60,9 @@ export function readTailscaleIdentity(run = execFileSync) {
       ),
     );
   } catch (error) {
-    throw new Error(`Unable to read Tailscale identity: ${error.message}`, { cause: error });
+    throw new Error(`Unable to read Tailscale identity: ${error.message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -68,12 +70,35 @@ export function tailscaleServeArguments({ httpsPort, upstreamPort }) {
   return ["serve", "--bg", "--yes", `--https=${httpsPort}`, `http://127.0.0.1:${upstreamPort}`];
 }
 
+export function tailscaleServeOffArguments({ httpsPort }) {
+  return ["serve", "--bg", "--yes", `--https=${httpsPort}`, "off"];
+}
+
 export function configureTailscaleServe(options, run = execFileSync) {
   try {
-    run("tailscale", tailscaleServeArguments(options), { encoding: "utf8", stdio: "pipe" });
+    run("tailscale", tailscaleServeArguments(options), {
+      encoding: "utf8",
+      stdio: "pipe",
+    });
   } catch (error) {
     const detail = String(error.stderr || error.message || "unknown error").trim();
-    throw new Error(`Unable to configure Tailscale Serve: ${detail}`, { cause: error });
+    throw new Error(`Unable to configure Tailscale Serve: ${detail}`, {
+      cause: error,
+    });
+  }
+}
+
+export function removeTailscaleServe(options, run = execFileSync) {
+  try {
+    run("tailscale", tailscaleServeOffArguments(options), {
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const detail = String(error.stderr || error.message || "unknown error").trim();
+    throw new Error(`Unable to remove Tailscale Serve listener: ${detail}`, {
+      cause: error,
+    });
   }
 }
 
@@ -132,8 +157,19 @@ export async function startEditorServer(args = process.argv.slice(2)) {
       });
     }
   } catch (error) {
+    let startupError = error;
+    if (identity) {
+      try {
+        removeTailscaleServe({ httpsPort: options.tailscaleHttpsPort });
+      } catch (cleanupError) {
+        startupError = new AggregateError(
+          [error, cleanupError],
+          `${error.message} Cleanup also failed: ${cleanupError.message}`,
+        );
+      }
+    }
     await server.close();
-    throw error;
+    throw startupError;
   }
   mkdirSync(dirname(EDITOR_PID_FILE), { recursive: true });
   writeFileSync(EDITOR_PID_FILE, `${process.pid}\n`, { mode: 0o600 });
@@ -152,9 +188,23 @@ export async function startEditorServer(args = process.argv.slice(2)) {
   const stop = async () => {
     if (stopping) return;
     stopping = true;
+    let exitCode = 0;
+    if (identity) {
+      try {
+        removeTailscaleServe({ httpsPort: options.tailscaleHttpsPort });
+      } catch (error) {
+        exitCode = 1;
+        console.error(error.message);
+      }
+    }
+    try {
+      await server.close();
+    } catch (error) {
+      exitCode = 1;
+      console.error(`Unable to close editor server: ${error.message}`);
+    }
     removeOwnPidFile();
-    await server.close();
-    process.exit(0);
+    process.exit(exitCode);
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);

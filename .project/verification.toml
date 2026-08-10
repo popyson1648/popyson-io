@@ -48,6 +48,14 @@ command = "npm run typecheck"
 run_standard = true
 run_in_ci = true
 
+# The content Worker has its own tsconfig because it targets the Workers
+# runtime types, so the root typecheck phase does not cover it.
+[phases.content_worker_typecheck]
+enabled = true
+command = "npm run content:worker:typecheck"
+run_standard = true
+run_in_ci = true
+
 [phases.build]
 enabled = true
 command = "npm run build"
@@ -65,6 +73,14 @@ run_in_ci = true
 [phases.test_unit]
 enabled = true
 command = "npx vitest run --project unit"
+run_standard = true
+run_in_ci = true
+
+# Runs in the Workers pool against a local D1 instance, so it needs its own
+# Vitest root rather than a project inside the root workspace.
+[phases.content_worker_test]
+enabled = true
+command = "npm run content:worker:test"
 run_standard = true
 run_in_ci = true
 

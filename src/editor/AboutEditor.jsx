@@ -249,7 +249,12 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
             width="100%"
             rows={5}
             value={(person.bio || []).join("\n\n")}
-            onChange={(event) => setPerson("bio", event.target.value.split(/\n\s*\n/))}
+            onChange={(event) =>
+              setPerson(
+                "bio",
+                event.target.value.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()),
+              )
+            }
           />
         </FormControl>
       </section>

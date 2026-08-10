@@ -164,11 +164,22 @@ describe("private editor drafts", () => {
       const opened = readEditorContent("about", "about");
       opened.files.ja.meta.person.name = "下書き名";
       opened.files.en.meta.person.name = "Draft name";
-      const first = saveEditorContent("about", "about", opened.files, { checkpoint: true });
+      let first = saveEditorContent("about", "about", opened.files, { checkpoint: true });
 
       expect(first.status).toBe("published_with_draft");
       expect(readFileSync(join(publicDir, "about.ja.toml"), "utf8")).toContain("公開名");
       expect(readFileSync(join(draftDir, "about.ja.toml"), "utf8")).toContain("下書き名");
+      expect(validateEditorDraft("about", "about")).toEqual({ valid: true, issues: [] });
+
+      first.files.ja.meta.person.bio = ["段落"];
+      first = saveEditorContent("about", "about", first.files);
+      expect(validateEditorDraft("about", "about").issues[0].message).toMatch(/^bio:/);
+      first.files.en.meta.person.bio = ["Paragraph"];
+      first.files.ja.meta.person.links = [{ label: "GitHub", href: "https://github.com/example" }];
+      first = saveEditorContent("about", "about", first.files);
+      expect(validateEditorDraft("about", "about").issues[0].message).toMatch(/^links:/);
+      first.files.en.meta.person.links = [{ label: "GitHub", href: "https://github.com/example" }];
+      first = saveEditorContent("about", "about", first.files);
       expect(validateEditorDraft("about", "about")).toEqual({ valid: true, issues: [] });
 
       const png = Buffer.from("89504e470d0a1a0a00000000", "hex");

@@ -561,13 +561,10 @@ function App() {
           : content
             ? { type: "grey", text: statusFor(content) }
             : null;
-  const basicReadiness = (
-    content?.kind === "about"
-      ? activeFile?.meta?.person?.name?.trim()
-      : activeFile?.meta?.title?.trim() && activeBody.trim()
-  )
-    ? "タイトル・本文入力済み"
-    : "未入力項目あり";
+  const basicReadiness =
+    activeFile?.meta?.title?.trim() && activeBody.trim()
+      ? "タイトル・本文入力済み"
+      : "未入力項目あり";
 
   const loadList = useCallback(async () => {
     const result = await api.list();
@@ -674,7 +671,7 @@ function App() {
         locale,
         meta: activeFile.meta,
         sharedMeta: content.files.ja.meta,
-        html: preview,
+        html: content.kind === "about" ? undefined : preview,
         metrics,
       },
     });
@@ -777,7 +774,16 @@ function App() {
   };
 
   const updateAboutFiles = (files) => {
-    setContent((current) => ({ ...cloneContent(current), files }));
+    setContent((current) => {
+      const next = cloneContent(current);
+      for (const fileLocale of LOCALES) {
+        next.files[fileLocale] = {
+          ...files[fileLocale],
+          revision: current.files[fileLocale].revision,
+        };
+      }
+      return next;
+    });
     editVersionRef.current += 1;
     autoSaveFailureVersionRef.current = -1;
     setDirty(true);
@@ -903,10 +909,14 @@ function App() {
         if (content.kind === "about") {
           setContent((current) => {
             const next = cloneContent(current);
-            for (const fileLocale of LOCALES) next.files[fileLocale].meta.person.icon = asset.url;
+            for (const fileLocale of LOCALES) {
+              next.files[fileLocale].meta.person ||= {};
+              next.files[fileLocale].meta.person.icon = asset.url;
+            }
             return next;
           });
           editVersionRef.current += 1;
+          autoSaveFailureVersionRef.current = -1;
           setDirty(true);
         } else {
           editorRef.current?.insertImage(asset.url, item.alt, {
@@ -1804,7 +1814,7 @@ function App() {
             {content?.kind === "about" ? (
               <div>
                 <dt>News</dt>
-                <dd>{content.files.ja.meta.newsItems.length}件</dd>
+                <dd>{(content?.files?.ja?.meta?.newsItems || []).length}件</dd>
               </div>
             ) : (
               <>

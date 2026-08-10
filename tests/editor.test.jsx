@@ -343,6 +343,9 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /日本語の名前/ }));
 
     expect(await screen.findByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /タイトル|記事タイトル|作品名/ }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "名前" })).toHaveValue("日本語の名前");
     expect(screen.getByRole("button", { name: "写真を選ぶ" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "撮影する" })).toBeInTheDocument();

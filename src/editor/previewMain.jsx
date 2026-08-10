@@ -51,29 +51,21 @@ function AboutPreview({ data }) {
     Number(data.meta.newsConfig?.count) || Infinity,
   );
   const [openActivity, setOpenActivity] = useState(null);
-  const labels =
-    data.locale === "ja"
-      ? {
-          news: "News",
-          activity: "Activity",
-          career: "Career",
-          education: "Education",
-          made: "Made",
-        }
-      : {
-          news: "News",
-          activity: "Activity",
-          career: "Career",
-          education: "Education",
-          made: "Made",
-        };
+  const labels = {
+    news: "News",
+    activity: "Activity",
+    career: "Career",
+    education: "Education",
+    made: "Made",
+  };
   const linkIcon = (label) => {
-    if (label === "GitHub") return <Icon.github width={15} height={15} />;
-    if (label === "X") return <Icon.xcom width={14} height={14} />;
-    if (label === "LinkedIn") return <Icon.linkedin width={15} height={15} />;
-    if (label === "Wantedly") return <Icon.wantedly width={15} height={15} />;
-    if (label === "RSS") return <Icon.rss width={15} height={15} />;
-    if (label.includes("@") || label.includes(" at ")) return <Icon.mail width={15} height={15} />;
+    const name = typeof label === "string" ? label : "";
+    if (name === "GitHub") return <Icon.github width={15} height={15} />;
+    if (name === "X") return <Icon.xcom width={14} height={14} />;
+    if (name === "LinkedIn") return <Icon.linkedin width={15} height={15} />;
+    if (name === "Wantedly") return <Icon.wantedly width={15} height={15} />;
+    if (name === "RSS") return <Icon.rss width={15} height={15} />;
+    if (name.includes("@") || name.includes(" at ")) return <Icon.mail width={15} height={15} />;
     return <Icon.ext width={14} height={14} />;
   };
 
@@ -89,10 +81,10 @@ function AboutPreview({ data }) {
             </div>
             {person.tagline && <p className="about-tag">{person.tagline}</p>}
             <div className="links-row">
-              {(person.links || []).map((link) =>
+              {(person.links || []).map((link, index) =>
                 link.href && !link.href.startsWith("mailto:") ? (
                   <a
-                    key={link.label}
+                    key={`${index}:${link.label ?? ""}`}
                     className="profile-link"
                     href={link.href}
                     target={link.href.startsWith("/") ? undefined : "_blank"}
@@ -102,7 +94,10 @@ function AboutPreview({ data }) {
                     {link.label}
                   </a>
                 ) : (
-                  <span key={link.label} className="profile-link profile-link-text">
+                  <span
+                    key={`${index}:${link.label ?? ""}`}
+                    className="profile-link profile-link-text"
+                  >
                     {linkIcon(link.label)}
                     {link.label}
                   </span>

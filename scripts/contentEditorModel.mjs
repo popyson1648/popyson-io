@@ -302,7 +302,7 @@ export function serializeEditorAbout(locale, meta, { validate = true } = {}) {
 }
 
 function validateAboutPair(files) {
-  for (const field of ["activities", "career", "education"]) {
+  for (const field of ["bio", "activities", "career", "education", "links"]) {
     const jaCount = Array.isArray(files.ja.meta?.person?.[field])
       ? files.ja.meta.person[field].length
       : 0;

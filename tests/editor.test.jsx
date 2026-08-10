@@ -270,4 +270,88 @@ describe("content editor shell", () => {
     expect(screen.queryByRole("radio", { name: "分割" })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "プレビュー" })).toBeInTheDocument();
   });
+
+  test("opens About without loading Markdown and exposes its structured fields", async () => {
+    const content = {
+      kind: "about",
+      id: "about",
+      status: "published",
+      files: {
+        ja: {
+          meta: {
+            person: {
+              icon: "/avator.jpg",
+              name: "日本語の名前",
+              role: "学生",
+              location: "Oita",
+              tagline: "",
+              bio: ["紹介"],
+              activities: [{ title: "活動", description: "" }],
+              career: [],
+              education: [],
+              links: [{ label: "GitHub", href: "https://github.com/example" }],
+            },
+            newsConfig: { file: "news.ja.toml", count: 5 },
+            newsItems: [{ date: "2026-08-10", title: "更新", description: "" }],
+          },
+          body: "",
+          revision: "ja-revision",
+        },
+        en: {
+          meta: {
+            person: {
+              icon: "/avator.jpg",
+              name: "English name",
+              role: "Student",
+              location: "Oita",
+              tagline: "",
+              bio: ["Bio"],
+              activities: [{ title: "Activity", description: "" }],
+              career: [],
+              education: [],
+              links: [{ label: "GitHub", href: "https://github.com/example" }],
+            },
+            newsConfig: { file: "news.en.toml", count: 5 },
+            newsItems: [{ date: "2026-08-10", title: "Update", description: "" }],
+          },
+          body: "",
+          revision: "en-revision",
+        },
+      },
+    };
+    const fetchMock = vi.fn(async (path) => ({
+      ok: true,
+      json: async () =>
+        path === "/api/editor/content"
+          ? {
+              items: [
+                {
+                  kind: "about",
+                  id: "about",
+                  title: { ja: "日本語の名前", en: "English name" },
+                  updatedAt: "2026-08-10T00:00:00.000Z",
+                  status: "published",
+                },
+              ],
+            }
+          : content,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(screen.getByRole("radio", { name: "About" }));
+    fireEvent.click(await screen.findByRole("button", { name: /日本語の名前/ }));
+
+    expect(await screen.findByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /タイトル|記事タイトル|作品名/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "名前" })).toHaveValue("日本語の名前");
+    expect(screen.getByRole("button", { name: "写真を選ぶ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "撮影する" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Activityを追加" })).toBeInTheDocument();
+    expect(screen.queryByRole("toolbar", { name: "Markdown書式" })).not.toBeInTheDocument();
+    expect(container.querySelector(".markdown-editor")).toBeNull();
+    expect(fetchMock.mock.calls.some(([path]) => path === "/api/editor/preview")).toBe(false);
+  });
 });

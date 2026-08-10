@@ -161,6 +161,11 @@ describe("contentScope", () => {
     expect(contentScope("work", "linewatch")).toBe("src/content/works/linewatch/");
   });
 
+  test("limits an editor publish to the fixed About directory", () => {
+    expect(contentScope("about", "about")).toBe("src/content/about/");
+    expect(() => contentScope("about", "other")).toThrow(/Invalid/);
+  });
+
   test.each([
     ["post", "../works/linewatch"],
     ["work", "LineWatch"],

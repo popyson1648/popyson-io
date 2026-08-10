@@ -4,7 +4,10 @@ import { createRoot } from "react-dom/client";
 import "../styles.css";
 import "virtual:theme.css";
 import "../app.css";
-import { Ph } from "../components.jsx";
+import { APPS } from "virtual:site-content";
+import { Icon, L, Ph } from "../components.jsx";
+import { makeDateLabel } from "../dateLabel.js";
+import { splitLinks } from "../linkText.js";
 import "./preview.css";
 
 const MESSAGE_CONTENT = "popyson-editor-preview-content";
@@ -15,11 +18,216 @@ function validPayload(value) {
   return (
     value &&
     typeof value === "object" &&
-    ["post", "work"].includes(value.kind) &&
+    ["post", "work", "about"].includes(value.kind) &&
     ["ja", "en"].includes(value.locale) &&
-    typeof value.html === "string" &&
+    (value.kind === "about" || typeof value.html === "string") &&
     value.meta &&
     typeof value.meta === "object"
+  );
+}
+
+function RichText({ text }) {
+  return splitLinks(text).map((part, index) =>
+    part.type === "link" ? (
+      <a
+        key={`${index}:${part.href}`}
+        href={part.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-link"
+      >
+        {part.value}
+      </a>
+    ) : (
+      part.value
+    ),
+  );
+}
+
+function AboutPreview({ data }) {
+  const person = data.meta.person || {};
+  const news = (data.meta.newsItems || []).slice(
+    0,
+    Number(data.meta.newsConfig?.count) || Infinity,
+  );
+  const [openActivity, setOpenActivity] = useState(null);
+  const labels = {
+    news: "News",
+    activity: "Activity",
+    career: "Career",
+    education: "Education",
+    made: "Made",
+  };
+  const linkIcon = (label) => {
+    const name = typeof label === "string" ? label : "";
+    if (name === "GitHub") return <Icon.github width={15} height={15} />;
+    if (name === "X") return <Icon.xcom width={14} height={14} />;
+    if (name === "LinkedIn") return <Icon.linkedin width={15} height={15} />;
+    if (name === "Wantedly") return <Icon.wantedly width={15} height={15} />;
+    if (name === "RSS") return <Icon.rss width={15} height={15} />;
+    if (name.includes("@") || name.includes(" at ")) return <Icon.mail width={15} height={15} />;
+    return <Icon.ext width={14} height={14} />;
+  };
+
+  return (
+    <main className="app-main preview-site-main">
+      <div className="container route-fade">
+        <div className="about-top">
+          {person.icon && <img className="avatar avatar-img" src={person.icon} alt="" />}
+          <div>
+            <h2 className="about-name">{person.name}</h2>
+            <div className="about-role">
+              {person.role} · {person.location}
+            </div>
+            {person.tagline && <p className="about-tag">{person.tagline}</p>}
+            <div className="links-row">
+              {(person.links || []).map((link, index) =>
+                link.href && !link.href.startsWith("mailto:") ? (
+                  <a
+                    key={`${index}:${link.label ?? ""}`}
+                    className="profile-link"
+                    href={link.href}
+                    target={link.href.startsWith("/") ? undefined : "_blank"}
+                    rel={link.href.startsWith("/") ? undefined : "noopener noreferrer"}
+                  >
+                    {linkIcon(link.label)}
+                    {link.label}
+                  </a>
+                ) : (
+                  <span
+                    key={`${index}:${link.label ?? ""}`}
+                    className="profile-link profile-link-text"
+                  >
+                    {linkIcon(link.label)}
+                    {link.label}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 32 }}>
+          {(person.bio || []).filter(Boolean).map((paragraph, index) => (
+            <p
+              key={`${index}:${paragraph}`}
+              style={{ maxWidth: "62ch", color: "var(--text-muted)", lineHeight: 1.8 }}
+            >
+              {paragraph}
+            </p>
+          ))}
+        </div>
+        <div className="about-grid">
+          {news.length > 0 && (
+            <div className="about-block about-block-wide">
+              <h2>{labels.news}</h2>
+              <div className="news-list">
+                {news.map((item, index) => (
+                  <div className="news-item" key={`${item.date}:${index}`}>
+                    <div className="news-date">
+                      {makeDateLabel(item.date)[data.locale] || item.date}
+                    </div>
+                    <div>
+                      {item.href ? (
+                        <a className="news-title news-link" href={item.href}>
+                          <span>{item.title}</span>
+                          {!item.href.startsWith("/") && <Icon.ext width={13} height={13} />}
+                        </a>
+                      ) : (
+                        <div className="news-title">{item.title}</div>
+                      )}
+                      {item.description && (
+                        <div className="news-desc">
+                          <RichText text={item.description} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="about-block">
+            <h2>{labels.activity}</h2>
+            <div className="act-list">
+              {(person.activities || []).map((item, index) => {
+                const expanded = openActivity === index;
+                return (
+                  <div className="act-item" key={`${index}:${item.title}`}>
+                    {item.description ? (
+                      <>
+                        <button
+                          className="act-toggle"
+                          type="button"
+                          aria-expanded={expanded}
+                          onClick={() => setOpenActivity(expanded ? null : index)}
+                        >
+                          <span>{item.title}</span>
+                          <Icon.chevron className={expanded ? "open" : ""} width={14} height={14} />
+                        </button>
+                        {expanded && (
+                          <div className="act-detail">
+                            <RichText text={item.description} />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="act-static">{item.title}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="about-col">
+            <div className="about-block">
+              <h2>{labels.career}</h2>
+              <div className="timeline">
+                {(person.career || []).map((item, index) => (
+                  <div className="tl-item" key={`${index}:${item.period}`}>
+                    <div className="tl-period">{item.period}</div>
+                    <div>
+                      <div className="tl-role">{item.role}</div>
+                      {item.org && <div className="tl-org">{item.org}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="about-block">
+              <h2>{labels.education}</h2>
+              <div className="timeline">
+                {(person.education || []).map((item, index) => (
+                  <div className="tl-item" key={`${index}:${item.period}`}>
+                    <div className="tl-period">{item.period}</div>
+                    <div>
+                      <div className="tl-role">{item.school}</div>
+                      {item.description && (
+                        <div className="tl-org">
+                          <RichText text={item.description} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 40 }}>
+          <div className="about-block">
+            <h2>{labels.made}</h2>
+            <div className="made-grid">
+              {APPS.slice(0, 4).map((app) => (
+                <div className="made-card" key={app.id}>
+                  <div className="made-title">{L(app.title, data.locale)}</div>
+                  <div className="made-sub">{L(app.tagline, data.locale)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -200,7 +408,9 @@ function PreviewRoot() {
   }, []);
 
   if (!data) return <div className="preview-loading">プレビューを準備しています…</div>;
-  return data.kind === "post" ? <BlogPreview data={data} /> : <WorkPreview data={data} />;
+  if (data.kind === "post") return <BlogPreview data={data} />;
+  if (data.kind === "work") return <WorkPreview data={data} />;
+  return <AboutPreview data={data} />;
 }
 
 createRoot(document.getElementById("root")).render(

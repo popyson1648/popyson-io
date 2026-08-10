@@ -29,6 +29,7 @@
     "new:work": "node scripts/new_work.mjs",
     "post:push": "node scripts/publish_content.mjs post",
     "work:push": "node scripts/publish_content.mjs work",
+    "about:push": "node scripts/publish_content.mjs about --id about",
     "lighthouse": "python3 scripts/run_lighthouse.py",
     "reading:fetch": "node scripts/fetch_instapaper.mjs",
     "reading:fetch:op": "op run --env-file=.op.env -- node scripts/fetch_instapaper.mjs",

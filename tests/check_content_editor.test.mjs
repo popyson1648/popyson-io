@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -19,6 +27,7 @@ import {
   resolveContentAsset,
   saveContentAsset,
   saveEditorContent,
+  serializeEditorAbout,
   serializeEditorMarkdown,
   sourceRevision,
   validateEditorDraft,
@@ -71,6 +80,18 @@ describe("content editor scaffolds", () => {
 });
 
 describe("content editor serialization", () => {
+  test("serializes the About profile and News as separate TOML files", () => {
+    const source = serializeEditorAbout("ja", {
+      person: { name: "編集者", bio: ["紹介"], activities: [] },
+      newsConfig: { count: 3 },
+      newsItems: [{ date: "2026-08-10", title: "更新", description: "" }],
+    });
+
+    expect(source.about).toContain('name = "編集者"');
+    expect(source.about).toContain('file = "news.ja.toml"');
+    expect(source.news).toContain('date = "2026-08-10"');
+  });
+
   test("round-trips valid post metadata and Markdown", () => {
     const source = serializeEditorMarkdown(
       "post",
@@ -120,6 +141,75 @@ describe("content editor serialization", () => {
 });
 
 describe("private editor drafts", () => {
+  test("edits, checkpoints, validates, and promotes the fixed About page", async () => {
+    const root = tempDir();
+    const publicDir = join(root, "public-about");
+    const draftDir = join(root, "draft-about");
+    const original = {
+      dir: EDITOR_KINDS.about.dir,
+      draftDir: EDITOR_KINDS.about.draftDir,
+    };
+    EDITOR_KINDS.about.dir = publicDir;
+    EDITOR_KINDS.about.draftDir = draftDir;
+    mkdirSync(publicDir, { recursive: true });
+    const about = (locale, name) =>
+      `[person]\nname = "${name}"\nicon = ""\nbio = []\nactivities = []\ncareer = []\neducation = []\nlinks = []\n\n[news]\nfile = "news.${locale}.toml"\ncount = 5\n`;
+    const news = '[[news]]\ndate = "2026-08-10"\ntitle = "Initial"\ndescription = ""\n';
+    writeFileSync(join(publicDir, "about.ja.toml"), about("ja", "公開名"));
+    writeFileSync(join(publicDir, "about.en.toml"), about("en", "Public name"));
+    writeFileSync(join(publicDir, "news.ja.toml"), news);
+    writeFileSync(join(publicDir, "news.en.toml"), news);
+
+    try {
+      const opened = readEditorContent("about", "about");
+      opened.files.ja.meta.person.name = "下書き名";
+      opened.files.en.meta.person.name = "Draft name";
+      let first = saveEditorContent("about", "about", opened.files, { checkpoint: true });
+
+      expect(first.status).toBe("published_with_draft");
+      expect(readFileSync(join(publicDir, "about.ja.toml"), "utf8")).toContain("公開名");
+      expect(readFileSync(join(draftDir, "about.ja.toml"), "utf8")).toContain("下書き名");
+      expect(validateEditorDraft("about", "about")).toEqual({ valid: true, issues: [] });
+
+      first.files.ja.meta.person.bio = ["段落"];
+      first = saveEditorContent("about", "about", first.files);
+      expect(validateEditorDraft("about", "about").issues[0].message).toMatch(/^bio:/);
+      first.files.en.meta.person.bio = ["Paragraph"];
+      first.files.ja.meta.person.links = [{ label: "GitHub", href: "https://github.com/example" }];
+      first = saveEditorContent("about", "about", first.files);
+      expect(validateEditorDraft("about", "about").issues[0].message).toMatch(/^links:/);
+      first.files.en.meta.person.links = [{ label: "GitHub", href: "https://github.com/example" }];
+      first = saveEditorContent("about", "about", first.files);
+      expect(validateEditorDraft("about", "about")).toEqual({ valid: true, issues: [] });
+
+      const png = Buffer.from("89504e470d0a1a0a00000000", "hex");
+      const asset = await saveContentAsset("about", "about", {
+        name: "Profile.PNG",
+        type: "image/png",
+        bytes: png,
+      });
+      expect(asset.url).toBe("/content-assets/about/about/profile.png");
+      expect(resolveContentAsset("about", "about", "profile.png", { preferDraft: true })).toBe(
+        join(draftDir, "assets", "profile.png"),
+      );
+
+      first.files.ja.meta.person.name = "第2版";
+      first.files.en.meta.person.name = "Version two";
+      saveEditorContent("about", "about", first.files, { checkpoint: true });
+      expect(
+        listEditorHistory("about", "about").some((entry) => entry.title.ja === "下書き名"),
+      ).toBe(true);
+
+      promoteEditorDraft("about", "about");
+      expect(readFileSync(join(publicDir, "about.ja.toml"), "utf8")).toContain("第2版");
+      expect(existsSync(join(publicDir, "assets", "profile.png"))).toBe(true);
+      removeEditorDraft("about", "about");
+    } finally {
+      EDITOR_KINDS.about.dir = original.dir;
+      EDITOR_KINDS.about.draftDir = original.draftDir;
+    }
+  });
+
   test("keeps edits and assets out of public content until promotion", async () => {
     const root = tempDir();
     const publicDir = join(root, "public-posts");

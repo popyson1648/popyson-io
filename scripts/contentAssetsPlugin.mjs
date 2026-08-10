@@ -17,7 +17,7 @@ const CONTENT_TYPES = {
 };
 
 function assetRequest(pathname) {
-  const match = /^\/content-assets\/(posts|works)\/([^/]+)\/([^/]+)$/.exec(pathname);
+  const match = /^\/content-assets\/(posts|works|about)\/([^/]+)\/([^/]+)$/.exec(pathname);
   if (!match) return null;
   return { segment: match[1], id: match[2], name: match[3] };
 }

@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 
 import { contentAssetsPlugin } from "../scripts/contentAssetsPlugin.mjs";
 import { editorApiPlugin } from "../scripts/editorApiPlugin.mjs";
-import { themeCssPlugin } from "../vite.config.js";
+import { siteContentPlugin, themeCssPlugin } from "../vite.config.js";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -23,6 +23,7 @@ export default defineConfig({
       tailscaleLogin: process.env.CONTENT_EDITOR_TAILSCALE_LOGIN,
     }),
     themeCssPlugin(),
+    siteContentPlugin(),
   ],
   build: {
     outDir: resolve(ROOT, "editor/dist"),

@@ -9,7 +9,7 @@
 - `.plans/`: task plans.
 - `.decisions/`: accepted project decisions.
 - `.github/workflows/`: CI, translation, metadata generation (`generate-metadata.yml`), site deploy (`deploy.yml`), scheduled Instapaper reading refresh (`reading-refresh.yml`), secret scanning, and security remediation automation.
-- `.drafts/`: Git-ignored, local-only editor drafts mirroring `posts/` and `works/`. It is created on demand, is excluded from production builds, and is not a backup or synchronization mechanism.
+- `.drafts/`: Git-ignored, local-only editor drafts mirroring `posts/`, `works/`, and the fixed `about/` content. It is created on demand, is excluded from production builds, and is not a backup or synchronization mechanism.
 - `editor/`: the dedicated local editor Vite configuration and Git-ignored optimized `dist/` output. The root site build and deployment do not read this output.
 
 ## Important Modules
@@ -39,9 +39,9 @@
 - `tests/check_metadata_schema.test.mjs`: schema unit checks for valid and invalid metadata examples.
 - `tests/check_generate_metadata.test.mjs`: metadata generation unit checks with a mock provider.
 - `scripts/new_post.mjs`: creates a new post directory named `YYYYMMDD-HHMMSS`, so a day's drafts list in creation order. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field and no values beyond the defaults. Post ids from before this form (`YYYYMMDD-<hex8>`) are still accepted.
-- `scripts/publish_content.mjs`: stages one content directory, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. The kind it works on comes from its first argument: `npm run post:push` for `src/content/posts/`, `npm run work:push` for `src/content/works/`.
-- `editor.html` and `src/editor/`: local-only SmartHR UI authoring entry at `/editor`, including metadata forms, Markdown tools, private autosave, photo selection/capture, and save/publish status. It is separate from the production `index.html` entry.
-- `editor-preview.html` and `src/editor/previewMain.jsx`: development-only iframe preview entry. It imports the public site theme and CSS, renders Blog and Works detail-page class structures, and synchronizes content and scroll position with the editor without leaking public global styles into SmartHR UI.
+- `scripts/publish_content.mjs`: stages one content directory, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. The kind it works on comes from its first argument: `npm run post:push` for `src/content/posts/`, `npm run work:push` for `src/content/works/`, or `npm run about:push` for the fixed `src/content/about/` item.
+- `editor.html` and `src/editor/`: local-only SmartHR UI authoring entry at `/editor`, including Markdown tools for Blog/Works, structured About forms, private autosave, photo selection/capture, and save/publish status. It is separate from the production `index.html` entry.
+- `editor-preview.html` and `src/editor/previewMain.jsx`: development-only iframe preview entry. It imports the public site theme and CSS, renders Blog, Works, and About page class structures, and synchronizes content and scroll position with the editor without leaking public global styles into SmartHR UI.
 - `editor/vite.config.js`: builds the editor and preview entries into `editor/dist/` without emitting published content assets or changing the public-site build.
 - `scripts/editorServer.mjs` and `scripts/editorApiPlugin.mjs`: local editor server and APIs. Normal authoring serves the optimized local bundle; `editor:dev` provides HMR. Both stay on loopback while a separate Tailscale Serve HTTPS listener provides the stable bookmarked URL. API access checks the loopback proxy peer, detected Tailscale DNS host, Serve-injected node-owner login, and mutation Origin. They are enabled by editor commands, not by the production site.
 - `scripts/contentEditorModel.mjs` and `scripts/contentScaffold.mjs`: shared schema-aware draft/public list, read, create, save, image, promotion, and scaffold operations used by the web editor and the existing content scaffold CLIs.

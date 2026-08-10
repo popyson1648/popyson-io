@@ -55,6 +55,18 @@ select {
   letter-spacing: -0.006em;
 }
 
+.editor-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .editor-app ::selection {
   background: rgb(91 91 214 / 20%);
 }
@@ -67,6 +79,32 @@ select {
 
 .editor-app .smarthr-ui-Button.shr-bg-white:hover {
   border-color: var(--editor-border-strong) !important;
+}
+
+.editor-app .smarthr-ui-Button:not(.editor-content-item) {
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center;
+}
+
+.editor-app .smarthr-ui-Button > .smarthr-ui-Button-body,
+.editor-app .smarthr-ui-Button .smarthr-ui-Icon-extended {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1 !important;
+}
+
+.editor-app .smarthr-ui-Button .smarthr-ui-Icon {
+  transform: none !important;
+}
+
+.editor-app .smarthr-ui-StatusLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1 !important;
 }
 
 .editor-app .smarthr-ui-Button.shr-bg-main:not(.smarthr-ui-SegmentedControl-button) {
@@ -237,6 +275,23 @@ select {
 
 .editor-content-item:hover {
   background: rgb(255 255 255 / 56%);
+}
+
+.editor-content-item:disabled {
+  cursor: default;
+}
+
+.editor-content-item:disabled:not(.is-loading) {
+  opacity: 0.55;
+}
+
+.editor-content-item.is-loading {
+  background: var(--editor-main-soft);
+  cursor: wait;
+}
+
+.editor-content-item.is-loading small {
+  color: var(--editor-main-strong);
 }
 
 .editor-content-item.is-active {
@@ -607,12 +662,17 @@ select {
 }
 
 .editor-command-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0;
+  line-height: 1;
 }
 
 .editor-command-label::after {
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   content: attr(data-compact-label);
 }
 
@@ -699,6 +759,34 @@ select {
 .editor-textarea-wrap {
   min-height: 0;
   flex: 1;
+}
+
+.editor-loading {
+  display: flex;
+  height: 540px;
+  min-height: 540px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--editor-text-muted);
+  background: var(--editor-surface);
+  font-size: 12px;
+}
+
+.editor-loading::before {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--editor-border-strong);
+  border-top-color: var(--editor-main);
+  border-radius: 50%;
+  animation: editor-loading-spin 700ms linear infinite;
+  content: "";
+}
+
+@keyframes editor-loading-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 .markdown-editor {
@@ -888,6 +976,7 @@ select {
   .editor-document-head {
     display: grid;
     gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .editor-document-controls {
@@ -992,53 +1081,38 @@ select {
   }
 
   .editor-toolbar {
-    display: grid;
-    align-items: start;
-    gap: 12px 14px;
-    padding: 12px;
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    align-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 4px 6px;
     background: #fbfbfc;
-    grid-template-columns: minmax(144px, 1.15fr) minmax(100px, 0.85fr);
   }
 
   .editor-toolbar-group,
   .editor-toolbar-group:first-child,
   .editor-toolbar-group:last-child {
-    display: grid;
-    gap: 5px;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
     padding: 0;
     border: 0;
   }
 
-  .editor-toolbar-group:nth-child(n + 3) {
-    grid-column: 1 / -1;
-  }
-
-  .editor-toolbar-group-label {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    clip-path: none;
-    color: var(--editor-text-muted);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.035em;
-    line-height: 1.2;
-    white-space: normal;
-  }
-
   .editor-toolbar-actions {
-    flex-wrap: wrap;
-    gap: 4px;
+    gap: 2px;
   }
 
   .editor-toolbar-actions button {
-    min-width: 44px;
-    min-height: 44px;
-    padding-inline: 10px;
-    border-radius: 7px;
-    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    border-radius: var(--editor-radius-s);
+    font-size: 13px;
   }
 
   .editor-write-pane,
@@ -1059,7 +1133,8 @@ select {
     border-right: 0;
   }
 
-  .markdown-editor {
+  .markdown-editor,
+  .editor-loading {
     height: 58dvh;
     min-height: 58dvh;
   }
@@ -1151,11 +1226,11 @@ select {
   }
 
   .editor-toolbar {
-    padding-inline: 8px;
+    padding-inline: 4px;
   }
 
   .editor-toolbar-actions button {
-    padding-inline: 8px;
+    padding: 0;
   }
 }
 
@@ -1167,6 +1242,10 @@ select {
   .editor-metadata > summary,
   .editor-metadata > summary::before {
     transition: none;
+  }
+
+  .editor-loading::before {
+    animation: none;
   }
 }
 

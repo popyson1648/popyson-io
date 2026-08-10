@@ -49,6 +49,73 @@ describe("content editor shell", () => {
     );
   });
 
+  test("shows progress and ignores duplicate requests while opening content", async () => {
+    const content = {
+      kind: "post",
+      id: "20260810-120000",
+      status: "draft",
+      files: {
+        ja: {
+          meta: { title: "読み込みテスト", date: "2026-08-10", tags: [] },
+          body: "本文",
+          revision: "ja-revision",
+        },
+        en: {
+          meta: { title: "Loading test", date: "2026-08-10", tags: [] },
+          body: "Body",
+          revision: "en-revision",
+        },
+      },
+    };
+    let finishRead;
+    const readResponse = new Promise((resolve) => {
+      finishRead = resolve;
+    });
+    const fetchMock = vi.fn(async (path) => {
+      if (path === "/api/editor/content") {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                kind: content.kind,
+                id: content.id,
+                title: { ja: "読み込みテスト", en: "Loading test" },
+                updatedAt: "2026-08-10T12:00:00.000Z",
+                status: "draft",
+              },
+            ],
+          }),
+        };
+      }
+      if (path === `/api/editor/content/post/${content.id}`) return readResponse;
+      if (path === "/api/editor/preview") {
+        return { ok: true, json: async () => ({ html: "<p>本文</p>" }) };
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<EditorRoot />);
+    const item = await screen.findByRole("button", { name: /読み込みテスト/ });
+    fireEvent.click(item);
+    fireEvent.click(item);
+
+    expect(item).toBeDisabled();
+    expect(item).toHaveAttribute("aria-busy", "true");
+    expect(item).toHaveTextContent("読み込み中…");
+    expect(container.querySelector(".editor-sr-only")).toHaveTextContent(
+      "読み込みテストを開いています。",
+    );
+    expect(
+      fetchMock.mock.calls.filter(([path]) => path === `/api/editor/content/post/${content.id}`),
+    ).toHaveLength(1);
+
+    finishRead({ ok: true, json: async () => content });
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    expect(container.querySelector(".editor-sr-only")).toBeEmptyDOMElement();
+  });
+
   test("inserts every selected image into the current Markdown", async () => {
     const content = {
       kind: "post",

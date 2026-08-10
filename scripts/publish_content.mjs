@@ -22,12 +22,21 @@ export const KINDS = {
     prefix: "src/content/works/",
     idPattern: /^src\/content\/works\/([a-z0-9][a-z0-9-]*)\//,
   },
+  about: {
+    noun: "about page",
+    prefix: "src/content/about/",
+    fixedId: "about",
+  },
 };
 
 export function contentScope(kindName, id = "") {
   const kind = KINDS[kindName];
   if (!kind) throw new Error(`Unknown content kind: ${kindName}`);
   if (!id) return kind.prefix;
+  if (kind.fixedId) {
+    if (id !== kind.fixedId) throw new Error(`Invalid ${kind.noun} id: ${id}`);
+    return kind.prefix;
+  }
   const scope = `${kind.prefix}${id}/`;
   const match = kind.idPattern.exec(scope);
   if (!match || match[0] !== scope || match[1] !== id) {
@@ -75,6 +84,7 @@ export function contentIdsFromStatus(output, idPattern) {
 // Ids with any staged, unstaged, or untracked change under their directory.
 function changedIds(kind, scope = kind.prefix) {
   const output = gitVerbatim(["status", "--porcelain", "-uall", "--", scope]);
+  if (kind.fixedId) return output.trim() ? [kind.fixedId] : [];
   return contentIdsFromStatus(output, kind.idPattern);
 }
 
@@ -83,6 +93,12 @@ function changedIds(kind, scope = kind.prefix) {
 // reads HEAD rather than the index, so staging beforehand (or `git rm`) does
 // not change how it is described.
 function classify(id, kind) {
+  if (kind.fixedId) {
+    const inHead = tryGit(["ls-tree", "-r", "--name-only", "HEAD", "--", kind.prefix]);
+    if (!inHead) return "added";
+    if (!existsSync(join(ROOT, kind.prefix, "about.ja.toml"))) return "removed";
+    return "updated";
+  }
   const inHead = tryGit(["ls-tree", "-r", "--name-only", "HEAD", "--", `${kind.prefix}${id}`]);
   if (!inHead) return "added";
   if (!existsSync(join(ROOT, kind.prefix, id, "index.ja.md"))) return "removed";
@@ -100,6 +116,7 @@ function titleFromSource(source, filePath) {
 }
 
 function entryTitle(id, state, kind) {
+  if (kind.fixedId) return "About";
   const relative = `${kind.prefix}${id}/index.ja.md`;
   if (state === "removed") {
     const source = tryGit(["show", `HEAD:${relative}`]);

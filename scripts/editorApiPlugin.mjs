@@ -320,9 +320,9 @@ async function handleApi(request, response, pathname) {
     return;
   }
 
-  const contentMatch = /^\/api\/editor\/content\/(post|work)(?:\/([^/]+))?$/.exec(pathname);
+  const contentMatch = /^\/api\/editor\/content\/(post|work|about)(?:\/([^/]+))?$/.exec(pathname);
   if (contentMatch) {
-    const kind = /** @type {"post" | "work"} */ (contentMatch[1]);
+    const kind = /** @type {"post" | "work" | "about"} */ (contentMatch[1]);
     const id = contentMatch[2] ? decodeURIComponent(contentMatch[2]) : "";
     if (request.method === "POST" && !id) {
       const body = await readJson(request);
@@ -350,9 +350,8 @@ async function handleApi(request, response, pathname) {
     }
   }
 
-  const historyMatch = /^\/api\/editor\/content\/(post|work)\/([^/]+)\/history(?:\/([^/]+))?$/.exec(
-    pathname,
-  );
+  const historyMatch =
+    /^\/api\/editor\/content\/(post|work|about)\/([^/]+)\/history(?:\/([^/]+))?$/.exec(pathname);
   if (historyMatch) {
     const kind = historyMatch[1];
     const id = decodeURIComponent(historyMatch[2]);
@@ -368,7 +367,7 @@ async function handleApi(request, response, pathname) {
     }
   }
 
-  const assetMatch = /^\/api\/editor\/content\/(post|work)\/([^/]+)\/assets$/.exec(pathname);
+  const assetMatch = /^\/api\/editor\/content\/(post|work|about)\/([^/]+)\/assets$/.exec(pathname);
   if (request.method === "POST" && assetMatch) {
     const body = await readJson(request);
     const bytes = Buffer.from(String(body.data || ""), "base64");
@@ -384,7 +383,9 @@ async function handleApi(request, response, pathname) {
     return;
   }
 
-  const publishMatch = /^\/api\/editor\/content\/(post|work)\/([^/]+)\/publish$/.exec(pathname);
+  const publishMatch = /^\/api\/editor\/content\/(post|work|about)\/([^/]+)\/publish$/.exec(
+    pathname,
+  );
   if (request.method === "POST" && publishMatch) {
     const kind = publishMatch[1];
     const id = decodeURIComponent(publishMatch[2]);

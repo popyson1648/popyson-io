@@ -40,6 +40,7 @@ import { IntlProvider } from "smarthr-ui/lib/intl/IntlProvider";
 import { createTheme } from "smarthr-ui/lib/themes/createTheme";
 import "smarthr-ui/smarthr-ui.css";
 
+import AboutEditor from "./AboutEditor.jsx";
 import { createEditorApi } from "./editorApi.js";
 import { writingMetrics } from "./markdownEditing.js";
 import "./editor.css";
@@ -454,8 +455,8 @@ function EmptyEditor({ compact = false, onOpen }) {
     <main className="editor-empty">
       <p>
         {compact
-          ? "記事またはWorksを選択してください。"
-          : "左の一覧から記事またはWorksを選択してください。"}
+          ? "編集するコンテンツを選択してください。"
+          : "左の一覧から編集するコンテンツを選択してください。"}
       </p>
       {compact && (
         <Button variant="secondary" onClick={onOpen}>
@@ -560,10 +561,13 @@ function App() {
           : content
             ? { type: "grey", text: statusFor(content) }
             : null;
-  const basicReadiness =
-    activeFile?.meta?.title?.trim() && activeBody.trim()
-      ? "タイトル・本文入力済み"
-      : "未入力項目あり";
+  const basicReadiness = (
+    content?.kind === "about"
+      ? activeFile?.meta?.person?.name?.trim()
+      : activeFile?.meta?.title?.trim() && activeBody.trim()
+  )
+    ? "タイトル・本文入力済み"
+    : "未入力項目あり";
 
   const loadList = useCallback(async () => {
     const result = await api.list();
@@ -632,7 +636,7 @@ function App() {
   }, [isCompact, sidebarOpen]);
 
   useEffect(() => {
-    if (!content) return;
+    if (!content || content.kind === "about") return;
     let cancelled = false;
     const timeout = setTimeout(() => {
       api
@@ -733,7 +737,10 @@ function App() {
     setOpeningItem(item);
     setBusy(true);
     try {
-      const [result] = await Promise.all([api.read(item.kind, item.id), loadMarkdownEditor()]);
+      const [result] = await Promise.all([
+        api.read(item.kind, item.id),
+        item.kind === "about" ? Promise.resolve() : loadMarkdownEditor(),
+      ]);
       setContent(cloneContent(result));
       setKind(item.kind);
       setDirty(false);
@@ -767,6 +774,13 @@ function App() {
       if (value === undefined) delete file.meta[field];
       else file.meta[field] = value;
     });
+  };
+
+  const updateAboutFiles = (files) => {
+    setContent((current) => ({ ...cloneContent(current), files }));
+    editVersionRef.current += 1;
+    autoSaveFailureVersionRef.current = -1;
+    setDirty(true);
   };
 
   const save = useCallback(
@@ -878,16 +892,27 @@ function App() {
     setBusy(true);
     const failures = [];
     let uploaded = 0;
-    for (const [index, item] of pendingImages.entries()) {
+    const uploadQueue = content.kind === "about" ? pendingImages.slice(0, 1) : pendingImages;
+    for (const [index, item] of uploadQueue.entries()) {
       try {
         setMessage({
           type: "info",
-          text: `画像を保存しています… ${index + 1}/${pendingImages.length}`,
+          text: `画像を保存しています… ${index + 1}/${uploadQueue.length}`,
         });
         const asset = await api.upload(content.kind, content.id, item.file);
-        editorRef.current?.insertImage(asset.url, item.alt, {
-          selectAlt: index === pendingImages.length - 1,
-        });
+        if (content.kind === "about") {
+          setContent((current) => {
+            const next = cloneContent(current);
+            for (const fileLocale of LOCALES) next.files[fileLocale].meta.person.icon = asset.url;
+            return next;
+          });
+          editVersionRef.current += 1;
+          setDirty(true);
+        } else {
+          editorRef.current?.insertImage(asset.url, item.alt, {
+            selectAlt: index === uploadQueue.length - 1,
+          });
+        }
         uploaded += 1;
       } catch (error) {
         failures.push(`${item.file.name}: ${error.message}`);
@@ -903,7 +928,13 @@ function App() {
             type: "error",
             text: `${uploaded}件を挿入しました。失敗: ${failures.join(" / ")}`,
           }
-        : { type: "success", text: `${uploaded}件の画像をassets/へ保存して挿入しました。` },
+        : {
+            type: "success",
+            text:
+              content.kind === "about"
+                ? "プロフィール画像をassets/へ保存しました。"
+                : `${uploaded}件の画像をassets/へ保存して挿入しました。`,
+          },
     );
   };
 
@@ -1136,17 +1167,20 @@ function App() {
               options={[
                 { value: "post", content: "記事" },
                 { value: "work", content: "Works" },
+                { value: "about", content: "About" },
               ]}
               onClickOption={setKind}
             />
-            <Button
-              size="S"
-              variant="secondary"
-              prefix={<FaPlusIcon alt="" />}
-              onClick={() => setCreateOpen(true)}
-            >
-              新規
-            </Button>
+            {kind !== "about" && (
+              <Button
+                size="S"
+                variant="secondary"
+                prefix={<FaPlusIcon alt="" />}
+                onClick={() => setCreateOpen(true)}
+              >
+                新規
+              </Button>
+            )}
           </div>
           <div className="editor-list-filters">
             <Input
@@ -1184,8 +1218,8 @@ function App() {
                   aria-current={isActive ? "page" : undefined}
                   aria-busy={isOpening || undefined}
                   disabled={busy}
-                  onPointerEnter={preloadMarkdownEditor}
-                  onFocus={preloadMarkdownEditor}
+                  onPointerEnter={item.kind === "about" ? undefined : preloadMarkdownEditor}
+                  onFocus={item.kind === "about" ? undefined : preloadMarkdownEditor}
                   onClick={() => openItem(item)}
                 >
                   <span>{titleFor(item)}</span>
@@ -1222,20 +1256,25 @@ function App() {
               <div>
                 <div className="editor-document-context">
                   <p className="editor-path">
-                    {content.kind === "post" ? "Blog" : "Works"} / {content.id}
+                    {content.kind === "post" ? "Blog" : content.kind === "work" ? "Works" : "About"}{" "}
+                    / {content.id}
                   </p>
                   {saveState && (
                     <span className="editor-document-save-state">{saveState.text}</span>
                   )}
                 </div>
-                <Input
-                  className="editor-title-input"
-                  width="100%"
-                  value={activeFile.meta.title || ""}
-                  placeholder="タイトルを入力"
-                  aria-label={content.kind === "post" ? "記事タイトル" : "作品名"}
-                  onChange={(event) => updateMeta("title", event.target.value)}
-                />
+                {content.kind === "about" ? (
+                  <h1 className="editor-fixed-title">About</h1>
+                ) : (
+                  <Input
+                    className="editor-title-input"
+                    width="100%"
+                    value={activeFile.meta.title || ""}
+                    placeholder="タイトルを入力"
+                    aria-label={content.kind === "post" ? "記事タイトル" : "作品名"}
+                    onChange={(event) => updateMeta("title", event.target.value)}
+                  />
+                )}
               </div>
               <div className="editor-document-controls">
                 <SegmentedControl
@@ -1267,36 +1306,40 @@ function App() {
               </div>
             </section>
 
-            <details className="editor-metadata">
-              <summary>
-                <span>公開設定</span>
-                <span className="editor-metadata-readiness">{basicReadiness}</span>
-              </summary>
-              {content.kind === "post" ? (
-                <PostMetadata
-                  meta={activeFile.meta}
-                  update={updateMeta}
-                  locale={locale}
-                  suggestions={tagSuggestions}
-                />
-              ) : (
-                <WorkMetadata
-                  meta={activeFile.meta}
-                  update={updateMeta}
-                  locale={locale}
-                  suggestions={stackSuggestions}
-                />
-              )}
-            </details>
+            {content.kind !== "about" && (
+              <details className="editor-metadata">
+                <summary>
+                  <span>公開設定</span>
+                  <span className="editor-metadata-readiness">{basicReadiness}</span>
+                </summary>
+                {content.kind === "post" ? (
+                  <PostMetadata
+                    meta={activeFile.meta}
+                    update={updateMeta}
+                    locale={locale}
+                    suggestions={tagSuggestions}
+                  />
+                ) : (
+                  <WorkMetadata
+                    meta={activeFile.meta}
+                    update={updateMeta}
+                    locale={locale}
+                    suggestions={stackSuggestions}
+                  />
+                )}
+              </details>
+            )}
             <div className="editor-document-actions">
-              <Button
-                size="S"
-                variant="text"
-                prefix={<FaListUlIcon alt="" />}
-                onClick={() => setOutlineOpen((current) => !current)}
-              >
-                アウトライン
-              </Button>
+              {content.kind !== "about" && (
+                <Button
+                  size="S"
+                  variant="text"
+                  prefix={<FaListUlIcon alt="" />}
+                  onClick={() => setOutlineOpen((current) => !current)}
+                >
+                  アウトライン
+                </Button>
+              )}
               <DropdownMenuButton trigger={{ children: "その他", size: "S" }}>
                 <Button variant="text" onClick={openHistory} disabled={busy}>
                   変更履歴
@@ -1306,7 +1349,7 @@ function App() {
                 </Button>
               </DropdownMenuButton>
             </div>
-            {outlineOpen && (
+            {content.kind !== "about" && outlineOpen && (
               <section className="editor-outline-panel" aria-label="文書アウトライン">
                 <div>
                   <strong>アウトライン</strong>
@@ -1375,173 +1418,190 @@ function App() {
               </section>
             )}
 
-            <section ref={workspaceRef} className={`editor-workspace mode-${layoutMode}`}>
-              <div
-                ref={toolbarRef}
-                className="editor-toolbar"
-                role="toolbar"
-                aria-label="Markdown書式"
-                onKeyDown={toolbarKeyDown}
-              >
-                <div className="editor-toolbar-group" role="group" aria-label="編集履歴">
-                  <span className="editor-toolbar-group-label">編集</span>
-                  <div className="editor-toolbar-actions">
-                    <Button
-                      type="button"
-                      size="S"
-                      variant="text"
-                      tabIndex={0}
-                      onClick={() => editorRef.current?.undo()}
-                      aria-label="元に戻す"
-                      title="元に戻す"
-                    >
-                      <FaArrowRotateLeftIcon alt="" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="S"
-                      variant="text"
-                      tabIndex={-1}
-                      onClick={() => editorRef.current?.redo()}
-                      aria-label="やり直す"
-                      title="やり直す"
-                    >
-                      <FaArrowRotateRightIcon alt="" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="S"
-                      variant="text"
-                      tabIndex={-1}
-                      onClick={() => setShortcutOpen(true)}
-                      aria-label="操作一覧"
-                      title="操作一覧"
-                    >
-                      <FaCircleQuestionIcon alt="" />
-                    </Button>
-                  </div>
-                </div>
-                {TOOLBAR_GROUPS.map((group) => (
-                  <div
-                    key={group.label}
-                    className="editor-toolbar-group"
-                    role="group"
-                    aria-label={group.label}
-                  >
-                    <span className="editor-toolbar-group-label">{group.label}</span>
+            <section
+              ref={workspaceRef}
+              className={`editor-workspace mode-${layoutMode} ${content.kind === "about" ? "is-about" : ""}`}
+            >
+              {content.kind !== "about" && (
+                <div
+                  ref={toolbarRef}
+                  className="editor-toolbar"
+                  role="toolbar"
+                  aria-label="Markdown書式"
+                  onKeyDown={toolbarKeyDown}
+                >
+                  <div className="editor-toolbar-group" role="group" aria-label="編集履歴">
+                    <span className="editor-toolbar-group-label">編集</span>
                     <div className="editor-toolbar-actions">
-                      {group.commands.map(([command, label]) => {
-                        const CommandIcon = COMMAND_ICONS[command];
-                        return (
-                          <Button
-                            key={command}
-                            type="button"
-                            size="S"
-                            variant="text"
-                            className={formatState[command] ? "is-active" : undefined}
-                            aria-pressed={
-                              command in formatState ? Boolean(formatState[command]) : undefined
-                            }
-                            aria-label={label}
-                            title={label}
-                            tabIndex={-1}
-                            onClick={() => applyEdit(command)}
-                          >
-                            {CommandIcon ? (
-                              <CommandIcon alt="" />
-                            ) : (
-                              <CompactLabel compact={COMPACT_COMMAND_LABELS[command]}>
-                                {label}
-                              </CompactLabel>
-                            )}
-                          </Button>
-                        );
-                      })}
+                      <Button
+                        type="button"
+                        size="S"
+                        variant="text"
+                        tabIndex={0}
+                        onClick={() => editorRef.current?.undo()}
+                        aria-label="元に戻す"
+                        title="元に戻す"
+                      >
+                        <FaArrowRotateLeftIcon alt="" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="S"
+                        variant="text"
+                        tabIndex={-1}
+                        onClick={() => editorRef.current?.redo()}
+                        aria-label="やり直す"
+                        title="やり直す"
+                      >
+                        <FaArrowRotateRightIcon alt="" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="S"
+                        variant="text"
+                        tabIndex={-1}
+                        onClick={() => setShortcutOpen(true)}
+                        aria-label="操作一覧"
+                        title="操作一覧"
+                      >
+                        <FaCircleQuestionIcon alt="" />
+                      </Button>
                     </div>
                   </div>
-                ))}
-                <div className="editor-toolbar-group" role="group" aria-label="画像">
-                  <span className="editor-toolbar-group-label">画像</span>
-                  <div className="editor-toolbar-actions">
-                    <Button
-                      type="button"
-                      size="S"
-                      variant="text"
-                      tabIndex={-1}
-                      onClick={() => libraryInputRef.current?.click()}
-                      aria-label="写真を選ぶ"
-                      title="写真を選ぶ"
+                  {TOOLBAR_GROUPS.map((group) => (
+                    <div
+                      key={group.label}
+                      className="editor-toolbar-group"
+                      role="group"
+                      aria-label={group.label}
                     >
-                      <FaImageIcon alt="" />
-                    </Button>
-                    <input
-                      ref={libraryInputRef}
-                      className="editor-file-input"
-                      type="file"
-                      accept={IMAGE_ACCEPT}
-                      multiple
-                      onChange={(event) => prepareImages(event.target.files || [])}
-                    />
-                    <Button
-                      type="button"
-                      size="S"
-                      variant="text"
-                      tabIndex={-1}
-                      onClick={() => cameraInputRef.current?.click()}
-                      aria-label="撮影する"
-                      title="撮影する"
-                    >
-                      <FaCameraIcon alt="" />
-                    </Button>
-                    <input
-                      ref={cameraInputRef}
-                      className="editor-file-input"
-                      type="file"
-                      accept={IMAGE_ACCEPT}
-                      capture="environment"
-                      onChange={(event) => prepareImages(event.target.files || [])}
-                    />
+                      <span className="editor-toolbar-group-label">{group.label}</span>
+                      <div className="editor-toolbar-actions">
+                        {group.commands.map(([command, label]) => {
+                          const CommandIcon = COMMAND_ICONS[command];
+                          return (
+                            <Button
+                              key={command}
+                              type="button"
+                              size="S"
+                              variant="text"
+                              className={formatState[command] ? "is-active" : undefined}
+                              aria-pressed={
+                                command in formatState ? Boolean(formatState[command]) : undefined
+                              }
+                              aria-label={label}
+                              title={label}
+                              tabIndex={-1}
+                              onClick={() => applyEdit(command)}
+                            >
+                              {CommandIcon ? (
+                                <CommandIcon alt="" />
+                              ) : (
+                                <CompactLabel compact={COMPACT_COMMAND_LABELS[command]}>
+                                  {label}
+                                </CompactLabel>
+                              )}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="editor-toolbar-group" role="group" aria-label="画像">
+                    <span className="editor-toolbar-group-label">画像</span>
+                    <div className="editor-toolbar-actions">
+                      <Button
+                        type="button"
+                        size="S"
+                        variant="text"
+                        tabIndex={-1}
+                        onClick={() => libraryInputRef.current?.click()}
+                        aria-label="写真を選ぶ"
+                        title="写真を選ぶ"
+                      >
+                        <FaImageIcon alt="" />
+                      </Button>
+                      <input
+                        ref={libraryInputRef}
+                        className="editor-file-input"
+                        type="file"
+                        accept={IMAGE_ACCEPT}
+                        multiple
+                        onChange={(event) => prepareImages(event.target.files || [])}
+                      />
+                      <Button
+                        type="button"
+                        size="S"
+                        variant="text"
+                        tabIndex={-1}
+                        onClick={() => cameraInputRef.current?.click()}
+                        aria-label="撮影する"
+                        title="撮影する"
+                      >
+                        <FaCameraIcon alt="" />
+                      </Button>
+                      <input
+                        ref={cameraInputRef}
+                        className="editor-file-input"
+                        type="file"
+                        accept={IMAGE_ACCEPT}
+                        capture="environment"
+                        onChange={(event) => prepareImages(event.target.files || [])}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
               <div className="editor-write-pane">
-                <div className="editor-textarea-wrap">
-                  <Suspense
-                    fallback={
-                      <div className="editor-loading" role="status">
-                        エディターを準備しています…
-                      </div>
-                    }
-                  >
-                    <MarkdownEditor
-                      key={`${content.kind}:${content.id}:${locale}`}
-                      ref={editorRef}
-                      value={activeFile.body}
-                      ariaLabel="Markdown本文"
-                      onChange={(body) =>
-                        updateFile((file) => {
-                          file.body = body;
-                        })
+                {content.kind === "about" ? (
+                  <AboutEditor
+                    files={content.files}
+                    locale={locale}
+                    onChange={updateAboutFiles}
+                    onChooseAvatar={() => libraryInputRef.current?.click()}
+                    onTakeAvatar={() => cameraInputRef.current?.click()}
+                  />
+                ) : (
+                  <div className="editor-textarea-wrap">
+                    <Suspense
+                      fallback={
+                        <div className="editor-loading" role="status">
+                          エディターを準備しています…
+                        </div>
                       }
-                      onSelectionChange={setFormatState}
-                      onImages={prepareImages}
-                      onSave={() => save()}
-                      onTogglePreview={() =>
-                        setMode((current) => (current === "preview" ? "write" : "preview"))
-                      }
-                      onFocusToolbar={() => toolbarRef.current?.querySelector("button")?.focus()}
-                      onScrollRatio={(ratio) =>
-                        sendPreview("popyson-editor-preview-scroll-to", { ratio })
-                      }
-                    />
-                  </Suspense>
-                </div>
-                <footer className="editor-metrics">
-                  <span>{metrics.characters.toLocaleString()}文字</span>
-                  <span>{metrics.lines.toLocaleString()}行</span>
-                  <span>約{metrics.minutes}分</span>
-                  <span>画像は選択・ドロップ・貼り付けに対応</span>
-                </footer>
+                    >
+                      <MarkdownEditor
+                        key={`${content.kind}:${content.id}:${locale}`}
+                        ref={editorRef}
+                        value={activeFile.body}
+                        ariaLabel="Markdown本文"
+                        onChange={(body) =>
+                          updateFile((file) => {
+                            file.body = body;
+                          })
+                        }
+                        onSelectionChange={setFormatState}
+                        onImages={prepareImages}
+                        onSave={() => save()}
+                        onTogglePreview={() =>
+                          setMode((current) => (current === "preview" ? "write" : "preview"))
+                        }
+                        onFocusToolbar={() => toolbarRef.current?.querySelector("button")?.focus()}
+                        onScrollRatio={(ratio) =>
+                          sendPreview("popyson-editor-preview-scroll-to", { ratio })
+                        }
+                      />
+                    </Suspense>
+                  </div>
+                )}
+                {content.kind !== "about" && (
+                  <footer className="editor-metrics">
+                    <span>{metrics.characters.toLocaleString()}文字</span>
+                    <span>{metrics.lines.toLocaleString()}行</span>
+                    <span>約{metrics.minutes}分</span>
+                    <span>画像は選択・ドロップ・貼り付けに対応</span>
+                  </footer>
+                )}
               </div>
               {layoutMode === "split" && (
                 <button
@@ -1606,6 +1666,25 @@ function App() {
                   />
                 </div>
               </div>
+              {content.kind === "about" && (
+                <>
+                  <input
+                    ref={libraryInputRef}
+                    className="editor-file-input"
+                    type="file"
+                    accept={IMAGE_ACCEPT}
+                    onChange={(event) => prepareImages(event.target.files || [])}
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    className="editor-file-input"
+                    type="file"
+                    accept={IMAGE_ACCEPT}
+                    capture="environment"
+                    onChange={(event) => prepareImages(event.target.files || [])}
+                  />
+                </>
+              )}
             </section>
 
             {publishJob && (
@@ -1645,36 +1724,44 @@ function App() {
       <ControlledFormDialog
         isOpen={imageOpen}
         size="M"
-        heading="画像を追加"
-        actionButton={{ text: `${pendingImages.length}件を保存して挿入`, disabled: busy }}
+        heading={content?.kind === "about" ? "プロフィール画像を変更" : "画像を追加"}
+        actionButton={{
+          text:
+            content?.kind === "about" ? "画像を保存" : `${pendingImages.length}件を保存して挿入`,
+          disabled: busy,
+        }}
         closeButton="キャンセル"
         onSubmit={uploadImages}
         onClickClose={() => setImageOpen(false)}
         onPressEscape={() => setImageOpen(false)}
       >
         <p>
-          画像はこの記事のassetsフォルダに保存されます。代替テキストは画像の内容を短く説明してください。
+          {content?.kind === "about"
+            ? "画像はAbout専用のassetsフォルダへ保存され、日本語・英語のプロフィールで共通利用されます。"
+            : "画像はこの記事のassetsフォルダに保存されます。代替テキストは画像の内容を短く説明してください。"}
         </p>
-        <div className="editor-image-queue">
-          {pendingImages.map((item, index) => (
-            <FormControl
-              key={`${item.file.name}:${item.file.lastModified}`}
-              label={`${item.file.name} の代替テキスト`}
-            >
-              <Input
-                width="100%"
-                value={item.alt}
-                onChange={(event) =>
-                  setPendingImages((current) =>
-                    current.map((entry, entryIndex) =>
-                      entryIndex === index ? { ...entry, alt: event.target.value } : entry,
-                    ),
-                  )
-                }
-              />
-            </FormControl>
-          ))}
-        </div>
+        {content?.kind !== "about" && (
+          <div className="editor-image-queue">
+            {pendingImages.map((item, index) => (
+              <FormControl
+                key={`${item.file.name}:${item.file.lastModified}`}
+                label={`${item.file.name} の代替テキスト`}
+              >
+                <Input
+                  width="100%"
+                  value={item.alt}
+                  onChange={(event) =>
+                    setPendingImages((current) =>
+                      current.map((entry, entryIndex) =>
+                        entryIndex === index ? { ...entry, alt: event.target.value } : entry,
+                      ),
+                    )
+                  }
+                />
+              </FormControl>
+            ))}
+          </div>
+        )}
       </ControlledFormDialog>
 
       <ControlledActionDialog
@@ -1693,7 +1780,11 @@ function App() {
       >
         <div className="editor-publish-summary">
           <p>
-            <strong>{activeFile?.meta?.title || "無題"}</strong>
+            <strong>
+              {content?.kind === "about"
+                ? activeFile?.meta?.person?.name || "About"
+                : activeFile?.meta?.title || "無題"}
+            </strong>
           </p>
           <dl>
             <div>
@@ -1710,14 +1801,23 @@ function App() {
               <dt>公開対象</dt>
               <dd>{publishPreflight?.deployBranch || "main"}</dd>
             </div>
-            <div>
-              <dt>日本語本文</dt>
-              <dd>{content?.files.ja.body.trim() ? "入力済み" : "未入力"}</dd>
-            </div>
-            <div>
-              <dt>英語本文</dt>
-              <dd>{content?.files.en.body.trim() ? "入力済み" : "未入力"}</dd>
-            </div>
+            {content?.kind === "about" ? (
+              <div>
+                <dt>News</dt>
+                <dd>{content.files.ja.meta.newsItems.length}件</dd>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <dt>日本語本文</dt>
+                  <dd>{content?.files.ja.body.trim() ? "入力済み" : "未入力"}</dd>
+                </div>
+                <div>
+                  <dt>英語本文</dt>
+                  <dd>{content?.files.en.body.trim() ? "入力済み" : "未入力"}</dd>
+                </div>
+              </>
+            )}
           </dl>
           {!publishPreflight?.productionEligible && (
             <p className="editor-validation-error">
@@ -1767,8 +1867,8 @@ function App() {
       >
         <p>
           {content?.status === "draft"
-            ? "未公開の本文とassetsを削除します。"
-            : "公開サイトの記事は残し、公開後に加えた下書きの変更だけを破棄します。"}
+            ? "未公開の内容とassetsを削除します。"
+            : "公開サイトの内容は残し、公開後に加えた下書きの変更だけを破棄します。"}
         </p>
       </ControlledActionDialog>
 
@@ -1785,12 +1885,14 @@ function App() {
         <p>
           この画面の変更はまだ残っています。最新版を読み込む前に必要なら本文をコピーしてください。
         </p>
-        <Button
-          variant="secondary"
-          onClick={() => navigator.clipboard?.writeText(activeFile?.body || "")}
-        >
-          現在の本文をコピー
-        </Button>
+        {content?.kind !== "about" && (
+          <Button
+            variant="secondary"
+            onClick={() => navigator.clipboard?.writeText(activeFile?.body || "")}
+          >
+            現在の本文をコピー
+          </Button>
+        )}
       </ControlledActionDialog>
 
       <ControlledActionDialog

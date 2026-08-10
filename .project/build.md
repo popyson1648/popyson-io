@@ -47,9 +47,9 @@ On push to `main`, `.github/workflows/generate-metadata.yml` runs the same
 generation step automatically and commits the resolved metadata and generated
 thumbnails. See `.project/metadata.md`.
 
-## Publish a post
+## Publish content
 
-`npm run post:push` (and `npm run work:push` for `src/content/works/`) runs
+`npm run post:push`, `npm run work:push`, and `npm run about:push` run
 `verify.py --mode standard` first and stops without committing if it fails, then
 stages only that one content directory, builds the commit subject
 from what changed (`add` / `update` / `remove`, with the post title for a single
@@ -64,7 +64,7 @@ npm run dev
 
 ## Content editor
 
-Start the repository-backed Blog and Works editor:
+Start the repository-backed Blog, Works, and About editor:
 
 ```sh
 npm run editor:setup # one time; asks for sudo approval
@@ -98,10 +98,10 @@ and the Origin of state-changing requests. Port 4173 is strict: when it is
 occupied, startup fails instead of silently changing the bookmarked URL. The
 existing Serve listener on HTTPS port 443 is not replaced.
 
-The editor can create, edit, preview, save private drafts, upload images, and
-publish the currently open content item. The preview imports the public Blog
-and Works styles in an isolated frame and provides automatic, desktop, and
-phone widths.
+The editor can create Blog/Works items; edit Blog, Works, and the fixed About
+item; preview; save private drafts; upload images; and publish the currently
+open item. The preview imports the matching public styles in an isolated frame
+and provides automatic, desktop, and phone widths.
 
 Drafts autosave after editing pauses. `Save draft` and `Ctrl`/`Cmd` + `S` save
 immediately. All private Markdown and images live under the Git-ignored
@@ -152,8 +152,9 @@ Desktop drag-and-drop and clipboard paste are also supported.
 
 Before publication, images are stored under the open entry's draft `assets/`
 directory. The editor serves draft assets at the final
-`/content-assets/<posts|works>/<id>/<file>` URL. Publishing moves them with the
-Markdown; production exposes only the published copies.
+`/content-assets/<posts|works|about>/<id>/<file>` URL. Publishing moves them with
+the content source; production exposes only the published copies. The About
+avatar uses `/content-assets/about/about/<file>`.
 
 For a production preview:
 

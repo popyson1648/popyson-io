@@ -111,7 +111,7 @@ export function themeCssPlugin() {
 }
 
 // `import "virtual:site-content"` -> generated post/about content.
-function siteContentPlugin() {
+export function siteContentPlugin() {
   return {
     name: "site-content",
     resolveId(id) {

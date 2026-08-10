@@ -14,6 +14,11 @@ including assets, to `src/content/posts/<post-id>/`. Production builds copy only
 published assets. Do not move editor-managed images to `public/`. The `.drafts/`
 tree is Git-ignored local state and is not backed up or synchronized.
 
+About uses the same private-draft boundary but keeps its structured sources at
+`.drafts/about/about.{ja,en}.toml` and `.drafts/about/news.{ja,en}.toml`.
+Its selected avatar is stored in `.drafts/about/assets/` and referenced as
+`/content-assets/about/about/<file>` until the complete About draft is published.
+
 ## Required Fields
 
 - `title`: non-empty string.

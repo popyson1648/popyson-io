@@ -14,7 +14,7 @@ import { basename, dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import sharp from "sharp";
-import { stringify as stringifyToml } from "smol-toml";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
 import { createPostScaffold, createWorkScaffold } from "./contentScaffold.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
@@ -25,6 +25,7 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DRAFT_ROOT = join(ROOT, ".drafts");
 const POST_ID_RE = /^\d{8}-(?:\d{6}|[a-f0-9]{8})$/;
 const WORK_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+const ABOUT_ID_RE = /^about$/;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_HISTORY_ENTRIES = 100;
 const AUTO_HISTORY_INTERVAL_MS = 10 * 60 * 1000;
@@ -41,6 +42,13 @@ export const EDITOR_KINDS = {
     draftDir: join(DRAFT_ROOT, "works"),
     idPattern: WORK_ID_RE,
     assetSegment: "works",
+  },
+  about: {
+    dir: join(ROOT, "src/content/about"),
+    draftDir: join(DRAFT_ROOT, "about"),
+    idPattern: ABOUT_ID_RE,
+    assetSegment: "about",
+    fixed: true,
   },
 };
 
@@ -69,12 +77,14 @@ export function assertContentId(kind, id) {
 
 export function contentDirectory(kind, id) {
   const config = kindConfig(kind);
-  return join(config.dir, assertContentId(kind, id));
+  const safeId = assertContentId(kind, id);
+  return config.fixed ? config.dir : join(config.dir, safeId);
 }
 
 export function draftDirectory(kind, id) {
   const config = kindConfig(kind);
-  return join(config.draftDir, assertContentId(kind, id));
+  const safeId = assertContentId(kind, id);
+  return config.fixed ? config.draftDir : join(config.draftDir, safeId);
 }
 
 function sourceDirectory(kind, id) {
@@ -86,7 +96,11 @@ function contentFile(kind, id, locale, directory = sourceDirectory(kind, id)) {
   if (!["ja", "en"].includes(locale)) {
     throw new EditorContentError(`Invalid locale: ${locale}`, 400, "invalid_locale");
   }
-  return join(directory, `index.${locale}.md`);
+  return join(directory, kind === "about" ? `about.${locale}.toml` : `index.${locale}.md`);
+}
+
+function aboutNewsFile(locale, directory) {
+  return join(directory, `news.${locale}.toml`);
 }
 
 export function sourceRevision(source) {
@@ -103,6 +117,24 @@ function editorFile(kind, id, locale, directory = sourceDirectory(kind, id)) {
     );
   }
   const source = readFileSync(filePath, "utf8");
+  if (kind === "about") {
+    const newsPath = aboutNewsFile(locale, directory);
+    if (!existsSync(newsPath)) {
+      throw new EditorContentError(`About news file does not exist: ${locale}`, 404, "not_found");
+    }
+    const newsSource = readFileSync(newsPath, "utf8");
+    const data = parseToml(source);
+    const newsData = parseToml(newsSource);
+    return {
+      meta: {
+        person: data.person || {},
+        newsConfig: data.news || {},
+        newsItems: Array.isArray(newsData.news) ? newsData.news : [],
+      },
+      body: "",
+      revision: sourceRevision(`${source}\0${newsSource}`),
+    };
+  }
   const parsed = parseMarkdownFrontmatter(source, filePath, { validate: false });
   return {
     meta: parsed.meta,
@@ -136,17 +168,22 @@ function readListItem(kind, id) {
   try {
     const content = readEditorContent(kind, id);
     const listMeta = /** @type {Record<string, any>} */ (content.files.ja.meta);
+    const jaMeta = /** @type {Record<string, any>} */ (content.files.ja.meta);
+    const enMeta = /** @type {Record<string, any>} */ (content.files.en.meta);
     const directory = sourceDirectory(kind, id);
     const filePaths = [
       contentFile(kind, id, "ja", directory),
       contentFile(kind, id, "en", directory),
     ];
+    if (kind === "about") {
+      filePaths.push(aboutNewsFile("ja", directory), aboutNewsFile("en", directory));
+    }
     return {
       kind,
       id,
       title: {
-        ja: String(content.files.ja.meta.title || ""),
-        en: String(content.files.en.meta.title || ""),
+        ja: String(kind === "about" ? jaMeta.person?.name || "About" : jaMeta.title || ""),
+        en: String(kind === "about" ? enMeta.person?.name || "About" : enMeta.title || ""),
       },
       tags: Array.isArray(listMeta.tags) ? listMeta.tags : [],
       stack: Array.isArray(listMeta.stack) ? listMeta.stack : [],
@@ -168,6 +205,7 @@ function readListItem(kind, id) {
 
 export function listEditorContent() {
   return Object.entries(EDITOR_KINDS).flatMap(([kind, config]) => {
+    if (config.fixed) return existsSync(config.dir) ? [readListItem(kind, "about")] : [];
     const ids = new Set();
     for (const directory of [config.dir, config.draftDir]) {
       if (!existsSync(directory)) continue;
@@ -186,7 +224,7 @@ function ensureDraftFromPublished(kind, id) {
   if (!existsSync(published)) {
     throw new EditorContentError(`Content does not exist: ${kind}/${id}`, 404, "not_found");
   }
-  mkdirSync(kindConfig(kind).draftDir, { recursive: true });
+  mkdirSync(dirname(draft), { recursive: true });
   cpSync(published, draft, { recursive: true, errorOnExist: true });
   return draft;
 }
@@ -218,6 +256,68 @@ export function serializeEditorMarkdown(kind, locale, meta, body, { validate = t
   return `+++\n${stringifyToml(normalized).trimEnd()}\n+++\n\n${String(body || "")}`;
 }
 
+function normalizeAboutMeta(locale, meta) {
+  const person = cleanObject(structuredClone(meta?.person || {}));
+  const newsItems = cleanObject(
+    (Array.isArray(meta?.newsItems) ? meta.newsItems : []).map((item) => ({
+      ...item,
+      date: item?.date instanceof Date ? item.date.toISOString().slice(0, 10) : item?.date,
+    })),
+  );
+  const count = Number.parseInt(meta?.newsConfig?.count, 10);
+  return {
+    person,
+    newsConfig: {
+      file: `news.${locale}.toml`,
+      count: Number.isFinite(count) && count > 0 ? count : 5,
+    },
+    newsItems,
+  };
+}
+
+export function serializeEditorAbout(locale, meta, { validate = true } = {}) {
+  if (!["ja", "en"].includes(locale)) {
+    throw new EditorContentError(`Invalid locale: ${locale}`, 400, "invalid_locale");
+  }
+  const normalized = normalizeAboutMeta(locale, meta);
+  if (validate) {
+    if (!String(normalized.person.name ?? "").trim()) throw new Error("Name is required");
+    for (const [index, item] of normalized.newsItems.entries()) {
+      const date = String(item?.date ?? "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new Error(`News ${index + 1}: date must use YYYY-MM-DD`);
+      }
+      if (!String(item?.title ?? "").trim()) {
+        throw new Error(`News ${index + 1}: title is required`);
+      }
+    }
+  }
+  return {
+    about: `${stringifyToml({
+      person: normalized.person,
+      news: normalized.newsConfig,
+    }).trimEnd()}\n`,
+    news: `${stringifyToml({ news: normalized.newsItems }).trimEnd()}\n`,
+  };
+}
+
+function validateAboutPair(files) {
+  for (const field of ["activities", "career", "education"]) {
+    const jaCount = Array.isArray(files.ja.meta?.person?.[field])
+      ? files.ja.meta.person[field].length
+      : 0;
+    const enCount = Array.isArray(files.en.meta?.person?.[field])
+      ? files.en.meta.person[field].length
+      : 0;
+    if (jaCount !== enCount) {
+      throw new Error(`${field}: Japanese and English item counts differ`);
+    }
+  }
+  const jaNews = Array.isArray(files.ja.meta?.newsItems) ? files.ja.meta.newsItems.length : 0;
+  const enNews = Array.isArray(files.en.meta?.newsItems) ? files.en.meta.newsItems.length : 0;
+  if (jaNews !== enNews) throw new Error("news: Japanese and English item counts differ");
+}
+
 function historyDirectory(kind, id) {
   const config = kindConfig(kind);
   return join(dirname(config.draftDir), ".history", config.assetSegment, assertContentId(kind, id));
@@ -239,16 +339,30 @@ function historyEntries(kind, id) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+function draftSourceFiles(kind, id, directory) {
+  if (kind === "about") {
+    return ["ja", "en"].flatMap((locale) => [
+      {
+        name: `about.${locale}.toml`,
+        source: readFileSync(contentFile(kind, id, locale, directory), "utf8"),
+      },
+      {
+        name: `news.${locale}.toml`,
+        source: readFileSync(aboutNewsFile(locale, directory), "utf8"),
+      },
+    ]);
+  }
+  return ["ja", "en"].map((locale) => ({
+    name: `index.${locale}.md`,
+    source: readFileSync(contentFile(kind, id, locale, directory), "utf8"),
+  }));
+}
+
 function captureDraftHistory(kind, id, { force = false } = {}) {
   const draft = draftDirectory(kind, id);
   if (!existsSync(draft)) return;
-  const sources = Object.fromEntries(
-    ["ja", "en"].map((locale) => [
-      locale,
-      readFileSync(contentFile(kind, id, locale, draft), "utf8"),
-    ]),
-  );
-  const revision = sourceRevision(`${sources.ja}\0${sources.en}`);
+  const sources = draftSourceFiles(kind, id, draft);
+  const revision = sourceRevision(sources.map(({ source }) => source).join("\0"));
   const entries = historyEntries(kind, id);
   if (entries[0]?.revision === revision) return;
   if (
@@ -263,9 +377,11 @@ function captureDraftHistory(kind, id, { force = false } = {}) {
   const historyId = `${createdAt.replace(/:/g, "-")}-${revision.slice(0, 12)}`;
   const directory = join(historyDirectory(kind, id), historyId);
   mkdirSync(directory, { recursive: true });
-  for (const locale of ["ja", "en"]) {
-    writeFileSync(join(directory, `index.${locale}.md`), sources[locale]);
+  for (const file of sources) {
+    writeFileSync(join(directory, file.name), file.source);
   }
+  const jaMeta = /** @type {Record<string, any>} */ (editorFile(kind, id, "ja", draft).meta);
+  const enMeta = /** @type {Record<string, any>} */ (editorFile(kind, id, "en", draft).meta);
   writeFileSync(
     join(directory, "manifest.json"),
     JSON.stringify({
@@ -273,8 +389,8 @@ function captureDraftHistory(kind, id, { force = false } = {}) {
       createdAt,
       revision,
       title: {
-        ja: editorFile(kind, id, "ja", draft).meta.title || "",
-        en: editorFile(kind, id, "en", draft).meta.title || "",
+        ja: (kind === "about" ? jaMeta.person?.name : jaMeta.title) || "",
+        en: (kind === "about" ? enMeta.person?.name : enMeta.title) || "",
       },
     }),
   );
@@ -305,19 +421,19 @@ export function saveEditorContent(kind, id, files, { checkpoint = false } = {}) 
     }
   }
 
-  const sources = Object.fromEntries(
-    ["ja", "en"].map((locale) => [
-      locale,
-      serializeEditorMarkdown(kind, locale, files[locale].meta, files[locale].body, {
-        validate: false,
-      }),
-    ]),
-  );
-
   const draft = ensureDraftFromPublished(kind, id);
   captureDraftHistory(kind, id, { force: checkpoint });
   for (const locale of ["ja", "en"]) {
-    writeFileSync(contentFile(kind, id, locale, draft), sources[locale]);
+    if (kind === "about") {
+      const source = serializeEditorAbout(locale, files[locale].meta, { validate: false });
+      writeFileSync(contentFile(kind, id, locale, draft), source.about);
+      writeFileSync(aboutNewsFile(locale, draft), source.news);
+    } else {
+      const source = serializeEditorMarkdown(kind, locale, files[locale].meta, files[locale].body, {
+        validate: false,
+      });
+      writeFileSync(contentFile(kind, id, locale, draft), source);
+    }
   }
   return readEditorContent(kind, id);
 }
@@ -345,11 +461,8 @@ export function restoreEditorHistory(kind, id, historyId, expectedRevisions) {
   const source = join(historyDirectory(kind, id), historyId);
   const draft = ensureDraftFromPublished(kind, id);
   captureDraftHistory(kind, id, { force: true });
-  for (const locale of ["ja", "en"]) {
-    writeFileSync(
-      contentFile(kind, id, locale, draft),
-      readFileSync(join(source, `index.${locale}.md`), "utf8"),
-    );
+  for (const file of draftSourceFiles(kind, id, source)) {
+    writeFileSync(join(draft, file.name), file.source);
   }
   return readEditorContent(kind, id);
 }
@@ -369,10 +482,26 @@ export function discardEditorDraft(kind, id) {
 export function validateEditorDraft(kind, id) {
   const content = readEditorContent(kind, id);
   const issues = [];
+  if (kind === "about") {
+    try {
+      validateAboutPair(content.files);
+    } catch (error) {
+      issues.push({ locale: "both", field: "structure", message: error.message });
+    }
+  }
   for (const locale of ["ja", "en"]) {
     try {
-      serializeEditorMarkdown(kind, locale, content.files[locale].meta, content.files[locale].body);
-      if (!String(content.files[locale].body || "").trim()) {
+      if (kind === "about") {
+        serializeEditorAbout(locale, content.files[locale].meta);
+      } else {
+        serializeEditorMarkdown(
+          kind,
+          locale,
+          content.files[locale].meta,
+          content.files[locale].body,
+        );
+      }
+      if (kind !== "about" && !String(content.files[locale].body || "").trim()) {
         issues.push({ locale, field: "body", message: "本文を入力してください" });
       }
     } catch (error) {
@@ -382,19 +511,25 @@ export function validateEditorDraft(kind, id) {
   return { valid: issues.length === 0, issues };
 }
 
-/** @param {"post" | "work"} kind @param {{ slug?: string }} [options] */
+/** @param {"post" | "work" | "about"} kind @param {{ slug?: string }} [options] */
 export function createEditorContent(kind, { slug } = {}) {
   const config = kindConfig(kind);
   let created;
   if (kind === "post") {
     created = createPostScaffold(config.draftDir, { reservedDirs: [config.dir] });
-  } else {
+  } else if (kind === "work") {
     const id = String(slug || "");
     assertContentId(kind, id);
     if (existsSync(contentDirectory(kind, id))) {
       throw new EditorContentError(`Already exists: ${kind}/${id}`, 409, "content_conflict");
     }
     created = createWorkScaffold(config.draftDir, id);
+  } else {
+    throw new EditorContentError(
+      "About is a fixed page and cannot be created",
+      405,
+      "fixed_content",
+    );
   }
   return readEditorContent(kind, created.id);
 }
@@ -524,7 +659,7 @@ export function resolveContentAsset(assetSegment, id, fileName, { preferDraft = 
 }
 
 export function promoteEditorDraft(kind, id) {
-  const config = kindConfig(kind);
+  kindConfig(kind);
   const draft = draftDirectory(kind, id);
   if (!existsSync(draft)) {
     throw new EditorContentError(`Draft does not exist: ${kind}/${id}`, 404, "draft_not_found");
@@ -532,18 +667,24 @@ export function promoteEditorDraft(kind, id) {
   // Drafts may be intentionally incomplete. Validate the complete locale pair
   // only at the explicit publish boundary.
   try {
+    const files = {};
     for (const locale of ["ja", "en"]) {
       const file = editorFile(kind, id, locale, draft);
-      serializeEditorMarkdown(kind, locale, file.meta, file.body);
+      files[locale] = file;
+      if (kind === "about") serializeEditorAbout(locale, file.meta);
+      else serializeEditorMarkdown(kind, locale, file.meta, file.body);
     }
+    if (kind === "about") validateAboutPair(files);
   } catch (error) {
     throw new EditorContentError(error.message, 422, "invalid_draft");
   }
 
-  mkdirSync(config.dir, { recursive: true });
   const published = contentDirectory(kind, id);
-  const next = join(config.dir, `.${id}.editor-next-${process.pid}`);
-  const backup = join(config.dir, `.${id}.editor-backup-${process.pid}`);
+  const parent = dirname(published);
+  mkdirSync(parent, { recursive: true });
+  const stem = basename(published);
+  const next = join(parent, `.${stem}.editor-next-${process.pid}`);
+  const backup = join(parent, `.${stem}.editor-backup-${process.pid}`);
   rmSync(next, { recursive: true, force: true });
   rmSync(backup, { recursive: true, force: true });
   cpSync(draft, next, { recursive: true });
@@ -567,6 +708,21 @@ export function listContentAssets() {
   const assets = [];
   for (const [kind, config] of Object.entries(EDITOR_KINDS)) {
     if (!existsSync(config.dir)) continue;
+    if (config.fixed) {
+      const dir = join(config.dir, "assets");
+      if (!existsSync(dir)) continue;
+      for (const file of readdirSync(dir, { withFileTypes: true })) {
+        if (!file.isFile()) continue;
+        assets.push({
+          kind,
+          id: "about",
+          name: file.name,
+          filePath: join(dir, file.name),
+          outputPath: `content-assets/${config.assetSegment}/about/${file.name}`,
+        });
+      }
+      continue;
+    }
     for (const entry of readdirSync(config.dir, { withFileTypes: true })) {
       if (!entry.isDirectory() || !config.idPattern.test(entry.name)) continue;
       const dir = join(config.dir, entry.name, "assets");

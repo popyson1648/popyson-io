@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Button } from "smarthr-ui/lib/components/Button/index";
 import { Checkbox } from "smarthr-ui/lib/components/Checkbox/index";
 import { ControlledActionDialog } from "smarthr-ui/lib/components/Dialog/ControlledActionDialog/index";
@@ -32,9 +41,26 @@ import { createTheme } from "smarthr-ui/lib/themes/createTheme";
 import "smarthr-ui/smarthr-ui.css";
 
 import { createEditorApi } from "./editorApi.js";
-import MarkdownEditor from "./MarkdownEditor.jsx";
 import { writingMetrics } from "./markdownEditing.js";
 import "./editor.css";
+
+let markdownEditorPromise;
+
+function loadMarkdownEditor() {
+  if (!markdownEditorPromise) {
+    markdownEditorPromise = import("./MarkdownEditor.jsx").catch((error) => {
+      markdownEditorPromise = undefined;
+      throw error;
+    });
+  }
+  return markdownEditorPromise;
+}
+
+function preloadMarkdownEditor() {
+  loadMarkdownEditor().catch(() => {});
+}
+
+const MarkdownEditor = lazy(loadMarkdownEditor);
 
 const theme = createTheme({
   color: {
@@ -454,6 +480,7 @@ function App() {
   const [previewReady, setPreviewReady] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [openingItem, setOpeningItem] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -487,6 +514,7 @@ function App() {
   const workspaceRef = useRef(null);
   const editVersionRef = useRef(0);
   const saveInFlightRef = useRef(false);
+  const openInFlightRef = useRef(false);
   const autoSaveFailureVersionRef = useRef(-1);
 
   const activeFile = content?.files?.[locale];
@@ -699,10 +727,13 @@ function App() {
   }, [api, loadList, publishJob]);
 
   const openItem = async (item) => {
+    if (openInFlightRef.current) return;
     if (dirty && !window.confirm("保存していない変更を破棄して移動しますか？")) return;
+    openInFlightRef.current = true;
+    setOpeningItem(item);
     setBusy(true);
     try {
-      const result = await api.read(item.kind, item.id);
+      const [result] = await Promise.all([api.read(item.kind, item.id), loadMarkdownEditor()]);
       setContent(cloneContent(result));
       setKind(item.kind);
       setDirty(false);
@@ -714,6 +745,8 @@ function App() {
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     } finally {
+      openInFlightRef.current = false;
+      setOpeningItem(null);
       setBusy(false);
     }
   };
@@ -1083,6 +1116,10 @@ function App() {
         </div>
       )}
 
+      <p className="editor-sr-only" role="status" aria-live="polite">
+        {openingItem ? `${titleFor(openingItem)}を開いています。` : ""}
+      </p>
+
       <div className="editor-shell">
         <aside
           ref={sidebarRef}
@@ -1135,22 +1172,29 @@ function App() {
             />
           </div>
           <nav className="editor-content-list" aria-label="コンテンツ一覧">
-            {filteredItems.map((item) => (
-              <button
-                key={`${item.kind}:${item.id}`}
-                type="button"
-                className={`editor-content-item ${content?.kind === item.kind && content?.id === item.id ? "is-active" : ""}`}
-                aria-current={
-                  content?.kind === item.kind && content?.id === item.id ? "page" : undefined
-                }
-                onClick={() => openItem(item)}
-              >
-                <span>{titleFor(item)}</span>
-                <small>
-                  {statusFor(item)} · {item.id}
-                </small>
-              </button>
-            ))}
+            {filteredItems.map((item) => {
+              const itemKey = `${item.kind}:${item.id}`;
+              const isActive = content?.kind === item.kind && content?.id === item.id;
+              const isOpening = openingItem?.kind === item.kind && openingItem?.id === item.id;
+              return (
+                <button
+                  key={itemKey}
+                  type="button"
+                  className={`editor-content-item ${isActive ? "is-active" : ""} ${isOpening ? "is-loading" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-busy={isOpening || undefined}
+                  disabled={busy}
+                  onPointerEnter={preloadMarkdownEditor}
+                  onFocus={preloadMarkdownEditor}
+                  onClick={() => openItem(item)}
+                >
+                  <span>{titleFor(item)}</span>
+                  <small>
+                    {isOpening ? "読み込み中…" : statusFor(item)} · {item.id}
+                  </small>
+                </button>
+              );
+            })}
             {!filteredItems.length && <p className="editor-list-empty">まだありません。</p>}
           </nav>
           <Button
@@ -1462,27 +1506,35 @@ function App() {
               </div>
               <div className="editor-write-pane">
                 <div className="editor-textarea-wrap">
-                  <MarkdownEditor
-                    key={`${content.kind}:${content.id}:${locale}`}
-                    ref={editorRef}
-                    value={activeFile.body}
-                    ariaLabel="Markdown本文"
-                    onChange={(body) =>
-                      updateFile((file) => {
-                        file.body = body;
-                      })
+                  <Suspense
+                    fallback={
+                      <div className="editor-loading" role="status">
+                        エディターを準備しています…
+                      </div>
                     }
-                    onSelectionChange={setFormatState}
-                    onImages={prepareImages}
-                    onSave={() => save()}
-                    onTogglePreview={() =>
-                      setMode((current) => (current === "preview" ? "write" : "preview"))
-                    }
-                    onFocusToolbar={() => toolbarRef.current?.querySelector("button")?.focus()}
-                    onScrollRatio={(ratio) =>
-                      sendPreview("popyson-editor-preview-scroll-to", { ratio })
-                    }
-                  />
+                  >
+                    <MarkdownEditor
+                      key={`${content.kind}:${content.id}:${locale}`}
+                      ref={editorRef}
+                      value={activeFile.body}
+                      ariaLabel="Markdown本文"
+                      onChange={(body) =>
+                        updateFile((file) => {
+                          file.body = body;
+                        })
+                      }
+                      onSelectionChange={setFormatState}
+                      onImages={prepareImages}
+                      onSave={() => save()}
+                      onTogglePreview={() =>
+                        setMode((current) => (current === "preview" ? "write" : "preview"))
+                      }
+                      onFocusToolbar={() => toolbarRef.current?.querySelector("button")?.focus()}
+                      onScrollRatio={(ratio) =>
+                        sendPreview("popyson-editor-preview-scroll-to", { ratio })
+                      }
+                    />
+                  </Suspense>
                 </div>
                 <footer className="editor-metrics">
                   <span>{metrics.characters.toLocaleString()}文字</span>

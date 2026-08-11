@@ -195,12 +195,15 @@ test("keeps the rendered editor within iPad and 200% full-page zoom viewports", 
   try {
     client = await connectToPage(debugPort, chrome, () => chromeStderr.trim());
 
-    await setViewport(client, 1024);
-    const ipadOpen = await layoutMetrics(client);
-    expect(ipadOpen.sidebarVisible).toBe(true);
-    expect(ipadOpen.createRight).toBeLessThanOrEqual(ipadOpen.sidebarRight);
-    expect(ipadOpen.scrollWidth).toBeLessThanOrEqual(ipadOpen.clientWidth);
+    for (const width of [1024, 1180, 1181, 1194, 1366]) {
+      await setViewport(client, width);
+      const ipadOpen = await layoutMetrics(client);
+      expect(ipadOpen.sidebarVisible).toBe(true);
+      expect(ipadOpen.createRight).toBeLessThanOrEqual(ipadOpen.sidebarRight);
+      expect(ipadOpen.scrollWidth).toBeLessThanOrEqual(ipadOpen.clientWidth);
+    }
 
+    await setViewport(client, 1024);
     await client.evaluate("document.querySelector('.editor-menu-button').click()");
     const ipadCollapsed = await layoutMetrics(client);
     expect(ipadCollapsed.sidebarVisible).toBe(false);

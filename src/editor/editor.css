@@ -270,11 +270,16 @@ select {
 }
 
 .editor-sidebar-head .smarthr-ui-SegmentedControl {
+  width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .editor-create-button {
+  width: 32px;
+  min-width: 32px !important;
   flex: 0 0 auto;
+  padding-inline: 0 !important;
 }
 
 .editor-list-filters {
@@ -1211,20 +1216,6 @@ select {
 }
 
 @media (max-width: 1180px) {
-  .editor-create-button {
-    width: 32px;
-    min-width: 32px !important;
-    padding-inline: 0 !important;
-  }
-
-  .editor-create-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
   .editor-document-head {
     display: grid;
     gap: 10px;
@@ -1269,20 +1260,6 @@ select {
   .editor-menu-button,
   .editor-sidebar-close {
     display: inline-flex;
-  }
-
-  .editor-create-button {
-    width: auto;
-    min-width: 0 !important;
-    padding-inline: 10px !important;
-  }
-
-  .editor-create-label {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip-path: none;
   }
 
   .editor-shell {

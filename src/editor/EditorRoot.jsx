@@ -1288,11 +1288,10 @@ function App() {
                 className="editor-create-button"
                 size="S"
                 variant="secondary"
-                prefix={<FaPlusIcon alt="" />}
                 onClick={() => setCreateOpen(true)}
                 aria-label="新規"
               >
-                <span className="editor-create-label">新規</span>
+                <FaPlusIcon alt="" />
               </Button>
             )}
           </div>

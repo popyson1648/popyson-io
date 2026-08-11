@@ -88,8 +88,7 @@ describe("editor responsive document header", () => {
   });
 
   test("contains the iPad create action and supports a collapsed wide sidebar", () => {
-    const tablet = blockBody(css, "@media (max-width: 1180px)");
-    const create = ruleBody(tablet, ".editor-create-button");
+    const create = ruleBody(css, ".editor-create-button");
     const wide = blockBody(css, "@media (min-width: 901px)");
     const collapsed = ruleBody(wide, ".editor-shell.is-sidebar-collapsed");
     expect(create).toMatch(/width:\s*32px/);

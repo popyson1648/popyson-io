@@ -34,14 +34,12 @@ describe("editor control alignment", () => {
     expect(content).toMatch(/line-height:\s*1\s*!important/);
   });
 
-  test("uses the same center line for icons, status labels, and compact commands", () => {
+  test("uses the same center line for icons and compact commands without a custom status dot", () => {
     const icons = ruleBody(css, ".editor-app .smarthr-ui-Button .smarthr-ui-Icon {");
-    const status = ruleBody(css, ".editor-app .smarthr-ui-StatusLabel");
     const compact = ruleBody(css, ".editor-command-label");
     expect(icons).toMatch(/transform:\s*none\s*!important/);
-    expect(status).toMatch(/align-items:\s*center/);
-    expect(status).toMatch(/justify-content:\s*center/);
-    expect(status).toMatch(/line-height:\s*1\s*!important/);
+    expect(css).not.toContain(".editor-save-status");
+    expect(css).not.toContain(".editor-save-status-dot");
     expect(compact).toMatch(/display:\s*inline-flex/);
     expect(compact).toMatch(/align-items:\s*center/);
     expect(compact).toMatch(/justify-content:\s*center/);
@@ -87,5 +85,39 @@ describe("editor responsive document header", () => {
     const header = ruleBody(tablet, ".editor-document-head");
     expect(header).toMatch(/display:\s*grid/);
     expect(header).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  test("contains the iPad create action and supports a collapsed wide sidebar", () => {
+    const create = ruleBody(css, ".editor-create-button");
+    const wide = blockBody(css, "@media (min-width: 901px)");
+    const collapsed = ruleBody(wide, ".editor-shell.is-sidebar-collapsed");
+    expect(create).toMatch(/width:\s*32px/);
+    expect(create).toMatch(/padding-inline:\s*0\s*!important/);
+    expect(collapsed).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  test("gives the borderless document title inline breathing room and a visible focus", () => {
+    const title = ruleBody(css, ".editor-title-input");
+    const focus = ruleBody(css, ".editor-title-input:focus-visible");
+    expect(title).toMatch(/padding:\s*4px 10px 7px/);
+    expect(title).toMatch(/border:\s*0/);
+    expect(title).toMatch(/background:\s*transparent/);
+    expect(focus).toMatch(/outline:\s*2px solid var\(--editor-main\)/);
+  });
+
+  test("uses familiar view tabs and a dismissible inspector panel", () => {
+    const tabs = ruleBody(css, ".editor-view-tabs button");
+    const selected = ruleBody(css, '.editor-view-tabs button[aria-selected="true"]');
+    const inspector = ruleBody(css, "\n.editor-inspector {");
+    expect(tabs).toMatch(/background:\s*transparent/);
+    expect(selected).toMatch(/color:\s*var\(--editor-text\)/);
+    expect(inspector).toMatch(/position:\s*fixed/);
+    expect(inspector).toMatch(/right:\s*0/);
+  });
+
+  test("uses a lower-contrast dedicated search surface", () => {
+    const search = ruleBody(css, ".editor-search-input,");
+    expect(search).toMatch(/border-color:\s*transparent\s*!important/);
+    expect(search).toMatch(/background:\s*rgb\(255 255 255 \/ 64%\)\s*!important/);
   });
 });

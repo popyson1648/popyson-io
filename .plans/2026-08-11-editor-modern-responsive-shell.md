@@ -99,8 +99,11 @@ authoring workflow.
   actions.
 - Inspect real editor screenshots at 1024 × 768 (iPad landscape), 1180 × 820,
   1440 × 1000, and 1920 × 1080 with the sidebar both open and collapsed.
-- At 1024 px and 200% text zoom, verify the create action, kind selector, search,
-  and filter remain contained with no horizontal overflow.
+- At 1024 px and 200% text-only zoom, verify the create action, kind selector,
+  search, and filter remain usable without lost content or functionality.
+- Separately render a 512 px CSS viewport, equivalent to 200% full-page zoom on a
+  1024 px display, and verify `scrollWidth <= clientWidth` with the sidebar open
+  and collapsed.
 - On desktop, open a published item and inspect title, published/dirty/saving
   states, save/publish hierarchy, split view, and collapsed-sidebar document
   width.

@@ -203,7 +203,14 @@ describe("content editor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: /その他/ }));
     expect(screen.getByRole("menuitem", { name: "変更履歴" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "公開版へ戻す" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "分割" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "分割" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+    expect(screen.getByRole("complementary", { name: "公開設定" })).toHaveTextContent("公開済み");
+    expect(screen.getByRole("heading", { name: "公開設定" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "パネルを閉じる" }));
+    fireEvent.click(screen.getByRole("button", { name: "アウトラインを開く" }));
+    expect(screen.getByRole("complementary", { name: "文書アウトライン" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "パネルを閉じる" }));
     expect(container.querySelector('input[capture="environment"]')).toBeTruthy();
     expect(screen.getByTitle("公開サイトと同じ見た目のプレビュー")).toBeInTheDocument();
 
@@ -277,9 +284,12 @@ describe("content editor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "コンテンツ一覧を開く" }));
     fireEvent.click(await screen.findByRole("button", { name: /スマホ/ }));
 
-    expect(await screen.findByRole("radio", { name: "編集" })).toBeChecked();
-    expect(screen.queryByRole("radio", { name: "分割" })).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "プレビュー" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "編集" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByRole("tab", { name: "分割" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "プレビュー" })).toBeInTheDocument();
   });
 
   test("opens About without loading Markdown and exposes its structured fields", async () => {
@@ -354,8 +364,7 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /日本語の名前/ }));
 
     expect(await screen.findByRole("heading", { name: "About" })).toBeInTheDocument();
-    expect(container.querySelector(".editor-save-status")).toHaveTextContent("公開済み");
-    expect(container.querySelector(".editor-save-status")).toHaveAttribute("data-state", "green");
+    expect(container.querySelector(".editor-save-status")).toBeNull();
     expect(
       screen.queryByRole("textbox", { name: /タイトル|記事タイトル|作品名/ }),
     ).not.toBeInTheDocument();

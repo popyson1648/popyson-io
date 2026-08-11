@@ -22,6 +22,8 @@ import {
   FaCircleInfoIcon,
   FaCircleQuestionIcon,
   FaCodeIcon,
+  FaEllipsisIcon,
+  FaGearIcon,
   FaImageIcon,
   FaLinkIcon,
   FaListUlIcon,
@@ -29,6 +31,7 @@ import {
   FaPlusIcon,
   FaSquareCheckIcon,
   FaTableIcon,
+  FaXmarkIcon,
 } from "smarthr-ui/lib/components/Icon/index";
 import { Input } from "smarthr-ui/lib/components/Input/index";
 import { NotificationBar } from "smarthr-ui/lib/components/NotificationBar/index";
@@ -499,16 +502,16 @@ function App() {
   const [imageOpen, setImageOpen] = useState(false);
   const [pendingImages, setPendingImages] = useState([]);
   const [historyEntries, setHistoryEntries] = useState([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [inspector, setInspector] = useState(null);
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
   const [shortcutOpen, setShortcutOpen] = useState(false);
-  const [outlineOpen, setOutlineOpen] = useState(false);
   const [previewFull, setPreviewFull] = useState(false);
   const editorRef = useRef(null);
   const toolbarRef = useRef(null);
   const sidebarRef = useRef(null);
+  const inspectorRef = useRef(null);
   const menuButtonRef = useRef(null);
   const libraryInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -560,23 +563,6 @@ function App() {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [items, kind, query, statusFilter],
   );
-  const saveState = saving
-    ? { type: "grey", text: "保存中" }
-    : dirty
-      ? { type: "warning", text: "未保存" }
-      : content?.status === "published"
-        ? { type: "green", text: "公開済み" }
-        : savedAt
-          ? {
-              type: "green",
-              text: `下書き保存済み ${savedAt.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`,
-            }
-          : content
-            ? { type: "grey", text: statusFor(content) }
-            : null;
   const basicReadiness =
     activeFile?.meta?.title?.trim() && activeBody.trim()
       ? "タイトル・本文入力済み"
@@ -646,6 +632,37 @@ function App() {
     sidebar?.addEventListener("keydown", trap);
     return () => sidebar?.removeEventListener("keydown", trap);
   }, [closeSidebar, isCompact, sidebarOpen]);
+
+  useEffect(() => {
+    if (!inspector) return;
+    const panel = inspectorRef.current;
+    const focusable = () =>
+      [...(panel?.querySelectorAll("button,input,select,textarea,[href],[tabindex]") || [])].filter(
+        (element) => !element.disabled && element.tabIndex >= 0,
+      );
+    if (isCompact) focusable()[0]?.focus();
+    const handleKeys = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setInspector(null);
+        return;
+      }
+      if (!isCompact || event.key !== "Tab") return;
+      const controls = focusable();
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeys);
+    return () => window.removeEventListener("keydown", handleKeys);
+  }, [inspector, isCompact]);
 
   useEffect(() => {
     if (!content || content.kind === "about") return;
@@ -969,7 +986,7 @@ function App() {
     try {
       const result = await api.history(content.kind, content.id);
       setHistoryEntries(result.entries);
-      setHistoryOpen(true);
+      setInspector("history");
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     } finally {
@@ -990,7 +1007,7 @@ function App() {
       setContent(cloneContent(restored));
       setDirty(false);
       setSavedAt(new Date());
-      setHistoryOpen(false);
+      setInspector(null);
       setMessage({
         type: "success",
         text: "選択した版を復元しました。復元前の版も履歴に残っています。",
@@ -1117,9 +1134,35 @@ function App() {
     buttons[next].focus();
   };
 
+  const viewModes = isCompact
+    ? [
+        ["write", "編集"],
+        ["preview", "プレビュー"],
+      ]
+    : [
+        ["write", "編集"],
+        ["split", "分割"],
+        ["preview", "プレビュー"],
+      ];
+
+  const viewTabKeyDown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = [...event.currentTarget.parentElement.querySelectorAll('[role="tab"]')];
+    const current = tabs.indexOf(event.currentTarget);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabs.length - 1
+          : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    event.preventDefault();
+    tabs[next].focus();
+    setMode(tabs[next].dataset.mode);
+  };
+
   return (
     <div className="editor-app">
-      <header className="editor-header" inert={isCompact && sidebarVisible}>
+      <header className="editor-header" inert={isCompact && (sidebarVisible || Boolean(inspector))}>
         <div className="editor-header-leading">
           <Button
             ref={menuButtonRef}
@@ -1134,24 +1177,61 @@ function App() {
           </Button>
         </div>
         <div className="editor-header-actions">
-          {saveState && (
-            <span className="editor-save-status" data-state={saveState.type}>
-              <span className="editor-save-status-dot" aria-hidden="true" />
-              {saveState.text}
-            </span>
+          {content?.kind !== "about" && content && (
+            <>
+              <Button
+                className="editor-header-icon-button"
+                variant="text"
+                aria-label="アウトラインを開く"
+                title="アウトライン"
+                aria-controls="editor-inspector"
+                aria-expanded={inspector === "outline"}
+                onClick={() =>
+                  setInspector((current) => (current === "outline" ? null : "outline"))
+                }
+              >
+                <FaListUlIcon alt="" />
+              </Button>
+              <Button
+                className="editor-header-icon-button"
+                variant="text"
+                aria-label="公開設定を開く"
+                title="公開設定"
+                aria-controls="editor-inspector"
+                aria-expanded={inspector === "settings"}
+                onClick={() =>
+                  setInspector((current) => (current === "settings" ? null : "settings"))
+                }
+              >
+                <FaGearIcon alt="" />
+              </Button>
+            </>
+          )}
+          {content && (
+            <DropdownMenuButton
+              aria-label="その他"
+              trigger={{ children: "その他", size: "S", onlyIcon: { component: FaEllipsisIcon } }}
+            >
+              <Button variant="text" onClick={openHistory} disabled={busy}>
+                変更履歴
+              </Button>
+              <Button variant="text" onClick={() => setDiscardOpen(true)} disabled={busy}>
+                {content.status === "draft" ? "下書きを削除" : "公開版へ戻す"}
+              </Button>
+            </DropdownMenuButton>
           )}
           <Button
             variant="secondary"
             disabled={!content || busy || saving}
             loading={saving}
             onClick={() => save()}
-            aria-label="下書きを保存"
+            aria-label={!dirty && savedAt ? "保存済み" : "下書きを保存"}
           >
             <span className="editor-save-label-long" aria-hidden="true">
-              下書きを保存
+              {!dirty && savedAt ? "保存済み" : "下書きを保存"}
             </span>
             <span className="editor-save-label-short" aria-hidden="true">
-              保存
+              {!dirty && savedAt ? "保存済み" : "保存"}
             </span>
           </Button>
           <Button
@@ -1283,7 +1363,7 @@ function App() {
         {!content ? (
           <EmptyEditor compact={isCompact || !sidebarVisible} onOpen={openSidebar} />
         ) : (
-          <main className="editor-main" inert={isCompact && sidebarVisible}>
+          <main className="editor-main" inert={isCompact && (sidebarVisible || Boolean(inspector))}>
             <section className="editor-document-head">
               <div>
                 <div className="editor-document-context">
@@ -1291,16 +1371,13 @@ function App() {
                     {content.kind === "post" ? "Blog" : content.kind === "work" ? "Works" : "About"}{" "}
                     / {content.id}
                   </p>
-                  {saveState && (
-                    <span className="editor-document-save-state">{saveState.text}</span>
-                  )}
                 </div>
                 {content.kind === "about" ? (
                   <h1 className="editor-fixed-title">About</h1>
                 ) : (
-                  <Input
+                  <input
+                    type="text"
                     className="editor-title-input"
-                    width="100%"
                     value={activeFile.meta.title || ""}
                     placeholder="タイトルを入力"
                     aria-label={content.kind === "post" ? "記事タイトル" : "作品名"}
@@ -1318,137 +1395,26 @@ function App() {
                   ]}
                   onClickOption={setLocale}
                 />
-                <SegmentedControl
-                  size="S"
-                  value={layoutMode}
-                  options={
-                    isCompact
-                      ? [
-                          { value: "write", content: "編集" },
-                          { value: "preview", content: "プレビュー" },
-                        ]
-                      : [
-                          { value: "write", content: "編集" },
-                          { value: "split", content: "分割" },
-                          { value: "preview", content: "プレビュー" },
-                        ]
-                  }
-                  onClickOption={setMode}
-                />
               </div>
             </section>
-
-            {content.kind !== "about" && (
-              <details className="editor-metadata">
-                <summary>
-                  <span>公開設定</span>
-                  <span className="editor-metadata-readiness">{basicReadiness}</span>
-                </summary>
-                {content.kind === "post" ? (
-                  <PostMetadata
-                    meta={activeFile.meta}
-                    update={updateMeta}
-                    locale={locale}
-                    suggestions={tagSuggestions}
-                  />
-                ) : (
-                  <WorkMetadata
-                    meta={activeFile.meta}
-                    update={updateMeta}
-                    locale={locale}
-                    suggestions={stackSuggestions}
-                  />
-                )}
-              </details>
-            )}
-            <div className="editor-document-actions">
-              {content.kind !== "about" && (
-                <Button
-                  size="S"
-                  variant="text"
-                  prefix={<FaListUlIcon alt="" />}
-                  onClick={() => setOutlineOpen((current) => !current)}
-                >
-                  アウトライン
-                </Button>
-              )}
-              <DropdownMenuButton trigger={{ children: "その他", size: "S" }}>
-                <Button variant="text" onClick={openHistory} disabled={busy}>
-                  変更履歴
-                </Button>
-                <Button variant="text" onClick={() => setDiscardOpen(true)} disabled={busy}>
-                  {content.status === "draft" ? "下書きを削除" : "公開版へ戻す"}
-                </Button>
-              </DropdownMenuButton>
-            </div>
-            {content.kind !== "about" && outlineOpen && (
-              <section className="editor-outline-panel" aria-label="文書アウトライン">
-                <div>
-                  <strong>アウトライン</strong>
-                  <Button size="S" variant="secondary" onClick={() => setOutlineOpen(false)}>
-                    閉じる
-                  </Button>
-                </div>
-                {outline.warnings.map((warning) => (
-                  <p key={warning} className="editor-validation-error">
-                    {warning}
-                  </p>
+            <div className="editor-viewbar">
+              <div className="editor-view-tabs" role="tablist" aria-label="エディター表示">
+                {viewModes.map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    data-mode={value}
+                    tabIndex={layoutMode === value ? 0 : -1}
+                    aria-selected={layoutMode === value}
+                    onClick={() => setMode(value)}
+                    onKeyDown={viewTabKeyDown}
+                  >
+                    {label}
+                  </button>
                 ))}
-                {outline.headings.length ? (
-                  <ol>
-                    {outline.headings.map((heading) => (
-                      <li
-                        key={`${heading.offset}:${heading.title}`}
-                        style={{ paddingLeft: `${Math.max(0, heading.level - 1) * 14}px` }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => editorRef.current?.reveal(heading.offset)}
-                        >
-                          {heading.title}
-                        </button>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p>見出しを追加すると、ここから本文内を移動できます。</p>
-                )}
-              </section>
-            )}
-            {historyOpen && (
-              <section className="editor-history-panel" aria-label="変更履歴">
-                <div>
-                  <strong>変更履歴</strong>
-                  <Button size="S" variant="secondary" onClick={() => setHistoryOpen(false)}>
-                    閉じる
-                  </Button>
-                </div>
-                <p className="editor-local-draft-note">
-                  下書きと履歴はこの端末の .drafts/ に保存されます。バックアップではありません。
-                </p>
-                {historyEntries.length ? (
-                  <ul>
-                    {historyEntries.map((entry) => (
-                      <li key={entry.id}>
-                        <span>
-                          {new Date(entry.createdAt).toLocaleString()} —{" "}
-                          {entry.title?.[locale] || "無題"}
-                        </span>
-                        <Button
-                          size="S"
-                          variant="secondary"
-                          onClick={() => setRestoreTarget(entry)}
-                        >
-                          この版を復元
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>復元できる履歴はまだありません。</p>
-                )}
-              </section>
-            )}
+              </div>
+            </div>
 
             <section
               ref={workspaceRef}
@@ -1726,6 +1692,132 @@ function App() {
               </details>
             )}
           </main>
+        )}
+        {content && inspector && (
+          <aside
+            id="editor-inspector"
+            ref={inspectorRef}
+            className="editor-inspector"
+            role={isCompact ? "dialog" : undefined}
+            aria-modal={isCompact ? "true" : undefined}
+            aria-label={
+              inspector === "settings"
+                ? "公開設定"
+                : inspector === "outline"
+                  ? "文書アウトライン"
+                  : "変更履歴"
+            }
+          >
+            <header>
+              <div>
+                <h2>
+                  {inspector === "settings"
+                    ? "公開設定"
+                    : inspector === "outline"
+                      ? "アウトライン"
+                      : "変更履歴"}
+                </h2>
+                {inspector === "settings" && (
+                  <p>
+                    {statusFor(content)} · {basicReadiness}
+                  </p>
+                )}
+              </div>
+              <Button
+                className="editor-inspector-close"
+                size="S"
+                variant="text"
+                aria-label="パネルを閉じる"
+                title="閉じる"
+                onClick={() => setInspector(null)}
+              >
+                <FaXmarkIcon alt="" />
+              </Button>
+            </header>
+            <div className="editor-inspector-body">
+              {inspector === "settings" &&
+                content.kind !== "about" &&
+                (content.kind === "post" ? (
+                  <PostMetadata
+                    meta={activeFile.meta}
+                    update={updateMeta}
+                    locale={locale}
+                    suggestions={tagSuggestions}
+                  />
+                ) : (
+                  <WorkMetadata
+                    meta={activeFile.meta}
+                    update={updateMeta}
+                    locale={locale}
+                    suggestions={stackSuggestions}
+                  />
+                ))}
+              {inspector === "outline" && (
+                <div className="editor-inspector-outline">
+                  {outline.warnings.map((warning) => (
+                    <p key={warning} className="editor-validation-error">
+                      {warning}
+                    </p>
+                  ))}
+                  {outline.headings.length ? (
+                    <ol>
+                      {outline.headings.map((heading) => (
+                        <li
+                          key={`${heading.offset}:${heading.title}`}
+                          style={{ paddingLeft: `${Math.max(0, heading.level - 1) * 14}px` }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => editorRef.current?.reveal(heading.offset)}
+                          >
+                            {heading.title}
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p>見出しを追加すると、ここから本文内を移動できます。</p>
+                  )}
+                </div>
+              )}
+              {inspector === "history" && (
+                <div className="editor-inspector-history">
+                  <p className="editor-local-draft-note">
+                    下書きと履歴はこの端末の .drafts/ に保存されます。バックアップではありません。
+                  </p>
+                  {historyEntries.length ? (
+                    <ul>
+                      {historyEntries.map((entry) => (
+                        <li key={entry.id}>
+                          <span>
+                            {new Date(entry.createdAt).toLocaleString()} —{" "}
+                            {entry.title?.[locale] || "無題"}
+                          </span>
+                          <Button
+                            size="S"
+                            variant="secondary"
+                            onClick={() => setRestoreTarget(entry)}
+                          >
+                            この版を復元
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>復元できる履歴はまだありません。</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+        {isCompact && inspector && (
+          <button
+            className="editor-inspector-scrim"
+            type="button"
+            aria-label="パネルを閉じる"
+            onClick={() => setInspector(null)}
+          />
         )}
       </div>
 

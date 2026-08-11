@@ -82,17 +82,33 @@ async function retry(action, attempts = 80) {
   throw lastError;
 }
 
-async function connectToPage(debugPort) {
-  const target = await retry(async () => {
-    const response = await fetch(`http://127.0.0.1:${debugPort}/json`);
-    if (!response.ok) throw new Error(`Chrome target list returned ${response.status}`);
-    const targets = await response.json();
-    const page = targets.find(
-      (candidate) => candidate.type === "page" && candidate.url.includes("/editor"),
-    );
-    if (!page) throw new Error("Editor page target is not ready");
-    return page;
-  });
+async function waitForChromeTarget(debugPort, chrome, stderr) {
+  let lastError;
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    if (chrome.exitCode !== null) {
+      throw new Error(`Chrome exited before its debug target was ready:\n${stderr()}`);
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:${debugPort}/json`);
+      if (!response.ok) throw new Error(`Chrome target list returned ${response.status}`);
+      const targets = await response.json();
+      const page = targets.find(
+        (candidate) => candidate.type === "page" && candidate.url.includes("/editor"),
+      );
+      if (page) return page;
+      lastError = new Error("Editor page target is not ready");
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(
+    `Chrome did not expose its editor target within 15 seconds: ${lastError?.message || "unknown error"}\n${stderr()}`,
+  );
+}
+
+async function connectToPage(debugPort, chrome, stderr) {
+  const target = await waitForChromeTarget(debugPort, chrome, stderr);
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
@@ -168,11 +184,16 @@ test("keeps the rendered editor within iPad and 200% full-page zoom viewports", 
       `--user-data-dir=${profile}`,
       `http://127.0.0.1:${port}/editor`,
     ],
-    { stdio: "ignore" },
+    { stdio: ["ignore", "ignore", "pipe"] },
   );
+  let chromeStderr = "";
+  chrome.stderr.setEncoding("utf8");
+  chrome.stderr.on("data", (chunk) => {
+    chromeStderr = `${chromeStderr}${chunk}`.slice(-8000);
+  });
   let client;
   try {
-    client = await connectToPage(debugPort);
+    client = await connectToPage(debugPort, chrome, () => chromeStderr.trim());
 
     await setViewport(client, 1024);
     const ipadOpen = await layoutMetrics(client);

@@ -25,6 +25,7 @@ import {
   FaImageIcon,
   FaLinkIcon,
   FaListUlIcon,
+  FaMagnifyingGlassIcon,
   FaPlusIcon,
   FaSquareCheckIcon,
   FaTableIcon,
@@ -33,7 +34,6 @@ import { Input } from "smarthr-ui/lib/components/Input/index";
 import { NotificationBar } from "smarthr-ui/lib/components/NotificationBar/index";
 import { SegmentedControl } from "smarthr-ui/lib/components/SegmentedControl/index";
 import { Select } from "smarthr-ui/lib/components/Select/index";
-import { StatusLabel } from "smarthr-ui/lib/components/StatusLabel/index";
 import { Textarea } from "smarthr-ui/lib/components/Textarea/index";
 import { ThemeProvider } from "smarthr-ui/lib/hooks/useTheme";
 import { IntlProvider } from "smarthr-ui/lib/intl/IntlProvider";
@@ -487,6 +487,7 @@ function App() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [preview, setPreview] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newSlug, setNewSlug] = useState("");
   const [publishOpen, setPublishOpen] = useState(false);
@@ -517,6 +518,21 @@ function App() {
   const saveInFlightRef = useRef(false);
   const openInFlightRef = useRef(false);
   const autoSaveFailureVersionRef = useRef(-1);
+  const sidebarVisible = isCompact ? sidebarOpen : !sidebarCollapsed;
+
+  const closeSidebar = useCallback(() => {
+    if (isCompact) {
+      setSidebarOpen(false);
+      window.setTimeout(() => menuButtonRef.current?.focus(), 0);
+    } else {
+      setSidebarCollapsed(true);
+    }
+  }, [isCompact]);
+
+  const openSidebar = () => {
+    if (isCompact) setSidebarOpen(true);
+    else setSidebarCollapsed(false);
+  };
 
   const activeFile = content?.files?.[locale];
   const activeBody = activeFile?.body || "";
@@ -611,8 +627,7 @@ function App() {
     const trap = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        setSidebarOpen(false);
-        menuButtonRef.current?.focus();
+        closeSidebar();
         return;
       }
       if (event.key !== "Tab") return;
@@ -630,7 +645,7 @@ function App() {
     };
     sidebar?.addEventListener("keydown", trap);
     return () => sidebar?.removeEventListener("keydown", trap);
-  }, [isCompact, sidebarOpen]);
+  }, [closeSidebar, isCompact, sidebarOpen]);
 
   useEffect(() => {
     if (!content || content.kind === "about") return;
@@ -744,7 +759,7 @@ function App() {
       editVersionRef.current = 0;
       autoSaveFailureVersionRef.current = -1;
       setSavedAt(null);
-      setSidebarOpen(false);
+      if (isCompact) closeSidebar();
       setMessage({ type: "", text: "" });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -1104,22 +1119,26 @@ function App() {
 
   return (
     <div className="editor-app">
-      <header className="editor-header" inert={isCompact && sidebarOpen}>
+      <header className="editor-header" inert={isCompact && sidebarVisible}>
         <div className="editor-header-leading">
           <Button
             ref={menuButtonRef}
             className="editor-menu-button"
-            variant="secondary"
-            onClick={() => setSidebarOpen(true)}
+            variant="text"
+            aria-label={sidebarVisible ? "コンテンツ一覧を閉じる" : "コンテンツ一覧を開く"}
+            aria-controls="editor-sidebar"
+            aria-expanded={sidebarVisible}
+            onClick={() => (sidebarVisible ? closeSidebar() : openSidebar())}
           >
-            <FaBarsIcon alt="コンテンツ一覧を開く" />
+            <FaBarsIcon alt="" />
           </Button>
         </div>
         <div className="editor-header-actions">
           {saveState && (
-            <StatusLabel className="editor-save-status" type={saveState.type}>
+            <span className="editor-save-status" data-state={saveState.type}>
+              <span className="editor-save-status-dot" aria-hidden="true" />
               {saveState.text}
-            </StatusLabel>
+            </span>
           )}
           <Button
             variant="secondary"
@@ -1161,14 +1180,17 @@ function App() {
         {openingItem ? `${titleFor(openingItem)}を開いています。` : ""}
       </p>
 
-      <div className="editor-shell">
+      <div
+        className={`editor-shell ${sidebarVisible ? "is-sidebar-open" : "is-sidebar-collapsed"}`}
+      >
         <aside
+          id="editor-sidebar"
           ref={sidebarRef}
-          className={`editor-sidebar ${sidebarOpen ? "is-open" : ""}`}
+          className={`editor-sidebar ${sidebarVisible ? "is-open" : ""}`}
           role={isCompact ? "dialog" : undefined}
-          aria-modal={isCompact && sidebarOpen ? "true" : undefined}
-          aria-label={isCompact ? "コンテンツ一覧" : undefined}
-          aria-hidden={isCompact && !sidebarOpen ? "true" : undefined}
+          aria-modal={isCompact && sidebarVisible ? "true" : undefined}
+          aria-label="コンテンツ一覧"
+          aria-hidden={!sidebarVisible ? "true" : undefined}
         >
           <div className="editor-sidebar-head">
             <SegmentedControl
@@ -1183,21 +1205,25 @@ function App() {
             />
             {kind !== "about" && (
               <Button
+                className="editor-create-button"
                 size="S"
                 variant="secondary"
                 prefix={<FaPlusIcon alt="" />}
                 onClick={() => setCreateOpen(true)}
+                aria-label="新規"
               >
-                新規
+                <span className="editor-create-label">新規</span>
               </Button>
             )}
           </div>
           <div className="editor-list-filters">
             <Input
+              className="editor-search-input"
               name="content-query"
               width="100%"
               value={query}
-              placeholder="タイトル・IDを検索"
+              prefix={<FaMagnifyingGlassIcon alt="" />}
+              placeholder="タイトルまたはIDを検索"
               aria-label="コンテンツを検索"
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -1241,27 +1267,23 @@ function App() {
             })}
             {!filteredItems.length && <p className="editor-list-empty">まだありません。</p>}
           </nav>
-          <Button
-            className="editor-sidebar-close"
-            variant="secondary"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <Button className="editor-sidebar-close" variant="secondary" onClick={closeSidebar}>
             閉じる
           </Button>
         </aside>
-        {sidebarOpen && (
+        {isCompact && sidebarVisible && (
           <button
             className="editor-scrim"
             type="button"
             aria-label="一覧を閉じる"
-            onClick={() => setSidebarOpen(false)}
+            onClick={closeSidebar}
           />
         )}
 
         {!content ? (
-          <EmptyEditor compact={isCompact} onOpen={() => setSidebarOpen(true)} />
+          <EmptyEditor compact={isCompact || !sidebarVisible} onOpen={openSidebar} />
         ) : (
-          <main className="editor-main" inert={isCompact && sidebarOpen}>
+          <main className="editor-main" inert={isCompact && sidebarVisible}>
             <section className="editor-document-head">
               <div>
                 <div className="editor-document-context">

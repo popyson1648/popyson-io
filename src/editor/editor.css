@@ -99,14 +99,6 @@ select {
   transform: none !important;
 }
 
-.editor-app .smarthr-ui-StatusLabel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  line-height: 1 !important;
-}
-
 .editor-app .smarthr-ui-Button.shr-bg-main:not(.smarthr-ui-SegmentedControl-button) {
   border-color: var(--editor-main) !important;
   background: var(--editor-main) !important;
@@ -180,7 +172,7 @@ select {
   display: flex;
   min-height: 56px;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
   padding: 8px 20px;
   border-bottom: 1px solid var(--editor-border);
@@ -188,7 +180,7 @@ select {
 }
 
 .editor-header-leading {
-  display: none;
+  display: inline-flex;
   align-items: center;
 }
 
@@ -204,11 +196,53 @@ select {
   justify-content: flex-end;
 }
 
+.editor-save-status {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding-inline: 4px;
+  color: var(--editor-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.editor-save-status-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--editor-text-muted);
+}
+
+.editor-save-status[data-state="green"] .editor-save-status-dot {
+  background: var(--editor-success);
+}
+
+.editor-save-status[data-state="warning"] .editor-save-status-dot {
+  background: var(--editor-warning);
+}
+
 .editor-save-label-short {
   display: none;
 }
 
-.editor-menu-button,
+.editor-menu-button {
+  display: inline-flex !important;
+  width: 36px;
+  min-width: 36px !important;
+  height: 36px;
+  padding: 0 !important;
+  border-radius: var(--editor-radius-m) !important;
+  color: var(--editor-text-muted) !important;
+}
+
+.editor-menu-button:hover {
+  color: var(--editor-text) !important;
+  background: var(--editor-hover) !important;
+}
+
 .editor-sidebar-close {
   display: none;
 }
@@ -225,7 +259,7 @@ select {
 .editor-shell {
   display: grid;
   min-height: calc(100dvh - 56px);
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: 256px minmax(0, 1fr);
 }
 
 .editor-sidebar {
@@ -241,14 +275,53 @@ select {
 }
 
 .editor-sidebar-head {
-  justify-content: space-between;
-  padding: 0 4px 14px;
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.editor-sidebar-head .smarthr-ui-SegmentedControl {
+  min-width: 0;
+}
+
+.editor-create-button {
+  flex: 0 0 auto;
 }
 
 .editor-list-filters {
   display: grid;
   gap: 8px;
-  padding: 0 4px 12px;
+  padding: 0 0 14px;
+}
+
+.editor-search-input,
+.editor-list-filters .smarthr-ui-Select > select {
+  border-color: transparent !important;
+  background: rgb(255 255 255 / 64%) !important;
+  box-shadow: inset 0 0 0 1px rgb(29 29 34 / 5%) !important;
+}
+
+.editor-search-input {
+  min-height: 36px;
+  border-radius: var(--editor-radius-m) !important;
+}
+
+.editor-search-input:hover,
+.editor-list-filters .smarthr-ui-Select > select:hover {
+  background: rgb(255 255 255 / 88%) !important;
+  box-shadow: inset 0 0 0 1px var(--editor-border) !important;
+}
+
+.editor-search-input:focus-within {
+  background: var(--editor-surface) !important;
+  box-shadow: 0 0 0 2px rgb(91 91 214 / 22%) !important;
+}
+
+.editor-search-input input {
+  font-size: 13px !important;
 }
 
 .editor-content-list {
@@ -407,18 +480,23 @@ select {
 .editor-title-input {
   padding: 0 !important;
   border-color: transparent !important;
-  border-radius: 0 !important;
+  border-radius: var(--editor-radius-m) !important;
   background: transparent !important;
   box-shadow: none !important;
 }
 
+.editor-title-input:hover {
+  background: var(--editor-surface-subtle) !important;
+}
+
 .editor-title-input:focus-within {
-  box-shadow: inset 0 -1px 0 var(--editor-main) !important;
+  background: var(--editor-surface-subtle) !important;
+  box-shadow: 0 0 0 2px rgb(91 91 214 / 18%) !important;
 }
 
 .editor-title-input input {
   min-height: 48px;
-  padding: 4px 0 7px !important;
+  padding: 4px 10px 7px !important;
   color: var(--editor-text) !important;
   font-size: clamp(24px, 3vw, 32px) !important;
   font-weight: 700;
@@ -429,7 +507,7 @@ select {
 .editor-fixed-title {
   min-height: 48px;
   margin: 0;
-  padding: 4px 0 7px;
+  padding: 4px 10px 7px;
   color: var(--editor-text);
   font-size: clamp(24px, 3vw, 32px);
   letter-spacing: -0.035em;
@@ -1124,6 +1202,20 @@ select {
 }
 
 @media (max-width: 1180px) {
+  .editor-create-button {
+    width: 32px;
+    min-width: 32px !important;
+    padding-inline: 0 !important;
+  }
+
+  .editor-create-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
   .editor-document-head {
     display: grid;
     gap: 10px;
@@ -1148,6 +1240,16 @@ select {
   }
 }
 
+@media (min-width: 901px) {
+  .editor-shell.is-sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-shell.is-sidebar-collapsed .editor-sidebar {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) {
   .editor-header {
     justify-content: space-between;
@@ -1162,6 +1264,20 @@ select {
 
   .editor-save-status {
     display: none !important;
+  }
+
+  .editor-create-button {
+    width: auto;
+    min-width: 0 !important;
+    padding-inline: 10px !important;
+  }
+
+  .editor-create-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
   }
 
   .editor-shell {

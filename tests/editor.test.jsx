@@ -37,6 +37,17 @@ describe("content editor shell", () => {
     expect(screen.getByRole("button", { name: "新規" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "下書きを保存" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "公開" })).toBeInTheDocument();
+    const sidebar = container.querySelector(".editor-sidebar");
+    expect(screen.getByRole("button", { name: "コンテンツ一覧を閉じる" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "コンテンツ一覧を閉じる" }));
+    expect(sidebar).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector(".editor-shell")).toHaveClass("is-sidebar-collapsed");
+    fireEvent.click(screen.getByRole("button", { name: "コンテンツ一覧を開く" }));
+    expect(sidebar).not.toHaveAttribute("aria-hidden");
+    expect(container.querySelector(".editor-shell")).toHaveClass("is-sidebar-open");
     expect(screen.queryByText("Content Editor")).not.toBeInTheDocument();
     expect(screen.queryByText("popyson.io")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /コンテンツを選択/ })).not.toBeInTheDocument();
@@ -343,6 +354,8 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /日本語の名前/ }));
 
     expect(await screen.findByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(container.querySelector(".editor-save-status")).toHaveTextContent("公開済み");
+    expect(container.querySelector(".editor-save-status")).toHaveAttribute("data-state", "green");
     expect(
       screen.queryByRole("textbox", { name: /タイトル|記事タイトル|作品名/ }),
     ).not.toBeInTheDocument();

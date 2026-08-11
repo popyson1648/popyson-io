@@ -36,12 +36,14 @@ describe("editor control alignment", () => {
 
   test("uses the same center line for icons, status labels, and compact commands", () => {
     const icons = ruleBody(css, ".editor-app .smarthr-ui-Button .smarthr-ui-Icon {");
-    const status = ruleBody(css, ".editor-app .smarthr-ui-StatusLabel");
+    const status = ruleBody(css, ".editor-save-status");
+    const statusDot = ruleBody(css, ".editor-save-status-dot");
     const compact = ruleBody(css, ".editor-command-label");
     expect(icons).toMatch(/transform:\s*none\s*!important/);
     expect(status).toMatch(/align-items:\s*center/);
-    expect(status).toMatch(/justify-content:\s*center/);
-    expect(status).toMatch(/line-height:\s*1\s*!important/);
+    expect(status).toMatch(/gap:\s*7px/);
+    expect(status).toMatch(/color:\s*var\(--editor-text-muted\)/);
+    expect(statusDot).toMatch(/border-radius:\s*50%/);
     expect(compact).toMatch(/display:\s*inline-flex/);
     expect(compact).toMatch(/align-items:\s*center/);
     expect(compact).toMatch(/justify-content:\s*center/);
@@ -87,5 +89,28 @@ describe("editor responsive document header", () => {
     const header = ruleBody(tablet, ".editor-document-head");
     expect(header).toMatch(/display:\s*grid/);
     expect(header).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  test("contains the iPad create action and supports a collapsed wide sidebar", () => {
+    const tablet = blockBody(css, "@media (max-width: 1180px)");
+    const create = ruleBody(tablet, ".editor-create-button");
+    const wide = blockBody(css, "@media (min-width: 901px)");
+    const collapsed = ruleBody(wide, ".editor-shell.is-sidebar-collapsed");
+    expect(create).toMatch(/width:\s*32px/);
+    expect(create).toMatch(/padding-inline:\s*0\s*!important/);
+    expect(collapsed).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  test("gives title text inline breathing room and a quiet focus surface", () => {
+    const title = ruleBody(css, ".editor-title-input input");
+    const focus = ruleBody(css, ".editor-title-input:focus-within");
+    expect(title).toMatch(/padding:\s*4px 10px 7px\s*!important/);
+    expect(focus).toMatch(/background:\s*var\(--editor-surface-subtle\)/);
+  });
+
+  test("uses a lower-contrast dedicated search surface", () => {
+    const search = ruleBody(css, ".editor-search-input,");
+    expect(search).toMatch(/border-color:\s*transparent\s*!important/);
+    expect(search).toMatch(/background:\s*rgb\(255 255 255 \/ 64%\)\s*!important/);
   });
 });

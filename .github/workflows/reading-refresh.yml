@@ -62,6 +62,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download active database release
+        if: vars.CONTENT_CLOUD_CUTOVER == '1'
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+          SNAPSHOT_ROOT: ${{ runner.temp }}/content-active
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id active \
+            --root "$SNAPSHOT_ROOT" \
+            --output "$RUNNER_TEMP/active-release.json"
+          echo "CONTENT_SNAPSHOT_ROOT=$SNAPSHOT_ROOT" >> "$GITHUB_ENV"
+
       - name: Verify Instapaper secrets are present
         # Hard-fail on missing configuration so a misconfigured workflow cannot
         # pass silently: the fetch step below swallows errors on purpose, so a

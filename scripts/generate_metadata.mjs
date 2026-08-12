@@ -6,9 +6,11 @@ import { stringify as stringifyToml } from "smol-toml";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { assertValidMetadata, dateToIsoDate } from "./metadataSchema.mjs";
+import { contentSnapshotRoot } from "./content_loader.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
-const POSTS_DIR = join(ROOT, "src/content/posts");
+const CONTENT_ROOT = contentSnapshotRoot();
+const POSTS_DIR = join(CONTENT_ROOT, "src/content/posts");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 
 function serializeMarkdown(meta, body) {
@@ -30,6 +32,9 @@ function postMarkdownFiles() {
 }
 
 function firstAddedGitDate(filePath) {
+  const databaseDate = String(process.env.CONTENT_DATABASE_DATE || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(databaseDate)) return databaseDate;
+  if (CONTENT_ROOT !== ROOT) return "";
   const relPath = relative(ROOT, filePath);
   try {
     const output = execFileSync(
@@ -549,7 +554,7 @@ async function resolveAutoThumbnail(meta, { filePath, body, config, provider, im
 
   const postId = postIdFromPath(filePath);
   const publicRef = `/thumbnails/${postId}.png`;
-  const targetPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+  const targetPath = join(CONTENT_ROOT, "public", "thumbnails", `${postId}.png`);
 
   if (!existsSync(targetPath)) {
     const concept = await resolveThumbnailConcept(meta, { filePath, body, config, provider });

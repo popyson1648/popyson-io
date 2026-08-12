@@ -72,6 +72,18 @@ export class ContentCloudClient {
     );
   }
 
+  async requestBytes(pathname) {
+    const response = await fetch(`${this.baseUrl}${pathname}`, {
+      headers: this.accessHeaders,
+    });
+    if (response.ok) return response.arrayBuffer();
+    throw new ContentCloudError(
+      `Content API request failed (${response.status})`,
+      response.status,
+      "cloud_error",
+    );
+  }
+
   list() {
     return this.request("/v1/author/content");
   }

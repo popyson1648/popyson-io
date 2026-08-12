@@ -19,7 +19,10 @@ npm run build
 ```
 
 The production build runs Vite, prerenders route HTML, then generates Pagefind
-custom-record indexes under `dist/pagefind/`.
+custom-record indexes under `dist/pagefind/`. Set `CONTENT_SNAPSHOT_ROOT` to an
+existing absolute directory to build the Blog, Works, About, and their assets
+from an isolated database snapshot. Without it, local development deliberately
+uses the repository tree until the production cutover.
 
 The Blog UI and rendered article bodies are emitted as a lazy route chunk, so
 About and other entry routes do not download Blog/search code. Direct Blog and
@@ -43,9 +46,10 @@ generation is needed. `OPENAI_API_KEY` must be billing-enabled. CI runs `node
 scripts/generate_metadata.mjs --check`, which is a static check and does not call
 any AI provider.
 
-On push to `main`, `.github/workflows/generate-metadata.yml` runs the same
-generation step automatically and commits the resolved metadata and generated
-thumbnails. See `.project/metadata.md`.
+Database-backed publication runs the same generation step inside
+`.github/workflows/content-publish.yml` before translation. Generated content
+is returned to the Worker as a candidate revision and is never committed to
+Git. See `.project/metadata.md` and `.project/content-publication.md`.
 
 ## Publish content
 
@@ -188,7 +192,9 @@ See the Deploy section below.
 ## Deploy
 
 The site is deployed to Cloudflare Pages via Direct Upload (`wrangler pages
-deploy`) from two decoupled workflows; Cloudflare's Git integration is not used.
+deploy`) from three workflows; Cloudflare's Git integration is not used. All
+three share the `cloudflare-deploy` queue so an older build cannot overwrite a
+newer content release.
 
 - `.github/workflows/deploy.yml` — on push to `main` (and `workflow_dispatch`).
   Builds and deploys blog/about/code. It does a best-effort Instapaper fetch and
@@ -197,6 +203,13 @@ deploy`) from two decoupled workflows; Cloudflare's Git integration is not used.
 - `.github/workflows/reading-refresh.yml` — hourly (and `workflow_dispatch`).
   Refreshes the reading list; it builds and deploys only when the fetch
   succeeds, otherwise the last successful deployment keeps serving.
+- `.github/workflows/content-publish.yml` — dispatched with an opaque database
+  publication job id. It generates metadata, translates, verifies, deploys, and
+  atomically finalizes the pinned release without committing content to Git.
+
+After `CONTENT_CLOUD_CUTOVER=1`, code and reading-list deployments download the
+active immutable release from the Worker after acquiring the shared queue.
+Before cutover, they retain the checked-in content fallback for safe rollout.
 
 See `.decisions/instapaper-reading-list.md` and
 `.decisions/split-reading-and-site-deploy.md`.

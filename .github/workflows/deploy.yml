@@ -54,6 +54,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download active database release
+        if: vars.CONTENT_CLOUD_CUTOVER == '1'
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+          SNAPSHOT_ROOT: ${{ runner.temp }}/content-active
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id active \
+            --root "$SNAPSHOT_ROOT" \
+            --output "$RUNNER_TEMP/active-release.json"
+          echo "CONTENT_SNAPSHOT_ROOT=$SNAPSHOT_ROOT" >> "$GITHUB_ENV"
+
       - name: Refresh reading list (best-effort)
         # Non-blocking: on any failure (outage or missing secrets) we keep the
         # committed src/reading.json and still deploy, so content always ships.

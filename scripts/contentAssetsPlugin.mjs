@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { extname } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { extname, join, relative } from "node:path";
 
 import {
   EditorContentError,
@@ -7,6 +7,7 @@ import {
   resolveContentAsset,
 } from "./contentEditorModel.mjs";
 import { editorRequestAccess } from "./editorApiPlugin.mjs";
+import { contentSnapshotRoot } from "./content_loader.mjs";
 
 const CONTENT_TYPES = {
   ".gif": "image/gif",
@@ -28,6 +29,7 @@ export function contentAssetsPlugin({
   trustedHost = "",
   tailscaleLogin = "",
 } = {}) {
+  const snapshotRoot = contentSnapshotRoot();
   const configureMiddleware = (server) => {
     server.middlewares.use((request, response, next) => {
       const pathname = new URL(request.url || "/", "http://editor.local").pathname;
@@ -74,13 +76,33 @@ export function contentAssetsPlugin({
     configurePreviewServer: configureMiddleware,
     generateBundle() {
       if (!emitAssets) return;
-      for (const asset of listContentAssets()) {
+      for (const asset of listContentAssets({ snapshotRoot })) {
         this.addWatchFile(asset.filePath);
         this.emitFile({
           type: "asset",
           fileName: asset.outputPath,
           source: readFileSync(asset.filePath),
         });
+      }
+      const publicRoot = join(snapshotRoot, "public");
+      if (snapshotRoot === contentSnapshotRoot({}) || !existsSync(publicRoot)) return;
+      const pending = [publicRoot];
+      while (pending.length > 0) {
+        const directory = pending.pop();
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+          const filePath = join(directory, entry.name);
+          if (entry.isDirectory()) {
+            pending.push(filePath);
+            continue;
+          }
+          if (!entry.isFile()) continue;
+          this.addWatchFile(filePath);
+          this.emitFile({
+            type: "asset",
+            fileName: relative(publicRoot, filePath),
+            source: readFileSync(filePath),
+          });
+        }
       }
     },
   };

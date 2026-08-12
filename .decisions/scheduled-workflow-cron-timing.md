@@ -31,6 +31,10 @@ Current schedules:
 
 The three hourly jobs are staggered at `:17` / `:29` / `:43`.
 
+The same conventions apply to Cloudflare Cron Triggers, which are also UTC-only:
+
+- `workers/content-backup`: `17 18 * * *` (UTC) = 03:17 JST, daily.
+
 ## Context
 
 GitHub Actions runs scheduled workflows on UTC cron only. A large number of

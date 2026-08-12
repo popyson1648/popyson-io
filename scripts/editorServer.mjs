@@ -3,6 +3,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { contentCloudConfig } from "./contentCloudClient.mjs";
+import { githubWorkflowConfig } from "./githubWorkflowClient.mjs";
+
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const EDITOR_VITE_CONFIG = join(ROOT, "editor/vite.config.js");
 export const EDITOR_PID_FILE = join(ROOT, ".tmp/editor-server.pid");
@@ -20,6 +23,12 @@ export function editorServerOptions(args = [], env = process.env) {
     useTailscale: !args.includes("--no-tailscale") && env.CONTENT_EDITOR_NO_TAILSCALE !== "1",
     development: args.includes("--dev"),
   };
+}
+
+export function validateEditorEnvironment(env = process.env) {
+  contentCloudConfig(env);
+  githubWorkflowConfig(env);
+  return true;
 }
 
 export function viteEditorServerOptions({ host, port, trustedHost = "" }) {
@@ -124,6 +133,7 @@ export function editorStartupMessages({ resolvedUrls, publicUrl, tailscaleLogin,
 }
 
 export async function startEditorServer(args = process.argv.slice(2)) {
+  validateEditorEnvironment();
   const options = editorServerOptions(args);
   const identity = options.useTailscale ? readTailscaleIdentity() : null;
   options.trustedHost = identity?.dnsName || "";

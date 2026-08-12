@@ -16,7 +16,13 @@ export default defineConfig({
   publicDir: false,
   plugins: [
     react(),
-    contentAssetsPlugin({ preferDrafts: true, emitAssets: false }),
+    contentAssetsPlugin({
+      preferDrafts: true,
+      emitAssets: false,
+      cloudAssets: process.env.CONTENT_EDITOR_ENABLED === "1",
+      trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,
+      tailscaleLogin: process.env.CONTENT_EDITOR_TAILSCALE_LOGIN,
+    }),
     editorApiPlugin({
       enabled: process.env.CONTENT_EDITOR_ENABLED === "1",
       trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,

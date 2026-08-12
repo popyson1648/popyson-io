@@ -6,6 +6,7 @@ import {
   listContentAssets,
   resolveContentAsset,
 } from "./contentEditorModel.mjs";
+import { ContentCloudClient } from "./contentCloudClient.mjs";
 import { editorRequestAccess } from "./editorApiPlugin.mjs";
 import { contentSnapshotRoot } from "./content_loader.mjs";
 
@@ -23,15 +24,28 @@ function assetRequest(pathname) {
   return { segment: match[1], id: match[2], name: match[3] };
 }
 
+/**
+ * @param {{
+ *   preferDrafts?: boolean,
+ *   emitAssets?: boolean,
+ *   trustedHost?: string,
+ *   tailscaleLogin?: string,
+ *   cloudAssets?: boolean,
+ *   cloudClient?: ContentCloudClient,
+ * }} [options]
+ */
 export function contentAssetsPlugin({
   preferDrafts = false,
   emitAssets = true,
   trustedHost = "",
   tailscaleLogin = "",
+  cloudAssets = false,
+  cloudClient,
 } = {}) {
   const snapshotRoot = contentSnapshotRoot();
   const configureMiddleware = (server) => {
-    server.middlewares.use((request, response, next) => {
+    const cloud = cloudAssets ? cloudClient || new ContentCloudClient() : null;
+    server.middlewares.use(async (request, response, next) => {
       const pathname = new URL(request.url || "/", "http://editor.local").pathname;
       const asset = assetRequest(pathname);
       if (!asset) return next();
@@ -50,6 +64,24 @@ export function contentAssetsPlugin({
         return;
       }
       try {
+        if (cloud) {
+          const kind = { posts: "post", works: "work", about: "about" }[asset.segment];
+          const content = await cloud.read(kind, decodeURIComponent(asset.id));
+          const logicalPath = `assets/${decodeURIComponent(asset.name)}`;
+          const record = content.assets.find((candidate) => candidate.logicalPath === logicalPath);
+          if (!record) throw new EditorContentError("Asset not found", 404, "not_found");
+          const value = await cloud.getAsset(record.id);
+          response.statusCode = 200;
+          response.setHeader(
+            "Content-Type",
+            value.headers.get("content-type") || "application/octet-stream",
+          );
+          response.setHeader("Cache-Control", "no-store");
+          response.end(
+            request.method === "HEAD" ? undefined : Buffer.from(await value.arrayBuffer()),
+          );
+          return;
+        }
         const filePath = resolveContentAsset(asset.segment, asset.id, asset.name, {
           preferDraft: preferDrafts,
         });

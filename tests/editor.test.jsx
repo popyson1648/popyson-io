@@ -202,10 +202,10 @@ describe("content editor shell", () => {
     expect(screen.queryByRole("button", { name: "変更履歴" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /その他/ }));
     expect(screen.getByRole("menuitem", { name: "変更履歴" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "公開版へ戻す" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "削除" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "分割" })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
-    expect(screen.getByRole("complementary", { name: "公開設定" })).toHaveTextContent("公開済み");
+    expect(screen.getByRole("complementary", { name: "公開設定" })).toHaveTextContent("公開");
     expect(screen.getByRole("heading", { name: "公開設定" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "パネルを閉じる" }));
     fireEvent.click(screen.getByRole("button", { name: "アウトラインを開く" }));

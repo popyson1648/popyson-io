@@ -230,9 +230,9 @@ function titleFor(item) {
 }
 
 function statusFor(item) {
-  if (item.status === "draft") return "下書き";
-  if (item.status === "published_with_draft") return "公開済み・下書きあり";
-  return "公開済み";
+  if (item.deletedAt || item.status === "deleted") return "削除済み";
+  if (item.visibility === "private" || item.status === "private") return "非公開";
+  return "公開";
 }
 
 function splitValues(value) {
@@ -736,11 +736,11 @@ function App() {
       api
         .publishJob(publishJob.id)
         .then((job) => {
-          setPublishJob(job);
+          setPublishJob((current) => ({ ...current, ...job }));
           if (job.status === "succeeded") {
             setMessage({
               type: "success",
-              text: "mainへのpushが完了し、本番デプロイを開始しました。公開ログで進行状態を確認できます。",
+              text: "コンテンツの公開処理が完了しました。",
             });
             loadList();
             api
@@ -836,6 +836,9 @@ function App() {
           if (unchanged) return cloneContent(saved);
           const next = cloneContent(current);
           next.status = saved.status;
+          next.visibility = saved.visibility;
+          next.deletedAt = saved.deletedAt;
+          next.currentRevisionId = saved.currentRevisionId;
           for (const fileLocale of LOCALES) {
             next.files[fileLocale].revision = saved.files[fileLocale].revision;
           }
@@ -844,7 +847,8 @@ function App() {
         if (unchanged) setDirty(false);
         autoSaveFailureVersionRef.current = -1;
         setSavedAt(new Date());
-        if (!quiet) setMessage({ type: "success", text: "非公開の下書きとして保存しました。" });
+        if (!quiet)
+          setMessage({ type: "success", text: "新しい版としてデータベースに保存しました。" });
         await loadList();
         return saved;
       } catch (error) {
@@ -974,8 +978,8 @@ function App() {
             type: "success",
             text:
               content.kind === "about"
-                ? "プロフィール画像をassets/へ保存しました。"
-                : `${uploaded}件の画像をassets/へ保存して挿入しました。`,
+                ? "プロフィール画像をデータベースへ関連付けました。"
+                : `${uploaded}件の画像をオブジェクトストレージへ保存して挿入しました。`,
           },
     );
   };
@@ -998,12 +1002,16 @@ function App() {
     helpers.close();
     setRestoreTarget(null);
     if (!content || !restoreTarget) return;
+    const base = dirty ? await save() : content;
+    if (!base) return;
     setBusy(true);
     try {
-      const restored = await api.restoreHistory(content.kind, content.id, restoreTarget.id, {
-        ja: content.files.ja.revision,
-        en: content.files.en.revision,
-      });
+      const restored = await api.restoreHistory(
+        base.kind,
+        base.id,
+        restoreTarget.id,
+        base.currentRevisionId,
+      );
       setContent(cloneContent(restored));
       setDirty(false);
       setSavedAt(new Date());
@@ -1019,27 +1027,58 @@ function App() {
     }
   };
 
-  const discardDraft = async (_event, helpers) => {
-    helpers.close();
-    setDiscardOpen(false);
+  const changeContentState = async (value, successMessage) => {
     if (!content) return;
+    const base = dirty ? await save() : content;
+    if (!base) return;
     setBusy(true);
     try {
-      const result = await api.discard(content.kind, content.id);
-      if (result.deleted) setContent(null);
-      else setContent(cloneContent(result));
+      const result = await api.updateState(base, value);
+      setContent(cloneContent(result));
       setDirty(false);
-      setSavedAt(null);
       await loadList();
-      setMessage({
-        type: "success",
-        text: result.deleted ? "下書きを削除しました。" : "下書きを破棄し、公開版へ戻しました。",
-      });
+      setMessage({ type: "success", text: successMessage });
     } catch (error) {
+      if (error.code === "revision_conflict") setConflictOpen(true);
       setMessage({ type: "error", text: error.message });
     } finally {
       setBusy(false);
     }
+  };
+
+  const changeVisibility = async (visibility) => {
+    if (!content || visibility === content.visibility) return;
+    if (
+      visibility === "private" &&
+      !window.confirm(
+        "非公開へ変更しますか？ 過去に公開した内容はGit履歴や外部キャッシュから消えるとは限りません。",
+      )
+    ) {
+      return;
+    }
+    await changeContentState(
+      { visibility },
+      visibility === "public"
+        ? "公開に設定しました。公開ボタンでサイトへ反映してください。"
+        : "非公開に設定しました。公開ボタンでサイトから除外してください。",
+    );
+  };
+
+  const deleteContent = async (_event, helpers) => {
+    helpers.close();
+    setDiscardOpen(false);
+    if (!content) return;
+    await changeContentState(
+      { deleted: true },
+      "削除済みにしました。公開ボタンでサイトから除外できます。履歴は復元のため保持されます。",
+    );
+  };
+
+  const restoreDeletedContent = async () => {
+    await changeContentState(
+      { deleted: false },
+      "コンテンツを復元しました。公開設定を確認してサイトへ反映してください。",
+    );
   };
 
   const createContent = async (event, helpers) => {
@@ -1069,12 +1108,12 @@ function App() {
   const startPublish = async (_event, helpers) => {
     helpers.close();
     setPublishOpen(false);
-    const saved = await save();
+    const saved = dirty ? await save() : content;
     if (!saved) return;
     try {
       const job = await api.publish(saved.kind, saved.id);
       setPublishJob(job);
-      setMessage({ type: "info", text: "検証して公開しています…" });
+      setMessage({ type: "info", text: "公開ジョブを開始しました…" });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     }
@@ -1106,7 +1145,7 @@ function App() {
       setContent(cloneContent(result));
       setDirty(false);
       setSavedAt(null);
-      setMessage({ type: "info", text: "ディスク上の最新版を読み込みました。" });
+      setMessage({ type: "info", text: "データベースの最新版を読み込みました。" });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     } finally {
@@ -1177,21 +1216,23 @@ function App() {
           </Button>
         </div>
         <div className="editor-header-actions">
-          {content?.kind !== "about" && content && (
+          {content && (
             <>
-              <Button
-                className="editor-header-icon-button"
-                variant="text"
-                aria-label="アウトラインを開く"
-                title="アウトライン"
-                aria-controls="editor-inspector"
-                aria-expanded={inspector === "outline"}
-                onClick={() =>
-                  setInspector((current) => (current === "outline" ? null : "outline"))
-                }
-              >
-                <FaListUlIcon alt="" />
-              </Button>
+              {content.kind !== "about" && (
+                <Button
+                  className="editor-header-icon-button"
+                  variant="text"
+                  aria-label="アウトラインを開く"
+                  title="アウトライン"
+                  aria-controls="editor-inspector"
+                  aria-expanded={inspector === "outline"}
+                  onClick={() =>
+                    setInspector((current) => (current === "outline" ? null : "outline"))
+                  }
+                >
+                  <FaListUlIcon alt="" />
+                </Button>
+              )}
               <Button
                 className="editor-header-icon-button"
                 variant="text"
@@ -1215,9 +1256,15 @@ function App() {
               <Button variant="text" onClick={openHistory} disabled={busy}>
                 変更履歴
               </Button>
-              <Button variant="text" onClick={() => setDiscardOpen(true)} disabled={busy}>
-                {content.status === "draft" ? "下書きを削除" : "公開版へ戻す"}
-              </Button>
+              {content.deletedAt ? (
+                <Button variant="text" onClick={restoreDeletedContent} disabled={busy}>
+                  削除から復元
+                </Button>
+              ) : (
+                <Button variant="text" onClick={() => setDiscardOpen(true)} disabled={busy}>
+                  削除
+                </Button>
+              )}
             </DropdownMenuButton>
           )}
           <Button
@@ -1313,9 +1360,9 @@ function App() {
               aria-label="公開状態で絞り込む"
               options={[
                 { value: "all", label: "すべての状態" },
-                { value: "draft", label: "下書き" },
-                { value: "published_with_draft", label: "公開済み・下書きあり" },
-                { value: "published", label: "公開済み" },
+                { value: "private", label: "非公開" },
+                { value: "public", label: "公開" },
+                { value: "deleted", label: "削除済み" },
               ]}
               onChangeValue={setStatusFilter}
             />
@@ -1734,6 +1781,30 @@ function App() {
               </Button>
             </header>
             <div className="editor-inspector-body">
+              {inspector === "settings" && (
+                <div className="editor-meta-grid">
+                  <FormControl
+                    label="公開範囲"
+                    helpMessage="変更後に公開すると静的サイトへ反映されます"
+                  >
+                    <Select
+                      width="100%"
+                      value={content.visibility}
+                      disabled={busy || Boolean(content.deletedAt)}
+                      options={[
+                        { value: "private", label: "非公開" },
+                        { value: "public", label: "公開" },
+                      ]}
+                      onChangeValue={changeVisibility}
+                    />
+                  </FormControl>
+                  {content.deletedAt && (
+                    <p className="editor-validation-error">
+                      このコンテンツは削除済みです。「その他」から復元できます。
+                    </p>
+                  )}
+                </div>
+              )}
               {inspector === "settings" &&
                 content.kind !== "about" &&
                 (content.kind === "post" ? (
@@ -1782,7 +1853,7 @@ function App() {
               {inspector === "history" && (
                 <div className="editor-inspector-history">
                   <p className="editor-local-draft-note">
-                    下書きと履歴はこの端末の .drafts/ に保存されます。バックアップではありません。
+                    各保存はデータベースに変更履歴として残り、以前の版を新しい版として復元できます。
                   </p>
                   {historyEntries.length ? (
                     <ul>
@@ -1831,7 +1902,7 @@ function App() {
         onPressEscape={() => setCreateOpen(false)}
       >
         {kind === "post" ? (
-          <p>日本語・英語のMarkdownとassetsフォルダをまとめて作成します。</p>
+          <p>日本語・英語のMarkdownを非公開の新しい版として作成します。</p>
         ) : (
           <FormControl label="URLスラッグ" helpMessage="半角小文字・数字・ハイフン">
             <Input
@@ -1860,8 +1931,8 @@ function App() {
       >
         <p>
           {content?.kind === "about"
-            ? "画像はAbout専用のassetsフォルダへ保存され、日本語・英語のプロフィールで共通利用されます。"
-            : "画像はこの記事のassetsフォルダに保存されます。代替テキストは画像の内容を短く説明してください。"}
+            ? "画像は非公開のオブジェクトストレージへ保存され、日本語・英語のプロフィールで共通利用されます。"
+            : "画像は非公開のオブジェクトストレージへ保存されます。代替テキストは画像の内容を短く説明してください。"}
         </p>
         {content?.kind !== "about" && (
           <div className="editor-image-queue">
@@ -1892,9 +1963,9 @@ function App() {
         size="S"
         heading="下書きを公開しますか？"
         actionButton={{
-          text: "検証してmainへ公開",
+          text: "公開処理を開始",
           theme: "primary",
-          disabled: busy || !publishPreflight?.valid || !publishPreflight?.productionEligible,
+          disabled: busy || !publishPreflight?.valid,
         }}
         closeButton="キャンセル"
         onClickAction={startPublish}
@@ -1917,12 +1988,14 @@ function App() {
               </dd>
             </div>
             <div>
-              <dt>現在のブランチ</dt>
-              <dd>{publishPreflight?.branch || "確認中"}</dd>
-            </div>
-            <div>
-              <dt>公開対象</dt>
-              <dd>{publishPreflight?.deployBranch || "main"}</dd>
+              <dt>公開範囲</dt>
+              <dd>
+                {publishPreflight?.deletedAt
+                  ? "削除済み"
+                  : publishPreflight?.visibility === "public"
+                    ? "公開"
+                    : "非公開"}
+              </dd>
             </div>
             {content?.kind === "about" ? (
               <div>
@@ -1942,18 +2015,14 @@ function App() {
               </>
             )}
           </dl>
-          {!publishPreflight?.productionEligible && (
-            <p className="editor-validation-error">
-              このブランチへのpushでは本番サイトが更新されません。mainでエディターを起動してください。
-            </p>
-          )}
           {publishPreflight?.issues?.map((issue) => (
             <p key={`${issue.locale}:${issue.field}`} className="editor-validation-error">
               {issue.locale.toUpperCase()}: {issue.message}
             </p>
           ))}
           <p>
-            検証成功後に対象コンテンツだけをコミットしてmainへpushします。push後は本番デプロイが別途開始されます。
+            現在のデータベース版を固定して公開ジョブを作成し、ジョブIDだけをGitHub
+            Actionsへ送ります。本文や画像はdispatch入力へ含めません。
           </p>
         </div>
       </ControlledActionDialog>
@@ -1977,21 +2046,19 @@ function App() {
       <ControlledActionDialog
         isOpen={discardOpen}
         size="S"
-        heading={content?.status === "draft" ? "下書きを削除しますか？" : "公開版へ戻しますか？"}
+        heading="コンテンツを削除しますか？"
         actionButton={{
-          text: content?.status === "draft" ? "削除する" : "下書きを破棄する",
+          text: "削除する",
           theme: "danger",
           disabled: busy,
         }}
         closeButton="キャンセル"
-        onClickAction={discardDraft}
+        onClickAction={deleteContent}
         onClickClose={() => setDiscardOpen(false)}
         onPressEscape={() => setDiscardOpen(false)}
       >
         <p>
-          {content?.status === "draft"
-            ? "未公開の内容とassetsを削除します。"
-            : "公開サイトの内容は残し、公開後に加えた下書きの変更だけを破棄します。"}
+          データベース上で削除済みにします。本文・画像・変更履歴は復元のため保持されます。公開済みの場合は、続けて公開処理を実行するとサイトから除外されます。
         </p>
       </ControlledActionDialog>
 
@@ -1999,7 +2066,7 @@ function App() {
         isOpen={conflictOpen}
         size="S"
         heading="別の変更が見つかりました"
-        actionButton={{ text: "ディスクの最新版を読み込む", theme: "primary", disabled: busy }}
+        actionButton={{ text: "データベースの最新版を読み込む", theme: "primary", disabled: busy }}
         closeButton="編集画面へ戻る"
         onClickAction={reloadAfterConflict}
         onClickClose={() => setConflictOpen(false)}

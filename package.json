@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "editor": "node scripts/editorServer.mjs",
+    "editor": "op run --env-file=.op.env -- node scripts/editorServer.mjs",
     "editor:build": "vite build --config editor/vite.config.js",
-    "editor:dev": "node scripts/editorServer.mjs --dev",
+    "editor:dev": "op run --env-file=.op.env -- node scripts/editorServer.mjs --dev",
     "editor:setup": "node scripts/setupEditorTailscale.mjs",
     "editor:stop": "node scripts/stopEditorServer.mjs",
     "build": "vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs",

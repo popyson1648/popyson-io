@@ -128,4 +128,60 @@ export class ContentCloudClient {
       json: value,
     });
   }
+
+  getAsset(assetId) {
+    return this.requestRaw(`/v1/author/assets/${encodeURIComponent(assetId)}`);
+  }
+
+  listRevisions(kind, id) {
+    return this.request(`/v1/author/content/${kind}/${encodeURIComponent(id)}/revisions`);
+  }
+
+  readRevision(kind, id, revisionId) {
+    return this.request(
+      `/v1/author/content/${kind}/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}`,
+    );
+  }
+
+  restoreRevision(kind, id, value) {
+    return this.request(`/v1/author/content/${kind}/${encodeURIComponent(id)}/restore`, {
+      method: "POST",
+      json: value,
+    });
+  }
+
+  createPublication(kind, id, value) {
+    return this.request(`/v1/author/content/${kind}/${encodeURIComponent(id)}/publish`, {
+      method: "POST",
+      json: value,
+    });
+  }
+
+  publication(jobId) {
+    return this.request(`/v1/author/publish/${encodeURIComponent(jobId)}`);
+  }
+
+  /**
+   * @param {string} pathname
+   * @param {{method?: string, body?: BodyInit, headers?: Record<string, string>}} [options]
+   */
+  async requestRaw(pathname, { method = "GET", body, headers = {} } = {}) {
+    const response = await fetch(`${this.baseUrl}${pathname}`, {
+      method,
+      headers: { ...this.accessHeaders, ...headers },
+      body,
+    });
+    if (response.ok) return response;
+    let error;
+    try {
+      error = (await response.json()).error;
+    } catch {
+      error = null;
+    }
+    throw new ContentCloudError(
+      error?.message || `Content API request failed (${response.status})`,
+      response.status,
+      error?.code || "cloud_error",
+    );
+  }
 }

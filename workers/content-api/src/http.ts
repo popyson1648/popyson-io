@@ -29,8 +29,13 @@ export async function readJson<T>(request: Request, maximumBytes: number): Promi
     throw new HttpError(413, "body_too_large", "Request body is too large");
   }
   try {
-    return JSON.parse(new TextDecoder().decode(bytes)) as T;
-  } catch {
+    const value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new HttpError(400, "invalid_json", "Request body must be a JSON object");
+    }
+    return value as T;
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
     throw new HttpError(400, "invalid_json", "Request body must be valid JSON");
   }
 }

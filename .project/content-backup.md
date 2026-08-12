@@ -3,10 +3,14 @@
 ## Backup boundary
 
 `workers/content-backup/` is a scheduled Cloudflare Workflow with no public
-application route. It reads the D1 asset inventory, verifies every primary R2
-object against its recorded size and SHA-256, and copies missing objects to the
-private backup bucket. It then starts a D1 SQL export through the control-plane
-API, streams the dump to the same bucket, and writes a checksum manifest.
+application route. A Worker Cron Trigger calls its `scheduled()` handler each
+day, and the handler creates the Workflow through its binding. It derives the
+Workflow instance ID from the UTC scheduled time, so a retried Cron delivery
+cannot start a duplicate backup. The Workflow reads the D1 asset inventory,
+verifies every primary R2 object against its recorded size and SHA-256, and
+copies missing objects to the private backup bucket. It then starts a D1 SQL
+export through the control-plane API, streams the dump to the same bucket, and
+writes a checksum manifest.
 
 The Workflow receives a dedicated `D1_REST_API_TOKEN` secret that can export
 only the content database. The content API, local editor, and GitHub Actions do
@@ -29,9 +33,11 @@ npx wrangler secret put D1_REST_API_TOKEN
 npx wrangler deploy
 ```
 
-The schedule runs once per day. Confirm the first instance is complete and that
-both its SQL object and JSON checksum manifest exist before relying on the
-schedule.
+The top-level Cron Trigger runs once per day and starts the Workflow through the
+binding. This adapter keeps recurring backups available when direct schedules
+on Workflow bindings are unavailable for the account plan. Confirm the first
+Cron event and its Workflow instance are complete, and that both its SQL object
+and JSON checksum manifest exist before relying on the schedule.
 
 ## Restore procedure
 

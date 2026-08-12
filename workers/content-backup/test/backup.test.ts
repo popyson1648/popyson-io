@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   backupAsset,
+  exportDatabase,
   pollExport,
   startExport,
   storeExport,
@@ -93,12 +94,109 @@ describe("D1 export API", () => {
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer token");
   });
 
-  it("accepts only HTTPS download locations", async () => {
+  it("polls with the output format the export API requires", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      response({
+        status: "complete",
+        success: true,
+        result: { filename: "backup.sql", signed_url: "https://example.invalid/backup.sql" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(pollExport(environment(), "bookmark")).resolves.toEqual({
+      signedUrl: "https://example.invalid/backup.sql",
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({
+      output_format: "polling",
+      current_bookmark: "bookmark",
+    });
+  });
+
+  it("reports a still-running export as pending rather than failed", async () => {
     vi.stubGlobal(
       "fetch",
       vi
         .fn()
-        .mockResolvedValue(response({ filename: "backup.sql", signed_url: "http://invalid/" })),
+        .mockResolvedValue(response({ status: "active", success: true, at_bookmark: "bookmark" })),
+    );
+
+    await expect(pollExport(environment(), "bookmark")).resolves.toBeNull();
+  });
+
+  it("rejects a poll that arrived after the export session closed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response({ success: false, error: "Not currently exporting anything." }),
+        ),
+    );
+
+    await expect(pollExport(environment(), "bookmark")).rejects.toThrow(
+      "D1 export session ended before it was collected",
+    );
+  });
+
+  it("keeps polling one export until its download location appears", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response({ at_bookmark: "bookmark" }))
+      .mockResolvedValueOnce(response({ status: "active", success: true }))
+      .mockResolvedValueOnce(response({ status: "active", success: true }))
+      .mockResolvedValue(
+        response({
+          status: "complete",
+          success: true,
+          result: { filename: "backup.sql", signed_url: "https://example.invalid/backup.sql" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const sleep = vi.fn(async () => {});
+
+    await expect(exportDatabase(environment(), { intervalMs: 5, sleep })).resolves.toEqual({
+      bookmark: "bookmark",
+      location: { signedUrl: "https://example.invalid/backup.sql" },
+    });
+
+    // One start followed by polls that all carry the same bookmark.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    for (const call of fetchMock.mock.calls.slice(1)) {
+      expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+        output_format: "polling",
+        current_bookmark: "bookmark",
+      });
+    }
+  });
+
+  it("gives up on an export that never finishes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response({ at_bookmark: "bookmark" }))
+        .mockResolvedValue(response({ status: "active", success: true })),
+    );
+
+    await expect(
+      exportDatabase(environment(), { intervalMs: 0, timeoutMs: 0, sleep: async () => {} }),
+    ).rejects.toThrow("D1 export did not finish in time");
+  });
+
+  it("accepts only HTTPS download locations", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response({
+          status: "complete",
+          success: true,
+          result: { filename: "backup.sql", signed_url: "http://invalid/" },
+        }),
+      ),
     );
 
     await expect(pollExport(environment(), "bookmark")).rejects.toThrow(
@@ -124,18 +222,82 @@ describe("backup storage", () => {
       vi.fn().mockRejectedValue(new Error("request exposed https://storage.invalid/?sig=secret")),
     );
 
+    const failure = await storeExport(
+      environment(bucket),
+      { signedUrl: "https://storage.invalid/?sig=secret" },
+      "bookmark",
+      new Date("2026-08-12T18:17:00Z"),
+      "workflow_1",
+    ).catch((error: Error) => error);
+
+    // The reason survives so a blocked host can be told apart from a transport
+    // failure, but the signed URL must not appear anywhere in it.
+    expect(failure.message).toContain("D1 export download failed");
+    expect(failure.message).toContain("request exposed");
+    expect(failure.message).not.toContain("storage.invalid");
+    expect(failure.message).not.toContain("sig=secret");
+  });
+
+  it("refuses a redirected download instead of following it", async () => {
+    const bucket = { head: vi.fn(async () => null) } as unknown as R2Bucket;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, { status: 302, headers: { location: "https://elsewhere.invalid/" } }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
     await expect(
       storeExport(
         environment(bucket),
-        { signedUrl: "https://storage.invalid/?sig=secret" },
+        { signedUrl: "https://storage.invalid/backup" },
         "bookmark",
         new Date("2026-08-12T18:17:00Z"),
         "workflow_1",
       ),
-    ).rejects.toThrow("D1 export download failed");
+    ).rejects.toThrow("D1 export download returned 302");
+
+    expect((fetchMock.mock.calls[0][1] as RequestInit).redirect).toBe("manual");
   });
 
-  it("streams the dump and writes a SHA-256 manifest", async () => {
+  it("refuses a dump that exceeds the size limit", async () => {
+    const bucket = { head: vi.fn(async () => null) } as unknown as R2Bucket;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("dump", {
+          headers: { "content-length": String(64 * 1024 * 1024 + 1) },
+        }),
+      ),
+    );
+
+    await expect(
+      storeExport(
+        environment(bucket),
+        { signedUrl: "https://storage.invalid/backup" },
+        "bookmark",
+        new Date("2026-08-12T18:17:00Z"),
+        "workflow_1",
+      ),
+    ).rejects.toThrow("D1 export exceeded the size limit");
+  });
+
+  it("refuses an empty dump", async () => {
+    const bucket = { head: vi.fn(async () => null) } as unknown as R2Bucket;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("")));
+
+    await expect(
+      storeExport(
+        environment(bucket),
+        { signedUrl: "https://storage.invalid/backup" },
+        "bookmark",
+        new Date("2026-08-12T18:17:00Z"),
+        "workflow_1",
+      ),
+    ).rejects.toThrow("D1 export was empty");
+  });
+
+  it("stores the dump and writes a SHA-256 manifest", async () => {
     const objects = new Map<string, Uint8Array>();
     const metadata = new Map<string, R2PutOptions>();
     const bucket = {

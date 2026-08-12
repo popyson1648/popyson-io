@@ -9,8 +9,11 @@ interface ExportStart {
   at_bookmark?: unknown;
 }
 
-interface ExportReady {
-  signed_url?: unknown;
+// A polling export reports progress in the envelope result and only carries a
+// download location once it has finished, nested one level further down.
+interface ExportProgress {
+  result?: { signed_url?: unknown };
+  success?: boolean;
 }
 
 interface ExportLocation {
@@ -35,6 +38,7 @@ export interface BackupEnvironment {
 
 const MAX_API_RESPONSE_BYTES = 64 * 1024;
 const MAX_ASSET_BYTES = 10 * 1024 * 1024;
+const MAX_DUMP_BYTES = 64 * 1024 * 1024;
 
 interface AssetInventoryRow {
   checksum_sha256: string;
@@ -101,13 +105,22 @@ async function callExportApi(
   return readApiEnvelope(response);
 }
 
+function redactUrls(value: string): string {
+  return value.replaceAll(/\bhttps?:\/\/\S+/gi, "<redacted url>");
+}
+
 async function fetchExport(location: ExportLocation): Promise<Response> {
   try {
-    return await fetch(location.signedUrl, { redirect: "error" });
-  } catch {
-    // Fetch exceptions can include the requested URL. Never let the signed
-    // download credential enter Workflow failure output or observability logs.
-    throw new Error("D1 export download failed");
+    // The Workers runtime rejects `redirect: "error"`, so a redirect is refused
+    // by leaving it unfollowed and letting the caller reject the 3xx status.
+    return await fetch(location.signedUrl, { redirect: "manual" });
+  } catch (error) {
+    // Fetch exceptions can include the requested URL, and the signed download
+    // credential must never reach Workflow failure output or observability
+    // logs. Keep the reason, which is what separates a blocked host from a
+    // transport failure, and redact any URL it carries.
+    const reason = error instanceof Error ? redactUrls(error.message) : "unknown error";
+    throw new Error(`D1 export download failed: ${reason}`);
   }
 }
 
@@ -120,21 +133,66 @@ export async function startExport(env: BackupEnvironment): Promise<string> {
   return result.at_bookmark;
 }
 
+// Returns null while the export is still running. The download location is
+// reported to a single poll, so a caller must keep polling closely.
 export async function pollExport(
   env: BackupEnvironment,
   bookmark: string,
-): Promise<ExportLocation> {
-  const envelope = await callExportApi(env, { current_bookmark: bookmark });
-  const result = envelope.result as ExportReady | undefined;
-  if (envelope.success === false || typeof result?.signed_url !== "string") {
-    throw new Error("D1 export is not ready");
+): Promise<ExportLocation | null> {
+  const envelope = await callExportApi(env, {
+    output_format: "polling",
+    current_bookmark: bookmark,
+  });
+  const result = envelope.result as ExportProgress | undefined;
+  if (envelope.success === false || result?.success === false) {
+    // The API reports "Not currently exporting anything" once the export
+    // session is over, which means this run can no longer reach its dump.
+    throw new Error("D1 export session ended before it was collected");
   }
+  const location = result?.result?.signed_url;
+  if (typeof location !== "string") return null;
 
-  const signedUrl = new URL(result.signed_url);
+  const signedUrl = new URL(location);
   if (signedUrl.protocol !== "https:") {
     throw new Error("D1 export URL must use HTTPS");
   }
   return { signedUrl: signedUrl.toString() };
+}
+
+export interface ExportAttempt {
+  bookmark: string;
+  location: ExportLocation;
+}
+
+interface ExportPollingOptions {
+  intervalMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+  timeoutMs?: number;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Starting the export and collecting its result belong to one attempt. The
+// export API keeps a finished dump available only until the polling session
+// closes, so a retry has to start a new export rather than poll an old one.
+export async function exportDatabase(
+  env: BackupEnvironment,
+  options: ExportPollingOptions = {},
+): Promise<ExportAttempt> {
+  const intervalMs = options.intervalMs ?? 1000;
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const sleep = options.sleep ?? wait;
+  const bookmark = await startExport(env);
+  const deadline = Date.now() + timeoutMs;
+
+  for (;;) {
+    const location = await pollExport(env, bookmark);
+    if (location) return { bookmark, location };
+    if (Date.now() >= deadline) throw new Error("D1 export did not finish in time");
+    await sleep(intervalMs);
+  }
 }
 
 function backupKey(timestamp: Date, instanceId: string): string {
@@ -145,14 +203,21 @@ function backupKey(timestamp: Date, instanceId: string): string {
   return `d1/${day}/${instanceId}.sql`;
 }
 
-function hashingStream(hash: ReturnType<typeof createHash>, onBytes: (size: number) => void) {
-  return new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      hash.update(chunk);
-      onBytes(chunk.byteLength);
-      controller.enqueue(chunk);
-    },
-  });
+// R2 rejects a stream whose length is unknown, and piping the download through
+// a hashing transform discards the length the response carried. The dump is a
+// text export of one small database, so it is read into memory under an
+// explicit cap instead, which also keeps the growth ceiling visible.
+async function readDump(response: Response): Promise<Uint8Array> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_DUMP_BYTES) {
+    throw new Error("D1 export exceeded the size limit");
+  }
+  const dump = new Uint8Array(await response.arrayBuffer());
+  if (dump.byteLength > MAX_DUMP_BYTES) {
+    throw new Error("D1 export exceeded the size limit");
+  }
+  if (dump.byteLength === 0) throw new Error("D1 export was empty");
+  return dump;
 }
 
 async function digestStream(
@@ -218,24 +283,19 @@ export async function storeExport(
     throw new Error(`D1 export download returned ${response.status}`);
   }
 
-  const hash = createHash("sha256");
-  let bytes = 0;
-  const object = await env.BACKUP_BUCKET.put(
-    key,
-    response.body.pipeThrough(hashingStream(hash, (size) => (bytes += size))),
-    {
-      httpMetadata: { contentType: "application/sql" },
-      customMetadata: { bookmark },
-      onlyIf: { etagDoesNotMatch: "*" },
-    },
-  );
+  const dump = await readDump(response);
+  const object = await env.BACKUP_BUCKET.put(key, dump, {
+    httpMetadata: { contentType: "application/sql" },
+    customMetadata: { bookmark },
+    onlyIf: { etagDoesNotMatch: "*" },
+  });
   if (!object) throw new Error("Backup object already exists");
 
   const record: BackupRecord = {
     bookmark,
-    bytes,
+    bytes: dump.byteLength,
     key,
-    sha256: hash.digest("hex"),
+    sha256: createHash("sha256").update(dump).digest("hex"),
   };
   const manifest = await env.BACKUP_BUCKET.put(`${key}.json`, JSON.stringify(record), {
     httpMetadata: { contentType: "application/json" },

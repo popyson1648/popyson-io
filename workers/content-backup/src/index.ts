@@ -2,12 +2,12 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 
 import {
   backupAsset,
+  exportDatabase,
   listAssetInventory,
-  pollExport,
-  startExport,
   storeExport,
   type BackupEnvironment,
 } from "./backup";
+import { type BackupWorkerEnvironment, createScheduledBackup, notFoundResponse } from "./trigger";
 
 export class ContentBackupWorkflow extends WorkflowEntrypoint<BackupEnvironment> {
   async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
@@ -29,20 +29,17 @@ export class ContentBackupWorkflow extends WorkflowEntrypoint<BackupEnvironment>
       assetBytes += record.bytes;
     }
 
-    const bookmark = await step.do(
-      "start D1 export",
-      { retries: { limit: 5, delay: "10 seconds", backoff: "exponential" }, sensitive: "output" },
-      async () => startExport(this.env),
-    );
-
-    const location = await step.do(
-      "wait for D1 export",
+    // Starting and collecting the export is one step: the export API drops a
+    // finished dump when its polling session closes, so a retry has to start
+    // over rather than poll a bookmark from an earlier attempt.
+    const { bookmark, location } = await step.do(
+      "export the database",
       {
-        retries: { limit: 12, delay: "30 seconds", backoff: "exponential" },
-        timeout: "2 minutes",
+        retries: { limit: 5, delay: "30 seconds", backoff: "exponential" },
+        timeout: "5 minutes",
         sensitive: "output",
       },
-      async () => pollExport(this.env, bookmark),
+      async () => exportDatabase(this.env),
     );
 
     const record = await step.do(
@@ -64,7 +61,10 @@ export class ContentBackupWorkflow extends WorkflowEntrypoint<BackupEnvironment>
 }
 
 export default {
-  fetch() {
-    return new Response("Not found", { status: 404 });
+  async scheduled(controller, env) {
+    await createScheduledBackup(env, controller.scheduledTime);
   },
-} satisfies ExportedHandler<BackupEnvironment>;
+  fetch() {
+    return notFoundResponse();
+  },
+} satisfies ExportedHandler<BackupWorkerEnvironment>;

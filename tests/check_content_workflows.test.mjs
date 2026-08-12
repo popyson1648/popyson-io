@@ -58,7 +58,11 @@ describe("database content workflows", () => {
 
   test("backup Workflow keeps object locations and export handles out of step output", () => {
     const backup = readFileSync(resolve(ROOT, "workers/content-backup/src/index.ts"), "utf8");
-    expect(backup.match(/sensitive: "output"/g)).toHaveLength(5);
+    const steps = backup.match(/step\.do\(/g) ?? [];
+    expect(steps.length).toBeGreaterThan(0);
+    // Every step suppresses its output, whatever the step breakdown is, so that
+    // signed locations and export handles never reach Workflow output.
+    expect(backup.match(/sensitive: "output"/g)).toHaveLength(steps.length);
     expect(backup).not.toMatch(/console\.(?:log|error|warn)/);
   });
 

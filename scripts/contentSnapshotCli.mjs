@@ -6,6 +6,7 @@ import {
   ContentCiClient,
   createCandidate,
   materializeSnapshot,
+  publicationInputSnapshot,
   sanitizedSnapshotMetadata,
 } from "./contentSnapshotClient.mjs";
 
@@ -51,9 +52,15 @@ async function main(argv = process.argv.slice(2), client = new ContentCiClient()
     return;
   }
   if (command === "download-job") {
-    const snapshot = await client.jobSnapshot(required(values, "job-id"));
-    const counts = await materializeSnapshot(snapshot, absolutePath(values, "root"), { client });
-    writeResult(values, { ...sanitizedSnapshotMetadata(snapshot), ...counts });
+    const jobSnapshot = await client.jobSnapshot(required(values, "job-id"));
+    const input = await publicationInputSnapshot(jobSnapshot, client);
+    const counts = await materializeSnapshot(input.snapshot, absolutePath(values, "root"), {
+      client,
+    });
+    writeResult(values, {
+      ...sanitizedSnapshotMetadata(input.snapshot, input),
+      ...counts,
+    });
     return;
   }
   if (command === "candidate") {
@@ -109,7 +116,11 @@ async function main(argv = process.argv.slice(2), client = new ContentCiClient()
     const result = await client.pendingReleases();
     const releases = Array.isArray(result.releases) ? result.releases : result.items || [];
     writeResult(values, {
-      releases: releases.map((release) => ({ id: release.id, state: release.state })),
+      releases: releases.map((release) => ({
+        id: release.id,
+        state: release.state,
+        publishJobId: release.publishJobId || "",
+      })),
     });
     return;
   }
@@ -118,7 +129,11 @@ async function main(argv = process.argv.slice(2), client = new ContentCiClient()
       required(values, "release-id"),
       required(values, "pages-deployment-id"),
     );
-    writeResult(values, { releaseId: result.release?.id || result.id || "", state: "active" });
+    writeResult(values, {
+      jobId: result.job?.id || "",
+      releaseId: result.release?.id || result.id || "",
+      state: "active",
+    });
     return;
   }
   throw new Error(`Unknown content snapshot command: ${command || "(missing)"}`);

@@ -148,14 +148,11 @@ async function listCloudEditorContent(cloud) {
 }
 
 function revisionHistoryEntry(value) {
-  const files = value.documents?.files || {};
   return {
     id: value.id,
     createdAt: value.createdAt,
-    title: {
-      ja: files.ja?.meta?.title || files.ja?.meta?.person?.name || "",
-      en: files.en?.meta?.title || files.en?.meta?.person?.name || "",
-    },
+    createdBy: value.createdBy,
+    checksumSha256: value.checksumSha256,
   };
 }
 
@@ -272,12 +269,18 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
       current.assets.map((asset) => asset.logicalPath),
     );
     const uploaded = await cloud.uploadAsset(bytes, body.type);
-    await cloud.attachAsset(kind, id, {
+    const attached = await cloud.attachAsset(kind, id, {
       assetId: uploaded.id,
       logicalPath: cloudAssetLogicalPath(name),
       role: kind === "about" ? "hero" : "body",
+      expectedRevisionId: body.currentRevisionId,
     });
-    sendJson(response, 201, { name, url: cloudAssetUrl(kind, id, name) });
+    sendJson(response, 201, {
+      name,
+      url: cloudAssetUrl(kind, id, name),
+      currentRevisionId: attached.currentRevisionId,
+      assets: attached.assets,
+    });
     return;
   }
 

@@ -8,7 +8,7 @@ already used for Blog and Works.
 
 ## Scope
 
-- Make `https://wsl-ubuntu.tail29f20.ts.net:4173/editor` the stable bookmarked
+- Make `https://editor-node.tailnet.example.invalid:4173/editor` the stable bookmarked
   editor URL through Tailscale Serve. Bind Vite only to `127.0.0.1`, keep the
   existing Serve configuration on port 443 intact, and add a dedicated HTTPS
   listener on port 4173.

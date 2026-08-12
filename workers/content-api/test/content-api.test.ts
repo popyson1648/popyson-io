@@ -356,14 +356,47 @@ describe("content API", () => {
       expectedRevisionId: initial.currentRevisionId,
       createdBy: "ci-test",
     };
-    const release = await candidate(publication.job.id, { revision: generated });
-    const repeatedCandidate = await candidate(publication.job.id, { revision: generated });
+    const { checksum: generatedAssetId } = await uploadPng("ci");
+    const candidatePayload = {
+      revision: generated,
+      assets: [
+        {
+          assetId: generatedAssetId,
+          logicalPath: "thumbnails/generated.png",
+          role: "thumbnail",
+        },
+      ],
+    };
+    const release = await candidate(publication.job.id, candidatePayload);
+    const repeatedCandidate = await candidate(publication.job.id, candidatePayload);
     expect(repeatedCandidate.release.id).toBe(release.release.id);
+    const resumable = await body<{
+      revision: { id: string; sourceJa: string };
+      candidate?: { revision: { id: string; sourceJa: string }; assets: unknown[] };
+    }>(await request(`/v1/ci/jobs/${publication.job.id}/snapshot`, { role: "ci" }));
+    expect(resumable.revision).toMatchObject({
+      id: initial.currentRevisionId,
+      sourceJa: "First",
+    });
+    expect(resumable.candidate).toMatchObject({
+      revision: {
+        id: release.job.candidateRevisionId,
+        sourceJa: "Generated publication",
+      },
+      assets: [
+        {
+          id: generatedAssetId,
+          logicalPath: "thumbnails/generated.png",
+          role: "thumbnail",
+        },
+      ],
+    });
     const changedCandidate = await request(`/v1/ci/jobs/${publication.job.id}/candidate`, {
       role: "ci",
       method: "POST",
       body: {
         codeSha,
+        ...candidatePayload,
         revision: { ...generated, metadata: { generated: "different" } },
       },
     });
@@ -402,7 +435,42 @@ describe("content API", () => {
         body: { visibility: "private", expectedRevisionId: initial.currentRevisionId },
       }),
     );
-    await publishCurrent("sample-work", hidden.currentRevisionId, 2);
+    const hiddenJob = await createJob(
+      "sample-work",
+      hidden.currentRevisionId,
+      "publish:sample-work:0002",
+    );
+    await markRunning(hiddenJob.job.id, "1002");
+    const hiddenRelease = await candidate(hiddenJob.job.id, {
+      revision: {
+        sourceJa: "Generated hidden publication",
+        sourceEn: "Generated hidden publication EN",
+        documents: { files: {} },
+        metadata: { generated: true },
+        expectedRevisionId: hidden.currentRevisionId,
+        createdBy: "ci-test",
+      },
+    });
+    const hiddenReleaseSnapshot = await body<{ items: unknown[] }>(
+      await request(`/v1/ci/releases/${hiddenRelease.release.id}/snapshot`, { role: "ci" }),
+    );
+    expect(hiddenReleaseSnapshot.items).toHaveLength(0);
+    const hiddenJobSnapshot = await body<{
+      revision: { id: string; sourceJa: string };
+      candidate?: { revision: { id: string; sourceJa: string }; assets: unknown[] };
+    }>(await request(`/v1/ci/jobs/${hiddenJob.job.id}/snapshot`, { role: "ci" }));
+    expect(hiddenJobSnapshot.revision).toMatchObject({
+      id: hidden.currentRevisionId,
+      sourceJa: "First",
+    });
+    expect(hiddenJobSnapshot.candidate).toMatchObject({
+      revision: {
+        id: hiddenRelease.job.candidateRevisionId,
+        sourceJa: "Generated hidden publication",
+      },
+      assets: [],
+    });
+    await finalize(hiddenJob.job.id, hiddenRelease.release.id, "pages-2");
     const privateSnapshot = await body<{ items: unknown[] }>(
       await request("/v1/ci/releases/active/snapshot", { role: "ci" }),
     );
@@ -415,7 +483,7 @@ describe("content API", () => {
         body: {
           visibility: "public",
           deleted: false,
-          expectedRevisionId: hidden.currentRevisionId,
+          expectedRevisionId: hiddenRelease.job.candidateRevisionId,
         },
       }),
     );

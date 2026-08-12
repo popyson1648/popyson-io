@@ -117,6 +117,41 @@ function snapshotEntries(snapshot) {
   throw new Error("Content API returned an unsupported snapshot shape");
 }
 
+export async function publicationInputSnapshot(jobSnapshot, client = new ContentCiClient()) {
+  const releaseId = String(jobSnapshot.job?.releaseId || "");
+  if (!releaseId) {
+    return { snapshot: jobSnapshot, resumed: false, codeSha: "" };
+  }
+  if (jobSnapshot.candidate?.revision) {
+    const releaseSnapshot = await client.releaseSnapshot(releaseId);
+    return {
+      snapshot: {
+        job: jobSnapshot.job,
+        item: jobSnapshot.item,
+        revision: jobSnapshot.candidate.revision,
+        assets: jobSnapshot.candidate.assets || [],
+      },
+      resumed: true,
+      codeSha: String(releaseSnapshot.release?.codeSha || ""),
+    };
+  }
+  // Compatibility for a public candidate returned by an older Worker that did
+  // not yet include `candidate` on the job snapshot. Private/deleted candidates
+  // cannot use this fallback because they are intentionally absent from the
+  // release manifest; current Workers always return the exact candidate above.
+  const releaseSnapshot = await client.releaseSnapshot(releaseId);
+  const itemId = String(jobSnapshot.job?.itemId || "");
+  const entry = snapshotEntries(releaseSnapshot).find(
+    (candidate) => String(candidate.item?.itemId || "") === itemId,
+  );
+  if (!entry) throw new Error("Candidate release does not contain the publication item");
+  return {
+    snapshot: { job: jobSnapshot.job, ...entry },
+    resumed: true,
+    codeSha: String(releaseSnapshot.release?.codeSha || ""),
+  };
+}
+
 export class ContentCiClient extends ContentCloudClient {
   running(jobId, githubRunId) {
     return this.request(`/v1/ci/jobs/${encodeURIComponent(jobId)}/running`, {
@@ -343,11 +378,13 @@ export async function createCandidate(
   return client.candidate(jobId, { codeSha, revision, assets });
 }
 
-export function sanitizedSnapshotMetadata(snapshot) {
+export function sanitizedSnapshotMetadata(snapshot, { resumed = false, codeSha = "" } = {}) {
   const entries = snapshotEntries(snapshot);
   return {
     jobId: String(snapshot.job?.id || ""),
-    releaseId: String(snapshot.release?.id || ""),
+    releaseId: String(snapshot.release?.id || snapshot.job?.releaseId || ""),
+    resumed,
+    codeSha,
     itemCount: entries.length,
     kind: entries.length === 1 ? String(entries[0].item.kind || "") : "",
     databaseDate: entries.length === 1 ? String(entries[0].item.createdAt || "").slice(0, 10) : "",

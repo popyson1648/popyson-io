@@ -48,6 +48,18 @@ describe("database content workflows", () => {
     expect(publication).not.toMatch(/::set-output|GITHUB_STEP_SUMMARY/);
     expect(publication).toContain("detailed output was suppressed");
     expect(publication).toContain("output was suppressed because it may contain source text");
+    expect(publication).toContain('scripts/verify.py --mode ci > "$RUNNER_TEMP/verification.log"');
+    expect(publication).toContain('if [[ "$publish_job_id" == "$JOB_ID" ]]');
+    expect(publication).toContain("git diff --quiet HEAD");
+    expect(publication).toContain("git ls-files --others --exclude-standard");
+    expect(publication).toContain("steps.snapshot.outputs.resumed != 'true'");
+    expect(publication).toContain('--code-sha "${{ steps.snapshot.outputs.code_sha }}"');
+  });
+
+  test("backup Workflow keeps object locations and export handles out of step output", () => {
+    const backup = readFileSync(resolve(ROOT, "workers/content-backup/src/index.ts"), "utf8");
+    expect(backup.match(/sensitive: "output"/g)).toHaveLength(5);
+    expect(backup).not.toMatch(/console\.(?:log|error|warn)/);
   });
 
   test.each(["deploy.yml", "reading-refresh.yml"])(
@@ -58,6 +70,12 @@ describe("database content workflows", () => {
       expect(source).toContain("name: Download active database release");
       expect(source).toContain("--release-id active");
       expect(source).toContain("CONTENT_CLOUD_CUTOVER == '1'");
+      expect(source).toContain("name: Reconcile an interrupted content deployment");
+      expect(source.indexOf("name: Reconcile an interrupted content deployment")).toBeLessThan(
+        source.indexOf("name: Download active database release"),
+      );
+      expect(source).toContain("--pages-deployment-id");
+      expect(source).not.toMatch(/actions\/(?:upload-artifact|cache)@/);
     },
   );
 

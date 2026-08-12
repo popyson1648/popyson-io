@@ -131,6 +131,10 @@ describe("content editor shell", () => {
     const content = {
       kind: "post",
       id: "20260804-123456",
+      currentRevisionId: "revision-0",
+      visibility: "private",
+      deletedAt: null,
+      assets: [],
       files: {
         ja: {
           meta: {
@@ -157,6 +161,7 @@ describe("content editor shell", () => {
       },
     };
     let uploadIndex = 0;
+    const uploadBodies = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (path, options = {}) => {
@@ -174,10 +179,13 @@ describe("content editor shell", () => {
           };
         } else if (path.endsWith("/assets")) {
           uploadIndex += 1;
-          const { name } = JSON.parse(options.body);
+          const body = JSON.parse(options.body);
+          uploadBodies.push(body);
           payload = {
-            name,
+            name: body.name,
             url: `/content-assets/posts/${content.id}/image-${uploadIndex}.png`,
+            currentRevisionId: `revision-${uploadIndex}`,
+            assets: [{ logicalPath: `assets/image-${uploadIndex}.png` }],
           };
         } else if (path === "/api/editor/preview") {
           payload = { html: "" };
@@ -231,6 +239,10 @@ describe("content editor shell", () => {
       expect(markdown).toContain(`/image-2.png`);
     });
     expect(uploadIndex).toBe(2);
+    expect(uploadBodies.map(({ currentRevisionId }) => currentRevisionId)).toEqual([
+      "revision-0",
+      "revision-1",
+    ]);
   });
 
   test("removes split mode from phone-width layouts", async () => {
@@ -290,6 +302,82 @@ describe("content editor shell", () => {
     );
     expect(screen.queryByRole("tab", { name: "分割" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "プレビュー" })).toBeInTheDocument();
+  });
+
+  test("keeps content context while polling a Worker publication job", async () => {
+    const content = {
+      kind: "post",
+      id: "20260812-101500",
+      currentRevisionId: "revision-1",
+      visibility: "public",
+      deletedAt: null,
+      status: "public",
+      files: {
+        ja: {
+          meta: { title: "公開ジョブ", date: "2026-08-12", tags: [] },
+          body: "本文",
+          revision: "revision-1",
+        },
+        en: {
+          meta: { title: "Publication job", date: "2026-08-12", tags: [] },
+          body: "Body",
+          revision: "revision-1",
+        },
+      },
+    };
+    const publishPath = `/api/editor/content/post/${content.id}/publish`;
+    const contentPath = `/api/editor/content/post/${content.id}`;
+    const fetchMock = vi.fn(async (path, options = {}) => {
+      let payload;
+      if (path === "/api/editor/content") {
+        payload = {
+          items: [
+            {
+              kind: "post",
+              id: content.id,
+              title: { ja: "公開ジョブ", en: "Publication job" },
+              updatedAt: "2026-08-12T01:15:00.000Z",
+              status: "public",
+              visibility: "public",
+            },
+          ],
+        };
+      } else if (path === "/api/editor/preview") {
+        payload = { html: "<p>本文</p>" };
+      } else if (path === publishPath && options.method === "POST") {
+        payload = {
+          id: "00000000-0000-4000-8000-000000000001",
+          kind: "post",
+          contentId: content.id,
+          status: "running",
+          phase: "queued",
+        };
+      } else if (path === publishPath) {
+        payload = { valid: true, issues: [], visibility: "public", deletedAt: null };
+      } else if (path === "/api/editor/publish/00000000-0000-4000-8000-000000000001") {
+        payload = { id: "00000000-0000-4000-8000-000000000001", status: "succeeded" };
+      } else if (path === contentPath) {
+        payload = content;
+      } else {
+        throw new Error(`Unexpected request: ${path}`);
+      }
+      return { ok: true, json: async () => payload };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByRole("button", { name: /公開ジョブ/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開" }));
+    fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
+
+    await waitFor(
+      () => {
+        expect(fetchMock.mock.calls.filter(([path]) => path === contentPath)).toHaveLength(2);
+      },
+      { timeout: 2500 },
+    );
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes("undefined"))).toBe(false);
   });
 
   test("opens About without loading Markdown and exposes its structured fields", async () => {

@@ -240,6 +240,9 @@ export async function publicationJobSnapshot(env: RuntimeEnv, jobId: string) {
   const job = await getJob(env, jobId);
   const item = await getItemById(env, job.item_id);
   const revision = await getRevision(env, job.revision_id, item.id);
+  const candidateRevision = job.candidate_revision_id
+    ? await getRevision(env, job.candidate_revision_id, item.id)
+    : null;
   return {
     job: jobJson(job),
     item: {
@@ -249,6 +252,12 @@ export async function publicationJobSnapshot(env: RuntimeEnv, jobId: string) {
     },
     revision: revisionJson(revision),
     assets: await getRevisionAssets(env, revision.id),
+    candidate: candidateRevision
+      ? {
+          revision: revisionJson(candidateRevision),
+          assets: await getRevisionAssets(env, candidateRevision.id),
+        }
+      : undefined,
   };
 }
 

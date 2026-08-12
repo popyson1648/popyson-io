@@ -64,7 +64,7 @@ export function createEditorApi() {
         method: "POST",
         body: JSON.stringify({ markdown, locale }),
       }),
-    upload: (kind, id, file) =>
+    upload: (kind, id, file, currentRevisionId) =>
       new Promise((resolve, reject) => {
         const extension = file.name.split(".").pop()?.toLowerCase();
         const inferredType = {
@@ -87,7 +87,12 @@ export function createEditorApi() {
             resolve(
               await request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/assets`, {
                 method: "POST",
-                body: JSON.stringify({ name: file.name, type: file.type || inferredType, data }),
+                body: JSON.stringify({
+                  name: file.name,
+                  type: file.type || inferredType,
+                  data,
+                  currentRevisionId,
+                }),
               }),
             );
           } catch (error) {

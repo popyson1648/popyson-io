@@ -3,10 +3,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { contentSnapshotRoot, loadSiteContent } from "../scripts/content_loader.mjs";
-import { materializeSnapshot } from "../scripts/contentSnapshotClient.mjs";
+import {
+  materializeSnapshot,
+  publicationInputSnapshot,
+} from "../scripts/contentSnapshotClient.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const temporaryRoots = [];
@@ -117,5 +120,89 @@ describe("materializeSnapshot", () => {
         { client: { downloadAsset: async () => Buffer.from("bad") } },
       ),
     ).rejects.toThrow(/checksum verification/);
+  });
+});
+
+describe("publicationInputSnapshot", () => {
+  test.each([
+    { name: "private", targetVisibility: "private", targetDeletedAt: null },
+    { name: "deleted", targetVisibility: "public", targetDeletedAt: "2026-08-12T12:00:00Z" },
+  ])("resumes an excluded $name candidate from the job snapshot", async (intent) => {
+    const candidate = {
+      revision: { id: "candidate", sourceJa: "generated ja", sourceEn: "translated en" },
+      assets: [],
+    };
+    const jobSnapshot = {
+      job: {
+        id: "job-1",
+        itemId: "item-target",
+        releaseId: "release-1",
+        ...intent,
+      },
+      item: { itemId: "item-target", kind: "post", id: "20260812-120000" },
+      revision: { id: "pinned", sourceJa: "pinned ja", sourceEn: "pinned en" },
+      assets: [],
+      candidate,
+    };
+    const releaseSnapshot = vi.fn(async () => ({
+      release: { id: "release-1", codeSha: "b".repeat(40) },
+      items: [],
+    }));
+    const client = { releaseSnapshot };
+
+    await expect(publicationInputSnapshot(jobSnapshot, client)).resolves.toEqual({
+      snapshot: { job: jobSnapshot.job, item: jobSnapshot.item, ...candidate },
+      resumed: true,
+      codeSha: "b".repeat(40),
+    });
+    expect(releaseSnapshot).toHaveBeenCalledWith("release-1");
+  });
+
+  test("resumes the exact candidate item and code SHA without rerunning generation", async () => {
+    const jobSnapshot = {
+      job: { id: "job-1", itemId: "item-target", releaseId: "release-1" },
+      item: { itemId: "item-target", kind: "post", id: "20260812-120000" },
+      revision: { id: "pinned", sourceJa: "pinned ja", sourceEn: "pinned en" },
+      assets: [],
+    };
+    const candidate = {
+      item: { itemId: "item-target", kind: "post", id: "20260812-120000" },
+      revision: { id: "candidate", sourceJa: "generated ja", sourceEn: "translated en" },
+      assets: [],
+    };
+    const client = {
+      releaseSnapshot: async () => ({
+        release: { id: "release-1", codeSha: "a".repeat(40) },
+        items: [
+          {
+            item: { itemId: "other", kind: "work", id: "other" },
+            revision: { id: "other", sourceJa: "other", sourceEn: "other" },
+            assets: [],
+          },
+          candidate,
+        ],
+      }),
+    };
+
+    await expect(publicationInputSnapshot(jobSnapshot, client)).resolves.toEqual({
+      snapshot: { job: jobSnapshot.job, ...candidate },
+      resumed: true,
+      codeSha: "a".repeat(40),
+    });
+  });
+
+  test("uses the pinned job snapshot before a candidate exists", async () => {
+    const snapshot = {
+      job: { id: "job-1", itemId: "item-target", releaseId: null },
+      item: { itemId: "item-target", kind: "work", id: "target" },
+      revision: { id: "pinned", sourceJa: "ja", sourceEn: "en" },
+      assets: [],
+    };
+
+    await expect(publicationInputSnapshot(snapshot, {})).resolves.toEqual({
+      snapshot,
+      resumed: false,
+      codeSha: "",
+    });
   });
 });

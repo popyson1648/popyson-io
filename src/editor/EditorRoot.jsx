@@ -736,7 +736,8 @@ function App() {
       api
         .publishJob(publishJob.id)
         .then((job) => {
-          setPublishJob((current) => ({ ...current, ...job }));
+          const nextJob = { ...publishJob, ...job };
+          setPublishJob(nextJob);
           if (job.status === "succeeded") {
             setMessage({
               type: "success",
@@ -744,7 +745,7 @@ function App() {
             });
             loadList();
             api
-              .read(job.kind, job.contentId)
+              .read(nextJob.kind, nextJob.contentId)
               .then((result) => {
                 setContent(cloneContent(result));
                 setSavedAt(new Date());
@@ -934,6 +935,7 @@ function App() {
     setBusy(true);
     const failures = [];
     let uploaded = 0;
+    let uploadRevisionId = content.currentRevisionId;
     const uploadQueue = content.kind === "about" ? pendingImages.slice(0, 1) : pendingImages;
     for (const [index, item] of uploadQueue.entries()) {
       try {
@@ -941,16 +943,24 @@ function App() {
           type: "info",
           text: `画像を保存しています… ${index + 1}/${uploadQueue.length}`,
         });
-        const asset = await api.upload(content.kind, content.id, item.file);
-        if (content.kind === "about") {
-          setContent((current) => {
-            const next = cloneContent(current);
+        const asset = await api.upload(content.kind, content.id, item.file, uploadRevisionId);
+        uploadRevisionId = asset.currentRevisionId;
+        setContent((current) => {
+          const next = cloneContent(current);
+          next.currentRevisionId = asset.currentRevisionId;
+          next.assets = asset.assets;
+          for (const fileLocale of LOCALES) {
+            next.files[fileLocale].revision = asset.currentRevisionId;
+          }
+          if (content.kind === "about") {
             for (const fileLocale of LOCALES) {
               next.files[fileLocale].meta.person ||= {};
               next.files[fileLocale].meta.person.icon = asset.url;
             }
-            return next;
-          });
+          }
+          return next;
+        });
+        if (content.kind === "about") {
           editVersionRef.current += 1;
           autoSaveFailureVersionRef.current = -1;
           setDirty(true);
@@ -1861,7 +1871,7 @@ function App() {
                         <li key={entry.id}>
                           <span>
                             {new Date(entry.createdAt).toLocaleString()} —{" "}
-                            {entry.title?.[locale] || "無題"}
+                            {entry.createdBy === "author-restore" ? "復元版" : "保存版"}
                           </span>
                           <Button
                             size="S"

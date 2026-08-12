@@ -53,12 +53,12 @@ Git. See `.project/metadata.md` and `.project/content-publication.md`.
 
 ## Publish content
 
-`npm run post:push`, `npm run work:push`, and `npm run about:push` run
-`verify.py --mode standard` first and stops without committing if it fails, then
-stages only that one content directory, builds the commit subject
-from what changed (`add` / `update` / `remove`, with the post title for a single
-change and counts plus a body list for several), commits, and pushes. Add
-`--dry-run` to print the message without touching git.
+The local editor saves immutable revisions and desired visibility/deletion state
+through the authenticated Worker API. Publish creates a job pinned to the exact
+revision and state, then dispatches `content-publish.yml` with only the opaque
+job id. The workflow generates metadata, translates, verifies, and deploys one
+immutable release without committing content to Git. See
+`.project/content-publication.md`.
 
 ## Run
 
@@ -68,7 +68,9 @@ npm run dev
 
 ## Content editor
 
-Start the repository-backed Blog, Works, and About editor:
+Copy `.op.env.example` to the ignored `.op.env`, replace its placeholder
+1Password references, sign in to the 1Password CLI, then start the
+database-backed Blog, Works, and About editor:
 
 ```sh
 npm run editor:setup # one time; asks for sudo approval
@@ -79,53 +81,43 @@ npm run editor
 normal editor starts can maintain the Serve listener without `sudo`. Skip it
 when that operator permission has already been configured.
 
-Stop a server started by this repository from another WSL terminal with
-`npm run editor:stop`. When it is running in the foreground, `Ctrl+C` remains
-the quickest stop action. The stop command validates both the recorded process
-command and working directory before sending `SIGTERM`. The Tailscale Serve
-mapping remains available as a stable bookmark but has no editor backend while
-the process is stopped.
-
 `npm run editor` builds a production-optimized editor bundle into the
-Git-ignored `editor/dist/` directory, serves it only from `127.0.0.1:4173`, and
-configures a separate HTTPS Serve listener on port 4173. It prints a stable URL
-such as:
+Git-ignored `editor/dist/` directory, serves it only from the loopback address,
+and configures a separate HTTPS Serve listener. Open the URL printed by the
+current process, but do not copy it to documentation, issues, shared logs, or
+screenshots because it contains a device-specific internal host name. The API
+verifies the loopback proxy peer, expected host, Serve-injected login, and the
+Origin of state-changing requests. Startup fails when the configured port is
+occupied, and existing unrelated Serve listeners are not replaced.
 
-```text
-https://wsl-ubuntu.tail29f20.ts.net:4173/editor
-```
+The editor can list and read Blog, Works, and the fixed About item; create
+Blog/Works items; edit and preview them; save immutable D1 revisions; upload
+images to private R2; restore history; change public/private state; soft-delete
+and restore; and publish the currently pinned revision. A stale save or asset
+update returns a conflict instead of overwriting a newer revision.
 
-Bookmark the URL printed for the current machine. It works from devices signed
-in to the permitted tailnet account and does not contain an editor secret. The
-API verifies the loopback proxy peer, Tailscale DNS host, Serve-injected login,
-and the Origin of state-changing requests. Port 4173 is strict: when it is
-occupied, startup fails instead of silently changing the bookmarked URL. The
-existing Serve listener on HTTPS port 443 is not replaced.
+Existing public content has already been stored in D1 and private R2, with
+document counts and asset bytes and checksums compared with the migration
+source. Public/private and soft-delete changes are saved in D1 immediately but
+do not alter the static site until Publish is run.
 
-The editor can create Blog/Works items; edit Blog, Works, and the fixed About
-item; preview; save private drafts; upload images; and publish the currently
-open item. The preview imports the matching public styles in an isolated frame
-and provides automatic, desktop, and phone widths.
+Publish pins the current revision, visibility, and deletion state and sends
+only an opaque job id to GitHub Actions. Actions fetches that fixed D1/R2
+snapshot into temporary storage, generates metadata and translations, verifies
+and builds the static site, and deploys it to Pages. The published revision is
+advanced only after a successful deployment, and the deployed site does not
+read D1 at request time.
 
-Drafts autosave after editing pauses. `Save draft` and `Ctrl`/`Cmd` + `S` save
-immediately. All private Markdown and images live under the Git-ignored
-`.drafts/` tree and do not modify `src/content/`, production builds, Git status,
-commits, or pushes. This directory is local authoring state: it is not backed up
-or synchronized, so copy it separately if unpublished work needs a backup.
-
-`Publish` is available only when the editor runs from `main`. It validates the
-complete Japanese and English pair, promotes only the open draft to
-`src/content/`, runs standard verification, commits only that item's content
-directory, and pushes `main`. The private draft is removed only after the push
-succeeds; the resulting site deployment is reported as pending. Before-commit
-failures restore the prior public content, and later failures retain the draft
-for recovery. Publishing never merges.
+The local Node server alone owns the author Access credential and fine-grained
+GitHub Actions credential. The browser receives neither credential, and source
+snapshots are not stored in repository commits, reusable Actions artifacts or
+caches, or shared logs.
 
 The local bundle is regenerated at normal startup and is not a source or backup
 directory. Build it without starting the server with `npm run editor:build`.
 Use `npm run editor:dev` only when changing the editor itself and HMR is useful.
 
-The editor has its own build configuration and output. `npm run build`, the
+The editor has its own build configuration and output, so `npm run build`, the
 root `dist/`, `npm run dev`, and the deployed static site do not expose the
 editor page or its write APIs.
 
@@ -146,6 +138,11 @@ This recovery mode remains loopback-only at `http://127.0.0.1:4173/editor`.
 There is no `0.0.0.0` binding, direct Tailscale-IP endpoint, application token,
 or token-bearing URL.
 
+Stop a foreground server with `Ctrl+C`, or stop a server from another WSL
+terminal with `npm run editor:stop`. The stop command verifies the recorded
+process and working directory before sending `SIGTERM`; the Serve mapping then
+has no editor backend until the next start.
+
 Append `-- --no-tailscale` to `npm run editor:dev` for loopback-only editor UI
 development.
 
@@ -154,11 +151,10 @@ images. `Take photo` asks supported mobile browsers for the environment-facing
 camera. The exact chooser is controlled by the browser and operating system.
 Desktop drag-and-drop and clipboard paste are also supported.
 
-Before publication, images are stored under the open entry's draft `assets/`
-directory. The editor serves draft assets at the final
-`/content-assets/<posts|works|about>/<id>/<file>` URL. Publishing moves them with
-the content source; production exposes only the published copies. The About
-avatar uses `/content-assets/about/about/<file>`.
+Editor uploads are stored under content-addressed keys in private R2. The local
+server proxies authenticated bytes for preview. Publication copies only assets
+referenced by a public, non-deleted release into the static Pages output; R2 has
+no public endpoint.
 
 For a production preview:
 

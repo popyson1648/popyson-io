@@ -40,6 +40,8 @@ verify). Linting stays on ESLint. See `.project/conventions.md`.
 
 - `.project/structure.md`: source layout and important modules.
 - `.project/build.md`: setup, build, run, preview, and reading-list workflow.
+- `.project/content-backup.md`: D1/R2 backup boundaries and guarded restore procedure.
+- `.project/content-publication.md`: database snapshot and Pages publication workflow.
 - `.project/metadata.md`: Markdown front matter fields and validation.
 - `.project/security-automation.md`: security alert settings, automation secrets, and remediation workflow.
 - `.project/testing.md`: verification phases and when to run them.

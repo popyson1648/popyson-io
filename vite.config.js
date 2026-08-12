@@ -162,6 +162,7 @@ export default defineConfig({
     react(),
     contentAssetsPlugin({
       preferDrafts: process.env.CONTENT_EDITOR_ENABLED === "1",
+      cloudAssets: process.env.CONTENT_EDITOR_ENABLED === "1",
       trustedHost: process.env.CONTENT_EDITOR_TRUSTED_HOST,
       tailscaleLogin: process.env.CONTENT_EDITOR_TAILSCALE_LOGIN,
     }),

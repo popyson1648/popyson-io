@@ -1,0 +1,312 @@
+name: Publish database content
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "Opaque publication job id"
+        required: true
+        type: string
+
+# Every path that can upload a production Pages deployment uses this queue.
+# A queued job never snapshots content until all older deployments have either
+# finalized or been reconciled.
+concurrency:
+  group: cloudflare-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+      CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+      CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+      JOB_ID: ${{ inputs.job_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize isolated content root
+        run: echo "CONTENT_SNAPSHOT_ROOT=$RUNNER_TEMP/content-input" >> "$GITHUB_ENV"
+
+      - name: Mark publication job running
+        run: |
+          node scripts/contentSnapshotCli.mjs running \
+            --job-id "$JOB_ID" \
+            --run-id "$GITHUB_RUN_ID" \
+            --output "$RUNNER_TEMP/job-running.json"
+
+      - name: Reconcile an interrupted Pages deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/contentSnapshotCli.mjs pending \
+            --output "$RUNNER_TEMP/pending-releases.json"
+          if [[ "$(jq '.releases | length' "$RUNNER_TEMP/pending-releases.json")" == "0" ]]; then
+            exit 0
+          fi
+          if ! npx wrangler pages deployment list \
+            --project-name "$PROJECT" --environment production --json \
+            > "$RUNNER_TEMP/pages-deployments.json" 2> "$RUNNER_TEMP/pages-list.log"; then
+            rm -f "$RUNNER_TEMP/pages-list.log" "$RUNNER_TEMP/pages-deployments.json"
+            echo "Unable to list Pages deployments for reconciliation." >&2
+            exit 1
+          fi
+          while IFS=$'\t' read -r release_id publish_job_id; do
+            # A retry of this same publication deliberately redeploys its exact
+            # candidate and then finalizes it below. Reconciling it here would
+            # mark the job succeeded before `running` can resume the attempt.
+            if [[ "$publish_job_id" == "$JOB_ID" ]]; then
+              continue
+            fi
+            marker="content-release:${release_id}"
+            deployment_id="$(jq -r --arg marker "$marker" \
+              '[.[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
+              "$RUNNER_TEMP/pages-deployments.json")"
+            if [[ -n "$deployment_id" ]]; then
+              node scripts/contentSnapshotCli.mjs reconcile \
+                --release-id "$release_id" \
+                --pages-deployment-id "$deployment_id" \
+                --output "$RUNNER_TEMP/reconciled-${release_id}.json"
+            fi
+          done < <(jq -r '.releases[] | [.id, .publishJobId] | @tsv' \
+            "$RUNNER_TEMP/pending-releases.json")
+          rm -f "$RUNNER_TEMP/pages-deployments.json" "$RUNNER_TEMP/pages-list.log"
+
+      - name: Download pinned publication snapshot
+        id: snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/contentSnapshotCli.mjs download-job \
+            --job-id "$JOB_ID" \
+            --root "$CONTENT_SNAPSHOT_ROOT" \
+            --output "$RUNNER_TEMP/job-snapshot.json"
+          {
+            echo "kind=$(jq -r '.kind' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "database_date=$(jq -r '.databaseDate' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "resumed=$(jq -r '.resumed' "$RUNNER_TEMP/job-snapshot.json")"
+            code_sha="$(jq -r '.codeSha' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "code_sha=${code_sha:-$GITHUB_SHA}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Record pre-generation checksums
+        if: steps.snapshot.outputs.resumed != 'true'
+        run: |
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/pre-generation.sha256"
+
+      - name: Generate post metadata
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.kind == 'post'
+        env:
+          CONTENT_DATABASE_DATE: ${{ steps.snapshot.outputs.database_date }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! npm run metadata:generate > "$RUNNER_TEMP/metadata.log" 2>&1; then
+            rm -f "$RUNNER_TEMP/metadata.log"
+            echo "Metadata generation failed; output was suppressed because it may contain source text." >&2
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/metadata.log"
+
+      - name: Validate metadata output boundary
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.kind == 'post'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/post-generation.sha256"
+          sort -k2 "$RUNNER_TEMP/pre-generation.sha256" > "$RUNNER_TEMP/pre-generation.sorted"
+          sort -k2 "$RUNNER_TEMP/post-generation.sha256" > "$RUNNER_TEMP/post-generation.sorted"
+          join -a1 -a2 -e MISSING -o 0,1.1,2.1 -1 2 -2 2 \
+            "$RUNNER_TEMP/pre-generation.sorted" "$RUNNER_TEMP/post-generation.sorted" \
+            | awk '$2 != $3 { print $1 }' > "$RUNNER_TEMP/generated-paths.txt"
+          while IFS= read -r file; do
+            relative="${file#"$CONTENT_SNAPSHOT_ROOT"/}"
+            case "$relative" in
+              src/content/posts/*/index.ja.md|src/content/posts/*/index.en.md|public/thumbnails/*.png) ;;
+              *) echo "Metadata generation changed a disallowed path." >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/generated-paths.txt"
+
+      - name: Record pre-translation checksums
+        if: steps.snapshot.outputs.resumed != 'true'
+        run: |
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/pre-translation.sha256"
+
+      - name: Translate finalized Japanese source
+        if: steps.snapshot.outputs.resumed != 'true'
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TRANSLATION_PROMPT: |
+            Read .project/translation.md and follow it exactly.
+            The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains exactly one item.
+            Translate its finalized Japanese source into the matching English source.
+            Change only index.en.md for Blog/Works, or about.en.toml and news.en.toml for About.
+            Do not change Japanese source, assets, paths, ids, configuration, or repository files.
+        run: |
+          set -euo pipefail
+          translation_prompt="${TRANSLATION_PROMPT}
+          Isolated absolute root: ${CONTENT_SNAPSHOT_ROOT}"
+          if ! npx --yes @anthropic-ai/claude-code@2.1.179 -p "$translation_prompt" \
+            --add-dir "$CONTENT_SNAPSHOT_ROOT" \
+            --max-turns 20 \
+            --allowed-tools "Read,Edit,MultiEdit,Write" \
+            --permission-mode acceptEdits \
+            > "$RUNNER_TEMP/translation.log" 2>&1; then
+            rm -f "$RUNNER_TEMP/translation.log"
+            echo "Translation provider failed; output was suppressed because it may contain source text." >&2
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/translation.log"
+
+      - name: Validate translation output boundary
+        if: steps.snapshot.outputs.resumed != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet HEAD || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            echo "Translation changed the repository checkout." >&2
+            exit 1
+          fi
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/post-translation.sha256"
+          sort -k2 "$RUNNER_TEMP/pre-translation.sha256" > "$RUNNER_TEMP/pre-translation.sorted"
+          sort -k2 "$RUNNER_TEMP/post-translation.sha256" > "$RUNNER_TEMP/post-translation.sorted"
+          join -a1 -a2 -e MISSING -o 0,1.1,2.1 -1 2 -2 2 \
+            "$RUNNER_TEMP/pre-translation.sorted" "$RUNNER_TEMP/post-translation.sorted" \
+            | awk '$2 != $3 { print $1 }' > "$RUNNER_TEMP/translated-paths.txt"
+          while IFS= read -r file; do
+            relative="${file#"$CONTENT_SNAPSHOT_ROOT"/}"
+            case "$relative" in
+              src/content/posts/*/index.en.md|src/content/works/*/index.en.md|src/content/about/about.en.toml|src/content/about/news.en.toml) ;;
+              *) echo "Translation changed a disallowed path." >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/translated-paths.txt"
+
+      - name: Create immutable candidate release
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/contentSnapshotCli.mjs candidate \
+            --job-id "$JOB_ID" \
+            --root "$CONTENT_SNAPSHOT_ROOT" \
+            --code-sha "${{ steps.snapshot.outputs.code_sha }}" \
+            --output "$RUNNER_TEMP/candidate.json"
+          echo "release_id=$(jq -r '.releaseId' "$RUNNER_TEMP/candidate.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Download exact candidate release
+        env:
+          CANDIDATE_ROOT: ${{ runner.temp }}/content-candidate
+          RELEASE_ID: ${{ steps.candidate.outputs.release_id }}
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id "$RELEASE_ID" \
+            --root "$CANDIDATE_ROOT" \
+            --output "$RUNNER_TEMP/candidate-snapshot.json"
+
+      - name: Verify candidate release
+        env:
+          CONTENT_SNAPSHOT_ROOT: ${{ runner.temp }}/content-candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! python3 scripts/verify.py --mode ci > "$RUNNER_TEMP/verification.log" 2>&1; then
+            rm -f "$RUNNER_TEMP/verification.log"
+            echo "Candidate verification failed; output was suppressed because it may contain source text." >&2
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/verification.log"
+
+      - name: Mark candidate deploying
+        env:
+          RELEASE_ID: ${{ steps.candidate.outputs.release_id }}
+        run: |
+          node scripts/contentSnapshotCli.mjs deploying \
+            --job-id "$JOB_ID" \
+            --release-id "$RELEASE_ID" \
+            --output "$RUNNER_TEMP/deploying.json"
+
+      - name: Deploy exact candidate to Cloudflare Pages
+        id: pages
+        env:
+          RELEASE_ID: ${{ steps.candidate.outputs.release_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker="content-release:${RELEASE_ID}"
+          if ! npx wrangler pages deploy dist \
+            --project-name "$PROJECT" \
+            --branch main \
+            --commit-hash "$GITHUB_SHA" \
+            --commit-message "$marker" \
+            --commit-dirty=true \
+            > "$RUNNER_TEMP/pages-deploy.log" 2>&1; then
+            rm -f "$RUNNER_TEMP/pages-deploy.log"
+            echo "Cloudflare Pages deployment failed; detailed output was suppressed." >&2
+            exit 1
+          fi
+          if ! npx wrangler pages deployment list \
+            --project-name "$PROJECT" --environment production --json \
+            > "$RUNNER_TEMP/pages-deployments.json" 2> "$RUNNER_TEMP/pages-list.log"; then
+            rm -f "$RUNNER_TEMP/pages-list.log" "$RUNNER_TEMP/pages-deployments.json"
+            echo "Pages deployed, but its deployment id could not be read." >&2
+            exit 1
+          fi
+          deployment_id="$(jq -r --arg marker "$marker" \
+            '[.[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
+            "$RUNNER_TEMP/pages-deployments.json")"
+          test -n "$deployment_id"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/pages-deploy.log" "$RUNNER_TEMP/pages-list.log" \
+            "$RUNNER_TEMP/pages-deployments.json"
+
+      - name: Finalize active release
+        env:
+          RELEASE_ID: ${{ steps.candidate.outputs.release_id }}
+          PAGES_DEPLOYMENT_ID: ${{ steps.pages.outputs.deployment_id }}
+        run: |
+          node scripts/contentSnapshotCli.mjs finalize \
+            --job-id "$JOB_ID" \
+            --release-id "$RELEASE_ID" \
+            --pages-deployment-id "$PAGES_DEPLOYMENT_ID" \
+            --output "$RUNNER_TEMP/finalized.json"
+
+      - name: Record sanitized failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: |
+          node scripts/contentSnapshotCli.mjs fail \
+            --job-id "$JOB_ID" \
+            --sanitized-error "publication workflow failed; inspect step status" \
+            --output "$RUNNER_TEMP/failed.json"

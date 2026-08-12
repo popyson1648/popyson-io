@@ -8,8 +8,9 @@
 - `.project/`: short contributor-facing project documentation.
 - `.plans/`: task plans.
 - `.decisions/`: accepted project decisions.
-- `.github/workflows/`: CI, translation, metadata generation (`generate-metadata.yml`), site deploy (`deploy.yml`), scheduled Instapaper reading refresh (`reading-refresh.yml`), secret scanning, and security remediation automation.
-- `.drafts/`: Git-ignored, local-only editor drafts mirroring `posts/`, `works/`, and the fixed `about/` content. It is created on demand, is excluded from production builds, and is not a backup or synchronization mechanism.
+- `.github/workflows/`: CI, database content publication, site deploy, scheduled Instapaper refresh, secret scanning, and security remediation automation.
+- `workers/content-api/`: authenticated D1/R2 authoring and CI publication API.
+- `workers/content-backup/`: scheduled D1 export and R2 asset backup Workflow.
 - `editor/`: the dedicated local editor Vite configuration and Git-ignored optimized `dist/` output. The root site build and deployment do not read this output.
 
 ## Important Modules
@@ -22,14 +23,14 @@
 - `src/pages.jsx`: about (default landing), application, reading, and RSS pages.
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
-- `src/content/posts/<post-id>/index.{ja,en}.md`: per-locale blog post Markdown. The stable `post-id` comes from the directory name.
+- `scripts/contentSnapshotClient.mjs`: validates and materializes pinned D1/R2 publication and release snapshots into an explicit isolated root.
 - `src/content/metadata.toml`: article metadata defaults plus Gemini (tags/summary) and OpenAI (`[thumbnail_generation]`) provider/model settings.
 - `src/content/prompts/tag-generation.md`: system instruction used by automatic tag generation.
 - `src/content/prompts/summary-generation.md`: system instruction used by automatic summary generation.
 - `src/content/prompts/thumbnail-concept.md`: system instruction that derives the thumbnail concept from the Japanese summary.
 - `src/content/prompts/thumbnail-generation.md`: OpenAI image prompt with a `{CONCEPT}` placeholder for auto thumbnails.
-- `public/thumbnails/<post-id>.png`: generated article thumbnails (one per post id, shared by both locales).
-- `src/content/about/about.{ja,en}.toml`: per-locale About page content.
+- `workers/content-api/src/`: author CRUD, revision history, asset, publication job, release, and reconciliation handlers.
+- `workers/content-backup/src/`: scheduled D1 export and content-addressed R2 backup handlers.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, and generates search plain text.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
@@ -38,14 +39,12 @@
 - `tests/check_metadata_quality.test.mjs`: static quality checks for generated tags and summaries.
 - `tests/check_metadata_schema.test.mjs`: schema unit checks for valid and invalid metadata examples.
 - `tests/check_generate_metadata.test.mjs`: metadata generation unit checks with a mock provider.
-- `scripts/new_post.mjs`: creates a new post directory named `YYYYMMDD-HHMMSS`, so a day's drafts list in creation order. Run it with `npm run new:post`. The scaffolded front matter carries a comment block describing every field and no values beyond the defaults. Post ids from before this form (`YYYYMMDD-<hex8>`) are still accepted.
-- `scripts/publish_content.mjs`: stages one content directory, derives an `add` / `update` / `remove` commit message from what changed, commits, and pushes. The kind it works on comes from its first argument: `npm run post:push` for `src/content/posts/`, `npm run work:push` for `src/content/works/`, or `npm run about:push` for the fixed `src/content/about/` item.
 - `editor.html` and `src/editor/`: local-only SmartHR UI authoring entry at `/editor`, including Markdown tools for Blog/Works, structured About forms, private autosave, photo selection/capture, and save/publish status. It is separate from the production `index.html` entry.
 - `editor-preview.html` and `src/editor/previewMain.jsx`: development-only iframe preview entry. It imports the public site theme and CSS, renders Blog, Works, and About page class structures, and synchronizes content and scroll position with the editor without leaking public global styles into SmartHR UI.
 - `editor/vite.config.js`: builds the editor and preview entries into `editor/dist/` without emitting published content assets or changing the public-site build.
 - `scripts/editorServer.mjs` and `scripts/editorApiPlugin.mjs`: local editor server and APIs. Normal authoring serves the optimized local bundle; `editor:dev` provides HMR. Both stay on loopback while a separate Tailscale Serve HTTPS listener provides the stable bookmarked URL. API access checks the loopback proxy peer, detected Tailscale DNS host, Serve-injected node-owner login, and mutation Origin. They are enabled by editor commands, not by the production site.
-- `scripts/contentEditorModel.mjs` and `scripts/contentScaffold.mjs`: shared schema-aware draft/public list, read, create, save, image, promotion, and scaffold operations used by the web editor and the existing content scaffold CLIs.
-- `scripts/contentAssetsPlugin.mjs`: serves entry-local `assets/` files in editor development and optimized-preview servers, and emits published assets under the public `dist/content-assets/` during the site build.
+- `scripts/contentCloudEditorModel.mjs` and `scripts/contentCloudClient.mjs`: schema-aware editor adapter and authenticated Worker client.
+- `scripts/contentAssetsPlugin.mjs`: serves snapshot assets in development and emits them under the static public build.
 - `src/readingTime.js`: estimates the reading time of a Markdown body per locale, replacing the removed `reading` front-matter field.
 - `src/content/works/<slug>/index.{ja,en}.md`: one work per directory, TOML front matter plus a Markdown body. The slug is the URL segment (`/app/<slug>`). Exposed as `APPS` (metadata) and `WORK_BODIES` (rendered HTML) through `virtual:site-content`.
 - `scripts/workSchema.mjs`: front matter schema for works, separate from the article one.
@@ -73,7 +72,7 @@
 ## Areas That Require Extra Care
 
 - The site is statically deployed; avoid adding backend requirements without an accepted decision.
-- `.drafts/` contains unpublished local work. Do not commit it, use it as a build input, or delete it as routine cleanup.
+- D1/R2 contain private revisions and assets. Never print their contents, identifiers, Access configuration, or device-specific editor hostnames to shared logs.
 - `index.html` must point at the Vite entry `src/main.jsx`, and it holds the `<!-- OG:START -->`/`<!-- OG:END -->` markers that `scripts/prerender.mjs` rewrites per route — keep them intact.
 - `npm run build` runs `vite build && node scripts/prerender.mjs && node scripts/build_pagefind.mjs` and produces a multi-file `dist/` (route directories + `sitemap.xml` + `robots.txt` + `pagefind/`). Routing, links, metadata, and search indexes are path/locale based — see `.decisions/ogp-path-routing.md`.
 - Cloudflare Pages relies on its default SPA fallback (no top-level `404.html`, no `_redirects` catch-all) so prerendered files are not shadowed.

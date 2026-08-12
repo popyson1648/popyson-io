@@ -39,22 +39,32 @@ export function createEditorApi() {
     save: (content, { checkpoint = false } = {}) =>
       request(`/api/editor/content/${content.kind}/${encodeURIComponent(content.id)}`, {
         method: "PUT",
-        body: JSON.stringify({ files: content.files, checkpoint }),
+        body: JSON.stringify({
+          files: content.files,
+          currentRevisionId: content.currentRevisionId,
+          revisionMetadata: content.revisionMetadata,
+          visibility: content.visibility,
+          deletedAt: content.deletedAt,
+          checkpoint,
+        }),
       }),
-    discard: (kind, id) =>
-      request(`/api/editor/content/${kind}/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    updateState: (content, value) =>
+      request(`/api/editor/content/${content.kind}/${encodeURIComponent(content.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...value, currentRevisionId: content.currentRevisionId }),
+      }),
     history: (kind, id) => request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/history`),
-    restoreHistory: (kind, id, historyId, revisions) =>
+    restoreHistory: (kind, id, historyId, currentRevisionId) =>
       request(
         `/api/editor/content/${kind}/${encodeURIComponent(id)}/history/${encodeURIComponent(historyId)}`,
-        { method: "POST", body: JSON.stringify({ revisions }) },
+        { method: "POST", body: JSON.stringify({ currentRevisionId }) },
       ),
     preview: (markdown, locale) =>
       request("/api/editor/preview", {
         method: "POST",
         body: JSON.stringify({ markdown, locale }),
       }),
-    upload: (kind, id, file) =>
+    upload: (kind, id, file, currentRevisionId) =>
       new Promise((resolve, reject) => {
         const extension = file.name.split(".").pop()?.toLowerCase();
         const inferredType = {
@@ -77,7 +87,12 @@ export function createEditorApi() {
             resolve(
               await request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/assets`, {
                 method: "POST",
-                body: JSON.stringify({ name: file.name, type: file.type || inferredType, data }),
+                body: JSON.stringify({
+                  name: file.name,
+                  type: file.type || inferredType,
+                  data,
+                  currentRevisionId,
+                }),
               }),
             );
           } catch (error) {

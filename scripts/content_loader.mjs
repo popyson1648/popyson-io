@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { makeDateLabel, normalizeIsoDate } from "../src/dateLabel.js";
@@ -14,15 +14,40 @@ import { assertValidWorkMetadata } from "./workSchema.mjs";
 
 /** @typedef {import("./workSchema.mjs").WorkMetadata} WorkMetadata */
 
-const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
-const POSTS_DIR = join(ROOT, "src/content/posts");
-const WORKS_DIR = join(ROOT, "src/content/works");
-const ABOUT_DIR = join(ROOT, "src/content/about");
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
 // YYYYMMDD-HHMMSS for posts scaffolded now, and the earlier YYYYMMDD-<hex8>
 // form for the ones already published under it.
 const POST_ID_RE = /^\d{8}-(?:\d{6}|[a-f0-9]{8})$/;
 const WORK_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
+ * Resolve the tree that contains `src/content/{posts,works,about}` and
+ * `public/`. Builds that consume D1/R2 content set CONTENT_SNAPSHOT_ROOT to an
+ * isolated directory. The repository remains the deliberate default for local
+ * development and verification until the production cutover removes the
+ * checked-in content.
+ */
+export function contentSnapshotRoot(env = process.env) {
+  const configured = String(env.CONTENT_SNAPSHOT_ROOT || "").trim();
+  if (!configured) return ROOT;
+  if (!isAbsolute(configured)) {
+    throw new Error("CONTENT_SNAPSHOT_ROOT must be an absolute path");
+  }
+  const snapshotRoot = resolve(configured);
+  if (!existsSync(snapshotRoot)) {
+    throw new Error(`CONTENT_SNAPSHOT_ROOT does not exist: ${snapshotRoot}`);
+  }
+  return snapshotRoot;
+}
+
+function contentPaths(root = contentSnapshotRoot()) {
+  return {
+    posts: join(root, "src/content/posts"),
+    works: join(root, "src/content/works"),
+    about: join(root, "src/content/about"),
+  };
+}
 
 function readMetadataConfig() {
   if (!existsSync(METADATA_CONFIG_FILE)) {
@@ -125,11 +150,11 @@ export function localizeMarkdown(jaBody, enBody) {
   return { ja: jaBody, en: enBody, headings };
 }
 
-function readPost(dirName, config) {
+function readPost(dirName, config, paths) {
   if (!POST_ID_RE.test(dirName)) {
     throw new Error(`Invalid post directory name: ${dirName}`);
   }
-  const dir = join(POSTS_DIR, dirName);
+  const dir = join(paths.posts, dirName);
   const jaPath = join(dir, "index.ja.md");
   const enPath = join(dir, "index.en.md");
   const ja = parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath);
@@ -156,8 +181,8 @@ function readPost(dirName, config) {
  * @property {{ file?: string, count?: number }} [news]
  */
 
-function readAbout(locale) {
-  const file = join(ABOUT_DIR, `about.${locale}.toml`);
+function readAbout(locale, paths) {
+  const file = join(paths.about, `about.${locale}.toml`);
   const data = /** @type {AboutFile} */ (parseToml(readFileSync(file, "utf8")));
   return { person: data.person || {}, news: data.news || {} };
 }
@@ -188,34 +213,34 @@ export function normalizeNewsEntries(entries, count, source = "news") {
 
 // `[news] file` names a sibling of the about file; `[news] count` caps how many
 // of the newest entries reach the page. An empty `file` disables the section.
-function readNews(config) {
+function readNews(config, paths) {
   const fileName = String(config.file || "").trim();
   if (!fileName) return [];
-  const file = join(ABOUT_DIR, fileName);
+  const file = join(paths.about, fileName);
   if (!existsSync(file)) {
     throw new Error(`${file} is referenced by [news] file but does not exist`);
   }
   return normalizeNewsEntries(parseToml(readFileSync(file, "utf8")).news, config.count, file);
 }
 
-function newsWatchFiles() {
+function newsWatchFiles(paths) {
   const files = [];
   for (const locale of ["ja", "en"]) {
-    const aboutFile = join(ABOUT_DIR, `about.${locale}.toml`);
+    const aboutFile = join(paths.about, `about.${locale}.toml`);
     if (!existsSync(aboutFile)) continue;
-    const fileName = String(readAbout(locale).news.file || "").trim();
-    if (fileName) files.push(join(ABOUT_DIR, fileName));
+    const fileName = String(readAbout(locale, paths).news.file || "").trim();
+    if (fileName) files.push(join(paths.about, fileName));
   }
   return files;
 }
 
 // A work is addressed by its slug, which becomes the URL segment, so it stays
 // lowercase and hyphenated rather than the date-and-hash form posts use.
-function readWork(dirName) {
+function readWork(dirName, paths) {
   if (!WORK_ID_RE.test(dirName)) {
     throw new Error(`Invalid work directory name: ${dirName}`);
   }
-  const dir = join(WORKS_DIR, dirName);
+  const dir = join(paths.works, dirName);
   const jaPath = join(dir, "index.ja.md");
   const enPath = join(dir, "index.en.md");
   // Parsed without the post schema, then validated against the work one.
@@ -246,27 +271,27 @@ function readWork(dirName) {
   return { work, body: { ja: jaFile.body, en: enFile.body } };
 }
 
-function readWorkEntries() {
-  if (!existsSync(WORKS_DIR)) return [];
-  return readdirSync(WORKS_DIR, { withFileTypes: true })
+function readWorkEntries(paths) {
+  if (!existsSync(paths.works)) return [];
+  return readdirSync(paths.works, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
     .map((dirent) => dirent.name)
     .sort()
-    .map(readWork)
+    .map((dirName) => readWork(dirName, paths))
     .sort((a, b) => b.work.year - a.work.year || a.work.id.localeCompare(b.work.id));
 }
 
-function postDirectories() {
-  if (!existsSync(POSTS_DIR)) return [];
-  return readdirSync(POSTS_DIR, { withFileTypes: true })
+function postDirectories(paths) {
+  if (!existsSync(paths.posts)) return [];
+  return readdirSync(paths.posts, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
 }
 
-function readPostEntries(config) {
-  return postDirectories()
-    .map((dir) => readPost(dir, config))
+function readPostEntries(config, paths) {
+  return postDirectories(paths)
+    .map((dir) => readPost(dir, config, paths))
     .sort((a, b) => b.post.date.localeCompare(a.post.date));
 }
 
@@ -353,17 +378,18 @@ function localizeAbout(ja, en) {
   return person;
 }
 
-export function loadSiteContent() {
+export function loadSiteContent({ snapshotRoot = contentSnapshotRoot() } = {}) {
+  const paths = contentPaths(snapshotRoot);
   const metadataConfig = readMetadataConfig();
-  const entries = readPostEntries(metadataConfig);
+  const entries = readPostEntries(metadataConfig, paths);
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = articleBodiesFromEntries(entries);
   const tags = uniqueTags(posts);
-  const workEntries = readWorkEntries();
-  const ja = readAbout("ja");
-  const en = readAbout("en");
+  const workEntries = readWorkEntries(paths);
+  const ja = readAbout("ja", paths);
+  const en = readAbout("en", paths);
   const person = localizeAbout(ja.person, en.person);
-  const news = { ja: readNews(ja.news), en: readNews(en.news) };
+  const news = { ja: readNews(ja.news, paths), en: readNews(en.news, paths) };
   // News is not index-zipped, but a locale missing entries silently empties the
   // News section on that language's page, so hold both files to the same count.
   assertLocaleParity("news", news.ja, news.en, "news");
@@ -408,17 +434,18 @@ export async function renderArticleBodies(content) {
   };
 }
 
-export function contentWatchFiles() {
+export function contentWatchFiles({ snapshotRoot = contentSnapshotRoot() } = {}) {
+  const paths = contentPaths(snapshotRoot);
   const files = [
-    join(ABOUT_DIR, "about.ja.toml"),
-    join(ABOUT_DIR, "about.en.toml"),
-    ...newsWatchFiles(),
+    join(paths.about, "about.ja.toml"),
+    join(paths.about, "about.en.toml"),
+    ...newsWatchFiles(paths),
     METADATA_CONFIG_FILE,
   ];
   const metadataConfig = existsSync(METADATA_CONFIG_FILE) ? readMetadataConfig() : {};
   const promptFile = metadataConfig.tag_generation?.prompt_file;
   if (promptFile) files.push(join(ROOT, promptFile));
-  for (const contentDir of [POSTS_DIR, WORKS_DIR]) {
+  for (const contentDir of [paths.posts, paths.works]) {
     if (!existsSync(contentDir)) continue;
     for (const dirent of readdirSync(contentDir, { withFileTypes: true })) {
       if (!dirent.isDirectory()) continue;
@@ -430,7 +457,7 @@ export function contentWatchFiles() {
 }
 
 export function worksDir() {
-  return WORKS_DIR;
+  return contentPaths().works;
 }
 
 export function postIdPattern() {
@@ -438,7 +465,7 @@ export function postIdPattern() {
 }
 
 export function postsDir() {
-  return POSTS_DIR;
+  return contentPaths().posts;
 }
 
 export function rootDir() {

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "popyson-content-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  },
+  "vars": {
+    "AUTH_MODE": "access",
+    "ACCESS_TEAM_DOMAIN": "https://REPLACE_ME.cloudflareaccess.com",
+    "AUTHOR_POLICY_AUD": "REPLACE_ME",
+    "CI_POLICY_AUD": "REPLACE_ME",
+    "AUTHOR_SERVICE_TOKEN_ID": "REPLACE_ME.access",
+    "CI_SERVICE_TOKEN_ID": "REPLACE_ME.access",
+    "MAX_JSON_BYTES": "1048576",
+    "MAX_ASSET_BYTES": "10485760"
+  },
+  "d1_databases": [
+    {
+      "binding": "CONTENT_DB",
+      "database_name": "popyson-content",
+      "database_id": "18f57d00-966c-4f9d-ab14-d448b1d1b207",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CONTENT_ASSETS",
+      "bucket_name": "popyson-content-assets"
+    },
+    {
+      "binding": "CONTENT_BACKUPS",
+      "bucket_name": "popyson-content-backups"
+    }
+  ]
+}

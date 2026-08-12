@@ -7,3 +7,4 @@ coverage/
 .lighthouseci/
 .drafts/
 /editor/dist/
+.wrangler/

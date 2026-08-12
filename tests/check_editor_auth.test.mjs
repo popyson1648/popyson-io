@@ -40,8 +40,8 @@ function request({
 }
 
 const accessOptions = {
-  trustedHost: "wsl-ubuntu.tail29f20.ts.net",
-  tailscaleLogin: "popyson1648@github",
+  trustedHost: "editor-node.tailnet.example.invalid",
+  tailscaleLogin: "author@example.invalid",
 };
 
 function assetResponse() {
@@ -71,7 +71,7 @@ describe("editor Tailscale Serve authorization", () => {
     (address) => expect(isLoopbackAddress(address)).toBe(true),
   );
 
-  test.each(["192.168.1.2", "100.91.26.6", "::ffff:192.168.1.2", "not-an-ip"])(
+  test.each(["192.168.1.2", "192.0.2.60", "::ffff:192.168.1.2", "not-an-ip"])(
     "rejects non-loopback address %s",
     (address) => expect(isLoopbackAddress(address)).toBe(false),
   );
@@ -83,11 +83,14 @@ describe("editor Tailscale Serve authorization", () => {
 
   test("recognizes only the configured Tailscale DNS host", () => {
     expect(
-      isTrustedTailscaleHost("wsl-ubuntu.tail29f20.ts.net:4173", "wsl-ubuntu.tail29f20.ts.net"),
+      isTrustedTailscaleHost(
+        "editor-node.tailnet.example.invalid:4173",
+        "editor-node.tailnet.example.invalid",
+      ),
     ).toBe(true);
-    expect(isTrustedTailscaleHost("other.tail29f20.ts.net:4173", accessOptions.trustedHost)).toBe(
-      false,
-    );
+    expect(
+      isTrustedTailscaleHost("other-node.tailnet.example.invalid:4173", accessOptions.trustedHost),
+    ).toBe(false);
   });
 
   test("allows local recovery reads", () => {
@@ -113,8 +116,8 @@ describe("editor Tailscale Serve authorization", () => {
   test("allows the matching Tailscale user through the Serve proxy", () => {
     const access = editorRequestAccess(
       request({
-        host: "wsl-ubuntu.tail29f20.ts.net:4173",
-        tailscaleLogin: "popyson1648@github",
+        host: "editor-node.tailnet.example.invalid:4173",
+        tailscaleLogin: "author@example.invalid",
       }),
       accessOptions,
     );
@@ -124,11 +127,11 @@ describe("editor Tailscale Serve authorization", () => {
   test("allows same-origin HTTPS mutations through Serve", () => {
     const access = editorRequestAccess(
       request({
-        host: "wsl-ubuntu.tail29f20.ts.net:4173",
+        host: "editor-node.tailnet.example.invalid:4173",
         method: "POST",
-        origin: "https://wsl-ubuntu.tail29f20.ts.net:4173",
+        origin: "https://editor-node.tailnet.example.invalid:4173",
         fetchSite: "same-origin",
-        tailscaleLogin: "popyson1648@github",
+        tailscaleLogin: "author@example.invalid",
       }),
       accessOptions,
     );
@@ -139,23 +142,23 @@ describe("editor Tailscale Serve authorization", () => {
     [
       "a non-loopback peer",
       {
-        address: "100.91.26.6",
-        host: "wsl-ubuntu.tail29f20.ts.net:4173",
-        tailscaleLogin: "popyson1648@github",
+        address: "192.0.2.60",
+        host: "editor-node.tailnet.example.invalid:4173",
+        tailscaleLogin: "author@example.invalid",
       },
     ],
     [
       "a different Tailscale host",
       {
-        host: "other.tail29f20.ts.net:4173",
-        tailscaleLogin: "popyson1648@github",
+        host: "other-node.tailnet.example.invalid:4173",
+        tailscaleLogin: "author@example.invalid",
       },
     ],
-    ["a missing Tailscale identity", { host: "wsl-ubuntu.tail29f20.ts.net:4173" }],
+    ["a missing Tailscale identity", { host: "editor-node.tailnet.example.invalid:4173" }],
     [
       "a different Tailscale user",
       {
-        host: "wsl-ubuntu.tail29f20.ts.net:4173",
+        host: "editor-node.tailnet.example.invalid:4173",
         tailscaleLogin: "other@example.com",
       },
     ],
@@ -180,7 +183,7 @@ describe("editor Tailscale Serve authorization", () => {
     const response = assetResponse();
     serveAsset(
       {
-        ...request({ address: "100.91.26.6" }),
+        ...request({ address: "192.0.2.60" }),
         url: "/content-assets/posts/private-draft/photo.png",
       },
       response,
@@ -220,13 +223,13 @@ describe("editor server startup", () => {
       viteEditorPreviewOptions({
         host: "127.0.0.1",
         port: 4173,
-        trustedHost: "wsl-ubuntu.tail29f20.ts.net",
+        trustedHost: "editor-node.tailnet.example.invalid",
       }),
     ).toEqual({
       host: "127.0.0.1",
       port: 4173,
       strictPort: true,
-      allowedHosts: ["wsl-ubuntu.tail29f20.ts.net"],
+      allowedHosts: ["editor-node.tailnet.example.invalid"],
     });
   });
 
@@ -239,24 +242,24 @@ describe("editor server startup", () => {
       viteEditorServerOptions({
         host: "127.0.0.1",
         port: 4173,
-        trustedHost: "wsl-ubuntu.tail29f20.ts.net",
+        trustedHost: "editor-node.tailnet.example.invalid",
       }),
     ).toEqual({
       host: "127.0.0.1",
       port: 4173,
       strictPort: true,
-      allowedHosts: ["wsl-ubuntu.tail29f20.ts.net"],
+      allowedHosts: ["editor-node.tailnet.example.invalid"],
     });
   });
 
   test("prints the stable HTTPS bookmark and local recovery URL without a token", () => {
     const output = editorStartupMessages({
       resolvedUrls,
-      publicUrl: "https://wsl-ubuntu.tail29f20.ts.net:4173/editor",
-      tailscaleLogin: "popyson1648@github",
+      publicUrl: "https://editor-node.tailnet.example.invalid:4173/editor",
+      tailscaleLogin: "author@example.invalid",
       development: false,
     }).join("\n");
-    expect(output).toContain("https://wsl-ubuntu.tail29f20.ts.net:4173/editor");
+    expect(output).toContain("https://editor-node.tailnet.example.invalid:4173/editor");
     expect(output).toContain("http://127.0.0.1:4173/editor");
     expect(output).toContain("optimized local bundle");
     expect(output).not.toContain("editorToken");
@@ -266,12 +269,12 @@ describe("editor server startup", () => {
     expect(
       parseTailscaleIdentity({
         BackendState: "Running",
-        Self: { DNSName: "wsl-ubuntu.tail29f20.ts.net.", UserID: 42 },
-        User: { 42: { LoginName: "popyson1648@github" } },
+        Self: { DNSName: "editor-node.tailnet.example.invalid.", UserID: 42 },
+        User: { 42: { LoginName: "author@example.invalid" } },
       }),
     ).toEqual({
-      dnsName: "wsl-ubuntu.tail29f20.ts.net",
-      login: "popyson1648@github",
+      dnsName: "editor-node.tailnet.example.invalid",
+      login: "author@example.invalid",
     });
   });
 

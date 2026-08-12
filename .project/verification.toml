@@ -30,10 +30,9 @@ reason = "Now a Vitest spec (tests/check_frontmatter.test.mjs) run by the test_u
 [phases.metadata_generate_check]
 enabled = true
 command = "node scripts/generate_metadata.mjs --check"
-# Posts are committed with unresolved `auto` metadata on purpose:
-# generate-metadata.yml resolves it on main and commits the result. Running
-# this on pre-commit would reject every new post, so it is CI-only. See
-# .decisions/metadata-check-is-ci-only.md.
+# Publication resolves metadata inside the isolated database snapshot before
+# translation. Repository fallback content remains a CI fixture until cutover,
+# so this check stays CI-only.
 run_standard = false
 run_in_ci = true
 
@@ -45,6 +44,20 @@ reason = "Now a Vitest spec (tests/check_metadata_quality.test.mjs) run by the t
 [phases.typecheck]
 enabled = true
 command = "npm run typecheck"
+run_standard = true
+run_in_ci = true
+
+# The content Worker has its own tsconfig because it targets the Workers
+# runtime types, so the root typecheck phase does not cover it.
+[phases.content_worker_typecheck]
+enabled = true
+command = "npm run content:worker:typecheck"
+run_standard = true
+run_in_ci = true
+
+[phases.content_backup_typecheck]
+enabled = true
+command = "npm run content:backup:typecheck"
 run_standard = true
 run_in_ci = true
 
@@ -65,6 +78,20 @@ run_in_ci = true
 [phases.test_unit]
 enabled = true
 command = "npx vitest run --project unit"
+run_standard = true
+run_in_ci = true
+
+# Runs in the Workers pool against a local D1 instance, so it needs its own
+# Vitest root rather than a project inside the root workspace.
+[phases.content_worker_test]
+enabled = true
+command = "npm run content:worker:test"
+run_standard = true
+run_in_ci = true
+
+[phases.content_backup_test]
+enabled = true
+command = "npm run content:backup:test"
 run_standard = true
 run_in_ci = true
 

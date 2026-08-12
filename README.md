@@ -8,6 +8,7 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 ## 目次
 
 - [機能](#機能)
+- [アーキテクチャ](#アーキテクチャ)
 - [開発環境](#開発環境)
 - [ディレクトリ構成](#ディレクトリ構成)
 - [ビルド処理の構成](#ビルド処理の構成)
@@ -46,9 +47,32 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 - **制作物一覧**：制作物の概要と詳細ページを表示します。
 - **読書リスト**：Instapaper から取得した項目を未読と既読に分けて表示します。
 - **RSS**：ビルド時に `/feed.xml` を生成し、サイト内に購読案内を表示します。
+- **ローカル編集**：Blog、Works、About の作成と編集、改訂履歴、公開範囲、削除と復元、公開処理をブラウザーから操作します。
 - **言語切り替え**：同じページの日英 URL を切り替えます。
 - **テーマ切り替え**：ライト、ダーク、OS 設定への追従を選べます。
 - **検索エンジン向け出力**：各 URL の canonical、hreflang、OGP、Twitter Card、サイトマップ、robots.txt を生成します。
+
+## アーキテクチャ
+
+コンテンツとアプリケーションを次の場所で管理します。
+
+| 保存先 | 管理対象 |
+| --- | --- |
+| Cloudflare D1 | Blog、Works、About の本文、公開範囲、削除状態、改訂履歴、公開ジョブ |
+| Cloudflare R2 | 本文画像、サムネイル、D1/R2 のバックアップ |
+| GitHub | React アプリケーション、Worker、ビルド規則、メタデータ生成規則、翻訳規則、リポジトリビルド用コンテンツ |
+
+現在の Blog、Works、About と画像は D1/R2 に保存されています。
+
+ローカルコンテンツエディターは認証付き Worker API を通して D1/R2 を読み書きし、Blog と Works の作成、Blog、Works、About の読み込みと編集、日英プレビュー、画像追加、改訂の保存と復元、公開範囲の変更、ソフト削除と復元を扱います。
+保存時は新しい改訂を追加し、改訂番号による競合検出で編集内容を保護します。
+
+公開操作は現在の改訂、公開範囲、削除状態を固定したジョブを作成し、そのジョブ ID を GitHub Actions へ送ります。
+Actions は D1/R2 の固定スナップショットを使ってメタデータ生成、翻訳、静的ビルド、検証、Cloudflare Pages への配信を実行し、成功した改訂を公開版として確定します。
+Cloudflare Pages は公開版から生成した HTML、Pagefind、RSS、サイトマップ、画像を静的ファイルとして配信します。
+
+エディターはローカルのループバックアドレスで動作し、Tailscale Serve が認証付き HTTPS 接続を中継します。
+資格情報を保有するローカル Node.js サーバーが外部 API と通信し、ブラウザーは同一オリジンのエディター API を利用します。
 
 ## 開発環境
 
@@ -83,14 +107,16 @@ python3 scripts/verify.py
 | `npm run test:integration` | 本番ビルド後に統合テストを実行する |
 | `npm run lighthouse` | ローカルの静的サイトを Lighthouse で測定する |
 
-コンテンツを扱うコマンドは次のとおりです。
+コンテンツとエディターを扱う主なコマンドは次のとおりです。
 
 | コマンド | 処理 |
 | --- | --- |
-| `npm run new:post` | [記事](#記事の追加)の雛形を作る |
-| `npm run post:push` | [記事の変更](#記事の公開)だけをコミットして push する |
-| `npm run new:work -- <スラッグ>` | [制作物](#制作物の追加)の雛形を作る |
-| `npm run work:push` | [制作物の変更](#制作物の公開)だけをコミットして push する |
+| `npm run editor:setup` | Tailscale Serve を通常ユーザーで管理するための初回設定を行う |
+| `npm run editor` | エディターをビルドして起動する |
+| `npm run editor:stop` | このリポジトリが起動したエディターを停止する |
+| `npm run editor:build` | エディターの静的バンドルを生成する |
+| `npm run editor:dev` | エディター自体を HMR 付きで開発する |
+| `npm run content:restore` | D1 バックアップを非本番データベースで検証、復元する |
 | `npm run metadata:generate:op` | 記事の自動メタデータを手元で解決する |
 
 ## ディレクトリ構成
@@ -108,36 +134,38 @@ popyson-io/                         # サイトのソースと開発設定を収
 ├── .project/                       # 新しい開発者向けの現行プロジェクト資料
 │   ├── README.md                   # プロジェクト資料の索引
 │   ├── build.md                    # 構築、実行、配信の手順
+│   ├── content-backup.md           # D1/R2 のバックアップと復元手順
+│   ├── content-publication.md      # 固定スナップショットの公開処理
 │   ├── metadata.md                 # 記事メタデータの仕様
 │   ├── structure.md                # モジュール構成と変更箇所の案内
 │   ├── testing.md                  # テスト構成と実行方法
 │   ├── translation.md              # 日本語記事から英語記事への翻訳規則
 │   └── verification.toml           # 検証ランナーが読むフェーズ定義
 ├── .template/                      # プロジェクト資料と設定の原本
-├── public/                         # 加工せず公開する静的ファイル
-│   ├── thumbnails/                 # 記事 ID ごとの生成済みサムネイル
+├── editor/                         # ローカルエディターのビルド設定
+├── public/                         # 静的ファイルの公開ルート
+│   ├── thumbnails/                 # リポジトリビルド用の生成済みサムネイル
 │   └── provisional_ogp_image.png   # 既定の OGP 画像
 ├── scripts/                        # コンテンツ処理、ビルド、検証のスクリプト
 │   ├── articleHtml.mjs             # Markdown を安全な記事 HTML へ変換する処理
 │   ├── build_pagefind.mjs          # 日英の記事を Pagefind の索引へ登録する処理
 │   ├── content_loader.mjs          # 記事と TOML コンテンツを読み込む共通処理
+│   ├── contentCloudClient.mjs      # Worker API の認証付きクライアント
+│   ├── contentSnapshotClient.mjs   # D1/R2 スナップショットの取得と検証
+│   ├── editorApiPlugin.mjs         # ローカルエディター専用 API
+│   ├── editorServer.mjs            # エディターと Tailscale Serve の起動処理
 │   ├── fetch_instapaper.mjs        # Instapaper から読書リストを取得する処理
 │   ├── generate_metadata.mjs       # 記事メタデータと画像を補完する処理
 │   ├── metadataSchema.mjs          # 記事 front matter の検証規則
 │   ├── workSchema.mjs              # 制作物 front matter の検証規則
-│   ├── new_post.mjs                # 日英の記事ファイルを新規作成する処理
-│   ├── new_work.mjs                # 日英の制作物ファイルを新規作成する処理
-│   ├── publish_content.mjs         # 記事または制作物の変更をコミットして push する処理
 │   ├── prerender.mjs               # ルート別の HTML と SEO 用ファイルを生成する処理
 │   └── verify.py                   # 検証フェーズをまとめて実行するランナー
 ├── src/                            # React アプリケーションとサイトデータ
-│   ├── content/                    # 人が編集する構造化コンテンツ
-│   │   ├── about/                  # 日英のプロフィール TOML
-│   │   ├── posts/                  # 記事 ID ごとの日英 Markdown
-│   │   ├── works/                  # 制作物スラッグごとの日英 Markdown
+│   ├── content/                    # プロンプト、テーマ、リポジトリビルド用コンテンツ
 │   │   ├── prompts/                # メタデータと画像の生成プロンプト
 │   │   ├── metadata.toml           # 自動生成モデルと既定値の設定
 │   │   └── theme.toml              # ライトとダークの色トークン
+│   ├── editor/                     # 編集画面、プレビュー、API クライアント
 │   ├── app.jsx                     # ルーティング、言語、テーマ、画面構成
 │   ├── blog.jsx                    # 記事一覧、検索、目次、記事画面
 │   ├── components.jsx              # ナビゲーションなどの共通 UI
@@ -152,6 +180,11 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── fixtures/                   # テストで共有する Markdown などの入力例
 │   └── setup.component.js          # コンポーネントテストの初期設定
 ├── AGENTS.md                       # このリポジトリで作業するエージェント向け規則
+├── workers/                        # D1/R2 API と日次バックアップ Workflow
+│   ├── content-api/                # エディター・CI 用の認証付き Worker
+│   └── content-backup/             # D1/R2 をバックアップ R2 へ保存する Workflow
+├── editor.html                     # ローカルエディターの HTML エントリー
+├── editor-preview.html             # 分離したプレビューの HTML エントリー
 ├── index.html                      # Vite と事前描画処理が使う HTML の原型
 ├── package.json                    # npm スクリプトと依存パッケージ
 ├── vite.config.js                  # React、仮想モジュール、RSS のビルド設定
@@ -163,7 +196,9 @@ popyson-io/                         # サイトのソースと開発設定を収
 `npm run build` は、Vite のビルド、ルート別 HTML の事前描画、Pagefind 索引の生成を順に実行します。
 
 ```text
-Markdown と TOML
+D1/R2 の固定スナップショット
+    ↓ contentSnapshotClient.mjs
+隔離した Markdown、TOML、画像
     ↓ content_loader.mjs
 仮想モジュール virtual:site-content
     ↓ Vite と React
@@ -210,52 +245,22 @@ Vite のプラグインが TOML を CSS カスタムプロパティへ変換し�
 ### 記事メタデータの自動補完
 
 記事は日付、タグ、概要、サムネイルを front matter で管理します。
-自動モードを指定した項目は生成スクリプトが補完し、結果を Markdown と `public/thumbnails/` へ書き戻します。
+自動モードを指定した項目は、公開用の隔離スナップショット内で生成スクリプトが補完します。
 CI の検査は外部の生成 API を呼ばず、未解決の自動項目が残っていないかを静的に確認します。
 
 ## 記事の追加
 
-次のコマンドは `YYYYMMDD-HHMMSS` 形式の記事 ID を作り、日英の Markdown と素材用ディレクトリを生成します。
-ID の後半は作成時刻なので、同じ日に何本作っても一覧が作成順に並びます。
-
-```sh
-npm run new:post
-```
-
-生成先は次の形です。
-
-```text
-src/content/posts/20260729-165412/    # URL と日英記事を結び付ける記事ディレクトリ
-├── assets/                          # その記事に関連する素材の配置先
-├── index.en.md                      # 英語版の記事と front matter
-└── index.ja.md                      # 日本語版の記事と front matter
-```
+エディターの「新しい記事」は作成時刻を含む一意な ID を作り、初期改訂と公開範囲を D1 に保存します。
+記事 ID は一覧の並び順にも使われます。
 
 日本語版と英語版では見出し構造を揃えます。
 英語版を更新するときは [.project/translation.md](.project/translation.md) の規則にも従います。
 
 ## 記事の公開
 
-次のコマンドは `src/content/posts/` 配下の変更だけをステージし、コミットして push します。
-
-```sh
-npm run post:push
-```
-
-コミットメッセージは変更の種類から組み立てられ、追加なら `add`、書き換えなら `update`、削除なら `remove` として記録します。
-
-コミットの前に検証が走ります。
-CI と同じ整形、lint、型、ビルド、テスト、アクセシビリティを手元で通すので、front matter の書き損じのように CI で落ちる内容はここで止まります。
-失敗した場合は何もコミットされません。
-
-push せずにコミットメッセージだけ確認するときは `--dry-run` を、検証を飛ばすときは `--skip-verify` を付けます。
-
-```sh
-npm run post:push -- --dry-run
-npm run post:push -- --skip-verify
-```
-
-制作物には [`npm run work:push`](#制作物の公開) を使います。
+エディターで保存すると D1 に新しい改訂が残り、公開操作を実行するとその改訂を固定した GitHub Actions が始まります。
+公開範囲と削除状態を変更して公開すると、次の静的デプロイがページ、検索、RSS、サイトマップ、公開画像の対象を更新します。
+Actions は検証と Pages へのデプロイを完了した改訂を公開版として確定します。
 
 ## 記事の front matter
 
@@ -291,8 +296,8 @@ path = "/<公開ディレクトリからの画像パス>"
 
 記事一覧と記事画面に出る読了時間は、本文の分量から言語ごとに算出します。
 
-`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は未解決のままコミットして構いません。
-main へ push すると `generate-metadata.yml` が解決し、その結果をコミットします。
+`date = "auto"`、`auto_tags`、`sumup.mode = "auto"`、`thumbnail.mode = "auto"` は自動生成の指定として保存できます。
+公開用 Actions は固定した日本語改訂のメタデータを解決してから英語版を生成し、その結果を D1/R2 の新しい公開候補として保存します。
 手元で先に解決したいときは次のコマンドを使います。
 
 ```sh
@@ -584,30 +589,17 @@ Markdown に書いた raw HTML は HTML 要素として解釈されません。
 
 ## 制作物の追加
 
-Works ページの内容は `src/content/works/<スラッグ>/` に置きます。
-記事と同じく日英で1ファイルずつ、TOML front matter と Markdown 本文で構成します。
-
-```sh
-npm run new:work -- my-app
-```
-
-引数のスラッグはディレクトリ名になり、そのまま URL の一部になります。
+エディターの「新しい制作物」でスラッグを指定すると、日英の TOML front matter と Markdown 本文を持つ初期改訂と公開範囲が D1 に作られます。
+スラッグは URL の一部になります。
 
 | | |
 | --- | --- |
-| ディレクトリ | `src/content/works/my-app/` |
+| スラッグ | `my-app` |
 | 日本語ページ | `https://popyson.com/app/my-app` |
 | 英語ページ | `https://popyson.com/en/app/my-app` |
 
-使える文字は英小文字、数字、ハイフンで、大文字やスペースは受け付けません（`^[a-z0-9][a-z0-9-]*$`）。
-制作物の名前は front matter の `title` に書くので、スラッグと揃える必要はありません。
-
-```text
-src/content/works/my-app/
-├── assets/        # その制作物に関連する素材の置き場
-├── index.en.md
-└── index.ja.md
-```
+スラッグは英小文字、数字、ハイフンで構成します（`^[a-z0-9][a-z0-9-]*$`）。
+制作物の名前は front matter の `title` で管理し、スラッグは URL の識別子として管理します。
 
 front matter の項目は次のとおりです。
 
@@ -632,7 +624,7 @@ hero = "<詳細ページの大きな画像パス>"
 - **`stack`**：使用技術を文字列の配列で指定します。一覧と詳細にチップで並びます。
 - **`thumbnail`**、**`hero`**：画像のパスです。[制作物の画像](#制作物の画像)を参照してください。
 
-`year`、`stack`、`thumbnail`、`hero` は日本語版から読まれるため、英語版には書きません。
+`year`、`stack`、`thumbnail`、`hero` は日本語版を日英共通の値として読み込みます。
 `title`、`tagline`、`summary` と本文は言語ごとに書き分けます。
 
 ### 制作物の画像
@@ -649,38 +641,28 @@ hero = "<詳細ページの大きな画像パス>"
 推奨サイズを表示幅のおよそ2倍にしているのは、画素密度の高い画面で粗く見えないようにするためです。
 2つの枠は同じ比率なので、1枚の画像を両方に指定することもできます。
 
-画像は `public/` に置き、front matter にはそこからのパスを書きます。
-
-```text
-public/works/my-app/
-├── hero.png
-└── thumb.png
-```
+画像はエディターから追加するとアクセス制御された R2 に保存され、公開時に固定スナップショットへ取り込まれます。
+front matter には公開スナップショット内の `/` から始まるパスを書きます。
 
 ```toml
-thumbnail = "/works/my-app/thumb.png"
-hero = "/works/my-app/hero.png"
+thumbnail = "/content-assets/works/my-app/thumb.png"
+hero = "/content-assets/works/my-app/hero.png"
 ```
 
-パスは `/` から始めます（`//` は外部ホストへの参照として解釈されるため受け付けません）。
+パスは公開ルートを表す `/` から始めます。
 空文字にするとプレースホルダが表示され、片方だけ指定することもできます。
 
 ## 制作物の公開
 
-記事と同じ手順で、`src/content/works/` 配下の変更だけをステージし、コミットして push します。
-
-```sh
-npm run work:push
-npm run work:push -- --dry-run   # コミットメッセージだけ確認する
-```
-
-main へ push すると、記事と同じように英語版が自動で翻訳されます。
-翻訳されないまま残ったときは、Actions の Translate content に `work_slug` を渡して実行します。
+記事と同じくエディターで改訂を保存し、公開操作から固定スナップショットの Actions を起動します。
+Actions は日本語版を基に英語版を生成し、検証と Pages へのデプロイを完了した改訂を公開版として確定します。
 
 ## 関連資料
 
 - [プロジェクト資料の索引](.project/README.md)
-- [ビルドと配信](.project/build.md)
+- [ビルド、配信、ローカルエディター](.project/build.md)
+- [データベースコンテンツの公開](.project/content-publication.md)
+- [バックアップと復元](.project/content-backup.md)
 - [テストと検証](.project/testing.md)
 - [記事メタデータ](.project/metadata.md)
 - [ディレクトリと主要モジュール](.project/structure.md)

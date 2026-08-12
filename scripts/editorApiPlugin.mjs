@@ -1,32 +1,23 @@
-import { execFileSync, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { isIP } from "node:net";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 import { renderArticleHtml } from "./articleHtml.mjs";
 import {
-  contentDirectory,
-  createEditorContent,
-  discardEditorDraft,
-  EditorContentError,
-  editorRootDir,
-  listEditorHistory,
-  listEditorContent,
-  promoteEditorDraft,
-  readEditorContent,
-  removeEditorDraft,
-  restoreEditorHistory,
-  saveContentAsset,
-  saveEditorContent,
-  validateEditorDraft,
-} from "./contentEditorModel.mjs";
+  cloudAssetLogicalPath,
+  cloudAssetUrl,
+  cloudListItem,
+  fromCloudContent,
+  newCloudContent,
+  nextCloudPostId,
+  safeCloudAssetName,
+  toCloudRevision,
+  validateCloudContent,
+} from "./contentCloudEditorModel.mjs";
+import { ContentCloudClient } from "./contentCloudClient.mjs";
+import { EditorContentError } from "./contentEditorModel.mjs";
+import { GitHubWorkflowClient } from "./githubWorkflowClient.mjs";
 
 const MAX_JSON_BYTES = 15 * 1024 * 1024;
-const jobs = new Map();
-let activePublishJob = "";
-const DEPLOY_BRANCH = process.env.CONTENT_EDITOR_DEPLOY_BRANCH || "main";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function isLoopbackAddress(address) {
@@ -126,7 +117,7 @@ function readJson(request) {
 }
 
 function apiError(response, error) {
-  const status = error instanceof EditorContentError ? error.status : 500;
+  const status = Number(error?.status) || 500;
   sendJson(response, status, {
     error: {
       code: error.code || "internal_error",
@@ -135,179 +126,52 @@ function apiError(response, error) {
   });
 }
 
-function appendJobLog(job, chunk) {
-  const text = String(chunk || "");
-  const phase = /::editor-publish-phase::([a-z_]+)/.exec(text)?.[1];
-  if (phase) job.phase = phase;
-  job.log = `${job.log}${text}`.slice(-80_000);
-  job.updatedAt = new Date().toISOString();
-}
-
-function git(args) {
-  return execFileSync("git", args, {
-    cwd: editorRootDir(),
-    encoding: "utf8",
-  }).trim();
-}
-
-function currentBranch() {
-  try {
-    return git(["branch", "--show-current"]);
-  } catch {
-    return "";
-  }
-}
-
-function publishPreflight(kind, id) {
-  const validation = validateEditorDraft(kind, id);
-  const branch = currentBranch();
-  return {
-    ...validation,
-    branch,
-    deployBranch: DEPLOY_BRANCH,
-    productionEligible: branch === DEPLOY_BRANCH,
-  };
-}
-
-function createPublishRollback(kind, id) {
-  const published = contentDirectory(kind, id);
-  const directory = mkdtempSync(join(tmpdir(), "popyson-editor-publish-"));
-  const backup = join(directory, "content");
-  const existed = existsSync(published);
-  if (existed) cpSync(published, backup, { recursive: true });
-  return {
-    head: git(["rev-parse", "HEAD"]),
-    cleanup: () => rmSync(directory, { recursive: true, force: true }),
-    restore: () => {
-      rmSync(published, { recursive: true, force: true });
-      if (existed) cpSync(backup, published, { recursive: true });
-    },
-  };
-}
-
-function startPublish(kind, id) {
-  if (activePublishJob && jobs.get(activePublishJob)?.status === "running") {
-    throw new EditorContentError("Another publish is already running", 409, "publish_running");
-  }
-  const preflight = publishPreflight(kind, id);
-  if (!preflight.valid) {
-    throw new EditorContentError("公開前に入力内容を確認してください", 422, "invalid_draft");
-  }
-  if (!preflight.productionEligible) {
-    throw new EditorContentError(
-      `現在のブランチは ${preflight.branch || "detached HEAD"} です。サイトを公開できる ${DEPLOY_BRANCH} ブランチでエディターを起動してください。`,
-      409,
-      "wrong_publish_branch",
-    );
-  }
-  const rollback = createPublishRollback(kind, id);
-  try {
-    promoteEditorDraft(kind, id);
-  } catch (error) {
-    rollback.cleanup();
-    throw error;
-  }
-  const job = {
-    id: randomUUID(),
-    kind,
-    contentId: id,
-    status: "running",
-    phase: "preparing",
-    branch: preflight.branch,
-    deployBranch: DEPLOY_BRANCH,
-    deploymentStatus: "not_started",
-    log: "Starting verification and publish…\n",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  jobs.set(job.id, job);
-  activePublishJob = job.id;
-
-  let finalized = false;
-  const finalize = (code, startupError = null) => {
-    if (finalized) return;
-    finalized = true;
-    job.exitCode = code;
-    job.status = code === 0 && !startupError ? "succeeded" : "failed";
-    job.phase = job.status === "succeeded" ? "deployment_pending" : job.phase;
-    job.deploymentStatus = job.status === "succeeded" ? "pending" : "not_started";
-
-    try {
-      if (job.status === "succeeded") {
-        try {
-          removeEditorDraft(kind, id);
-          appendJobLog(job, "\nLocal draft removed after successful push.\n");
-        } catch (error) {
-          appendJobLog(
-            job,
-            `\nPush succeeded, but the local draft could not be removed: ${error.message}\n`,
-          );
-        }
-        return;
-      }
-
-      let currentHead = "";
-      try {
-        currentHead = git(["rev-parse", "HEAD"]);
-      } catch (error) {
-        appendJobLog(
-          job,
-          `\nUnable to inspect Git state; public content was not restored automatically: ${error.message}\n`,
-        );
-      }
-      if (currentHead === rollback.head) {
-        try {
-          rollback.restore();
-          appendJobLog(job, "\nPublish failed before commit; public content was restored.\n");
-        } catch (error) {
-          appendJobLog(job, `\nPublic content restoration failed: ${error.message}\n`);
-        }
-      }
-    } finally {
-      try {
-        rollback.cleanup();
-      } catch (error) {
-        appendJobLog(job, `\nPublish backup cleanup failed: ${error.message}\n`);
-      }
-      job.updatedAt = new Date().toISOString();
-      if (activePublishJob === job.id) activePublishJob = "";
-    }
-  };
-
-  let child;
-  try {
-    child = spawn(
-      process.execPath,
-      [join(editorRootDir(), "scripts/publish_content.mjs"), kind, "--id", id],
-      {
-        cwd: editorRootDir(),
-        env: process.env,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-  } catch (error) {
-    appendJobLog(job, `Unable to start publish process: ${error.message}\n`);
-    finalize(null, error);
-    return job;
-  }
-  child.stdout.on("data", (chunk) => appendJobLog(job, chunk));
-  child.stderr.on("data", (chunk) => appendJobLog(job, chunk));
-  child.on("error", (error) => {
-    appendJobLog(job, `Unable to start publish process: ${error.message}\n`);
-    finalize(null, error);
-  });
-  child.on("close", (code) => finalize(code));
-  return job;
-}
-
 function publicJob(job) {
-  if (!job) throw new EditorContentError("Publish job not found", 404, "not_found");
-  return { ...job };
+  const terminal = new Set(["succeeded", "failed", "cancelled"]);
+  return {
+    ...job,
+    contentId: job.contentId || job.slug,
+    status: terminal.has(job.state) ? job.state : "running",
+    phase: job.state,
+    log: job.sanitizedError || "",
+  };
 }
 
-async function handleApi(request, response, pathname) {
+async function readCloudEditorContent(cloud, kind, id) {
+  return fromCloudContent(await cloud.read(kind, id));
+}
+
+async function listCloudEditorContent(cloud) {
+  const listed = await cloud.list();
+  const detailed = await Promise.all(listed.items.map((item) => cloud.read(item.kind, item.id)));
+  return detailed.map(cloudListItem);
+}
+
+function revisionHistoryEntry(value) {
+  return {
+    id: value.id,
+    createdAt: value.createdAt,
+    createdBy: value.createdBy,
+    checksumSha256: value.checksumSha256,
+  };
+}
+
+function publicationIdempotencyKey(content) {
+  return createHash("sha256")
+    .update(
+      [
+        content.itemId,
+        content.currentRevisionId,
+        content.visibility,
+        content.deletedAt || "active",
+      ].join("\0"),
+    )
+    .digest("hex");
+}
+
+async function handleApi(request, response, pathname, { cloud, workflows }) {
   if (request.method === "GET" && pathname === "/api/editor/content") {
-    sendJson(response, 200, { items: listEditorContent() });
+    sendJson(response, 200, { items: await listCloudEditorContent(cloud) });
     return;
   }
 
@@ -326,26 +190,42 @@ async function handleApi(request, response, pathname) {
     const id = contentMatch[2] ? decodeURIComponent(contentMatch[2]) : "";
     if (request.method === "POST" && !id) {
       const body = await readJson(request);
-      sendJson(response, 201, createEditorContent(kind, body));
+      const items = kind === "post" ? await listCloudEditorContent(cloud) : [];
+      const contentId = kind === "post" ? nextCloudPostId(items) : String(body.slug || "");
+      sendJson(
+        response,
+        201,
+        fromCloudContent(await cloud.create(newCloudContent(kind, contentId))),
+      );
       return;
     }
     if (request.method === "GET" && id) {
-      sendJson(response, 200, readEditorContent(kind, id));
+      sendJson(response, 200, await readCloudEditorContent(cloud, kind, id));
       return;
     }
     if (request.method === "PUT" && id) {
       const body = await readJson(request);
+      const content = { ...body, kind, id };
       sendJson(
         response,
         200,
-        saveEditorContent(kind, id, body.files, {
-          checkpoint: Boolean(body.checkpoint),
-        }),
+        fromCloudContent(await cloud.save(kind, id, toCloudRevision(content))),
       );
       return;
     }
-    if (request.method === "DELETE" && id) {
-      sendJson(response, 200, discardEditorDraft(kind, id));
+    if (request.method === "PATCH" && id) {
+      const body = await readJson(request);
+      sendJson(
+        response,
+        200,
+        fromCloudContent(
+          await cloud.updateState(kind, id, {
+            visibility: body.visibility,
+            deleted: body.deleted,
+            expectedRevisionId: body.currentRevisionId,
+          }),
+        ),
+      );
       return;
     }
   }
@@ -357,12 +237,22 @@ async function handleApi(request, response, pathname) {
     const id = decodeURIComponent(historyMatch[2]);
     const historyId = historyMatch[3] ? decodeURIComponent(historyMatch[3]) : "";
     if (request.method === "GET" && !historyId) {
-      sendJson(response, 200, { entries: listEditorHistory(kind, id) });
+      const value = await cloud.listRevisions(kind, id);
+      sendJson(response, 200, { entries: value.revisions.map(revisionHistoryEntry) });
       return;
     }
     if (request.method === "POST" && historyId) {
       const body = await readJson(request);
-      sendJson(response, 200, restoreEditorHistory(kind, id, historyId, body.revisions));
+      sendJson(
+        response,
+        200,
+        fromCloudContent(
+          await cloud.restoreRevision(kind, id, {
+            revisionId: historyId,
+            expectedRevisionId: body.currentRevisionId,
+          }),
+        ),
+      );
       return;
     }
   }
@@ -371,15 +261,26 @@ async function handleApi(request, response, pathname) {
   if (request.method === "POST" && assetMatch) {
     const body = await readJson(request);
     const bytes = Buffer.from(String(body.data || ""), "base64");
-    sendJson(
-      response,
-      201,
-      await saveContentAsset(assetMatch[1], decodeURIComponent(assetMatch[2]), {
-        name: body.name,
-        type: body.type,
-        bytes,
-      }),
+    const kind = assetMatch[1];
+    const id = decodeURIComponent(assetMatch[2]);
+    const current = await cloud.read(kind, id);
+    const name = safeCloudAssetName(
+      body.name,
+      current.assets.map((asset) => asset.logicalPath),
     );
+    const uploaded = await cloud.uploadAsset(bytes, body.type);
+    const attached = await cloud.attachAsset(kind, id, {
+      assetId: uploaded.id,
+      logicalPath: cloudAssetLogicalPath(name),
+      role: kind === "about" ? "hero" : "body",
+      expectedRevisionId: body.currentRevisionId,
+    });
+    sendJson(response, 201, {
+      name,
+      url: cloudAssetUrl(kind, id, name),
+      currentRevisionId: attached.currentRevisionId,
+      assets: attached.assets,
+    });
     return;
   }
 
@@ -389,29 +290,64 @@ async function handleApi(request, response, pathname) {
   if (request.method === "POST" && publishMatch) {
     const kind = publishMatch[1];
     const id = decodeURIComponent(publishMatch[2]);
-    readEditorContent(kind, id);
-    sendJson(response, 202, publicJob(startPublish(kind, id)));
+    const content = await readCloudEditorContent(cloud, kind, id);
+    const validation = validateCloudContent(content);
+    if (!validation.valid) {
+      throw new EditorContentError("公開前に入力内容を確認してください", 422, "invalid_draft");
+    }
+    const result = await cloud.createPublication(kind, id, {
+      revisionId: content.currentRevisionId,
+      idempotencyKey: publicationIdempotencyKey(content),
+    });
+    const dispatch = await workflows.dispatchPublication(result.job.id);
+    sendJson(response, 202, publicJob({ ...result.job, ...dispatch, kind, contentId: id }));
     return;
   }
   if (request.method === "GET" && publishMatch) {
     const kind = publishMatch[1];
     const id = decodeURIComponent(publishMatch[2]);
-    sendJson(response, 200, publishPreflight(kind, id));
+    const content = await readCloudEditorContent(cloud, kind, id);
+    sendJson(response, 200, {
+      ...validateCloudContent(content),
+      revisionId: content.currentRevisionId,
+      visibility: content.visibility,
+      deletedAt: content.deletedAt,
+    });
     return;
   }
 
   const jobMatch = /^\/api\/editor\/publish\/([a-f0-9-]+)$/.exec(pathname);
   if (request.method === "GET" && jobMatch) {
-    sendJson(response, 200, publicJob(jobs.get(jobMatch[1])));
+    const result = await cloud.publication(jobMatch[1]);
+    sendJson(response, 200, publicJob(result.job));
     return;
   }
 
   throw new EditorContentError("Editor API route not found", 404, "not_found");
 }
 
-export function editorApiPlugin({ enabled = false, trustedHost = "", tailscaleLogin = "" } = {}) {
+/**
+ * @param {{
+ *   enabled?: boolean,
+ *   trustedHost?: string,
+ *   tailscaleLogin?: string,
+ *   cloudClient?: ContentCloudClient,
+ *   workflowClient?: GitHubWorkflowClient,
+ * }} [options]
+ */
+export function editorApiPlugin({
+  enabled = false,
+  trustedHost = "",
+  tailscaleLogin = "",
+  cloudClient,
+  workflowClient,
+} = {}) {
   const configureMiddleware = (server) => {
     if (!enabled) return;
+    const services = {
+      cloud: cloudClient || new ContentCloudClient(),
+      workflows: workflowClient || new GitHubWorkflowClient(),
+    };
     server.middlewares.use(async (request, response, next) => {
       const url = new URL(request.url || "/", "http://editor.local");
       if (request.method === "GET" && ["/editor", "/editor/"].includes(url.pathname)) {
@@ -439,7 +375,7 @@ export function editorApiPlugin({ enabled = false, trustedHost = "", tailscaleLo
         return;
       }
       try {
-        await handleApi(request, response, url.pathname);
+        await handleApi(request, response, url.pathname, services);
       } catch (error) {
         apiError(response, error);
       }

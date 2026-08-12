@@ -704,12 +704,20 @@ export function removeEditorDraft(kind, id) {
   rmSync(draftDirectory(kind, id), { recursive: true, force: true });
 }
 
-export function listContentAssets() {
+export function listContentAssets({ snapshotRoot = ROOT } = {}) {
   const assets = [];
   for (const [kind, config] of Object.entries(EDITOR_KINDS)) {
-    if (!existsSync(config.dir)) continue;
+    const contentDir =
+      snapshotRoot === ROOT
+        ? config.dir
+        : join(
+            snapshotRoot,
+            "src/content",
+            kind === "post" ? "posts" : kind === "work" ? "works" : "about",
+          );
+    if (!existsSync(contentDir)) continue;
     if (config.fixed) {
-      const dir = join(config.dir, "assets");
+      const dir = join(contentDir, "assets");
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir, { withFileTypes: true })) {
         if (!file.isFile()) continue;
@@ -723,9 +731,9 @@ export function listContentAssets() {
       }
       continue;
     }
-    for (const entry of readdirSync(config.dir, { withFileTypes: true })) {
+    for (const entry of readdirSync(contentDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || !config.idPattern.test(entry.name)) continue;
-      const dir = join(config.dir, entry.name, "assets");
+      const dir = join(contentDir, entry.name, "assets");
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir, { withFileTypes: true })) {
         if (!file.isFile()) continue;

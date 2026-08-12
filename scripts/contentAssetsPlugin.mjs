@@ -1,12 +1,14 @@
-import { readFileSync } from "node:fs";
-import { extname } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { extname, join, relative } from "node:path";
 
 import {
   EditorContentError,
   listContentAssets,
   resolveContentAsset,
 } from "./contentEditorModel.mjs";
+import { ContentCloudClient } from "./contentCloudClient.mjs";
 import { editorRequestAccess } from "./editorApiPlugin.mjs";
+import { contentSnapshotRoot } from "./content_loader.mjs";
 
 const CONTENT_TYPES = {
   ".gif": "image/gif",
@@ -22,14 +24,28 @@ function assetRequest(pathname) {
   return { segment: match[1], id: match[2], name: match[3] };
 }
 
+/**
+ * @param {{
+ *   preferDrafts?: boolean,
+ *   emitAssets?: boolean,
+ *   trustedHost?: string,
+ *   tailscaleLogin?: string,
+ *   cloudAssets?: boolean,
+ *   cloudClient?: ContentCloudClient,
+ * }} [options]
+ */
 export function contentAssetsPlugin({
   preferDrafts = false,
   emitAssets = true,
   trustedHost = "",
   tailscaleLogin = "",
+  cloudAssets = false,
+  cloudClient,
 } = {}) {
+  const snapshotRoot = contentSnapshotRoot();
   const configureMiddleware = (server) => {
-    server.middlewares.use((request, response, next) => {
+    const cloud = cloudAssets ? cloudClient || new ContentCloudClient() : null;
+    server.middlewares.use(async (request, response, next) => {
       const pathname = new URL(request.url || "/", "http://editor.local").pathname;
       const asset = assetRequest(pathname);
       if (!asset) return next();
@@ -48,6 +64,24 @@ export function contentAssetsPlugin({
         return;
       }
       try {
+        if (cloud) {
+          const kind = { posts: "post", works: "work", about: "about" }[asset.segment];
+          const content = await cloud.read(kind, decodeURIComponent(asset.id));
+          const logicalPath = `assets/${decodeURIComponent(asset.name)}`;
+          const record = content.assets.find((candidate) => candidate.logicalPath === logicalPath);
+          if (!record) throw new EditorContentError("Asset not found", 404, "not_found");
+          const value = await cloud.getAsset(record.id);
+          response.statusCode = 200;
+          response.setHeader(
+            "Content-Type",
+            value.headers.get("content-type") || "application/octet-stream",
+          );
+          response.setHeader("Cache-Control", "no-store");
+          response.end(
+            request.method === "HEAD" ? undefined : Buffer.from(await value.arrayBuffer()),
+          );
+          return;
+        }
         const filePath = resolveContentAsset(asset.segment, asset.id, asset.name, {
           preferDraft: preferDrafts,
         });
@@ -74,13 +108,33 @@ export function contentAssetsPlugin({
     configurePreviewServer: configureMiddleware,
     generateBundle() {
       if (!emitAssets) return;
-      for (const asset of listContentAssets()) {
+      for (const asset of listContentAssets({ snapshotRoot })) {
         this.addWatchFile(asset.filePath);
         this.emitFile({
           type: "asset",
           fileName: asset.outputPath,
           source: readFileSync(asset.filePath),
         });
+      }
+      const publicRoot = join(snapshotRoot, "public");
+      if (snapshotRoot === contentSnapshotRoot({}) || !existsSync(publicRoot)) return;
+      const pending = [publicRoot];
+      while (pending.length > 0) {
+        const directory = pending.pop();
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+          const filePath = join(directory, entry.name);
+          if (entry.isDirectory()) {
+            pending.push(filePath);
+            continue;
+          }
+          if (!entry.isFile()) continue;
+          this.addWatchFile(filePath);
+          this.emitFile({
+            type: "asset",
+            fileName: relative(publicRoot, filePath),
+            source: readFileSync(filePath),
+          });
+        }
       }
     },
   };

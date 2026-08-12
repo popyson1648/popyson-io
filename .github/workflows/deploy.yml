@@ -54,6 +54,58 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Reconcile an interrupted content deployment
+        if: vars.CONTENT_CLOUD_CUTOVER == '1'
+        shell: bash
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          set -euo pipefail
+          node scripts/contentSnapshotCli.mjs pending \
+            --output "$RUNNER_TEMP/pending-releases.json"
+          if [[ "$(jq '.releases | length' "$RUNNER_TEMP/pending-releases.json")" == "0" ]]; then
+            exit 0
+          fi
+          if ! npx wrangler pages deployment list \
+            --project-name "$PROJECT" --environment production --json \
+            > "$RUNNER_TEMP/pages-deployments.json" 2> "$RUNNER_TEMP/pages-list.log"; then
+            rm -f "$RUNNER_TEMP/pages-list.log" "$RUNNER_TEMP/pages-deployments.json"
+            echo "Unable to list Pages deployments for reconciliation." >&2
+            exit 1
+          fi
+          while IFS= read -r release_id; do
+            marker="content-release:${release_id}"
+            deployment_id="$(jq -r --arg marker "$marker" \
+              '[.[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
+              "$RUNNER_TEMP/pages-deployments.json")"
+            if [[ -n "$deployment_id" ]]; then
+              node scripts/contentSnapshotCli.mjs reconcile \
+                --release-id "$release_id" \
+                --pages-deployment-id "$deployment_id" \
+                --output "$RUNNER_TEMP/reconciled-${release_id}.json"
+            fi
+          done < <(jq -r '.releases[].id' "$RUNNER_TEMP/pending-releases.json")
+          rm -f "$RUNNER_TEMP/pages-deployments.json" "$RUNNER_TEMP/pages-list.log"
+
+      - name: Download active database release
+        if: vars.CONTENT_CLOUD_CUTOVER == '1'
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+          SNAPSHOT_ROOT: ${{ runner.temp }}/content-active
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id active \
+            --root "$SNAPSHOT_ROOT" \
+            --output "$RUNNER_TEMP/active-release.json"
+          echo "CONTENT_SNAPSHOT_ROOT=$SNAPSHOT_ROOT" >> "$GITHUB_ENV"
+
       - name: Refresh reading list (best-effort)
         # Non-blocking: on any failure (outage or missing secrets) we keep the
         # committed src/reading.json and still deploy, so content always ships.

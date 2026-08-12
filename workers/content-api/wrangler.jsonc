@@ -5,6 +5,12 @@
   "compatibility_date": "2026-08-08",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "content-api.popyson.com",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": true,
     "logs": {
@@ -18,11 +24,11 @@
   },
   "vars": {
     "AUTH_MODE": "access",
-    "ACCESS_TEAM_DOMAIN": "https://REPLACE_ME.cloudflareaccess.com",
-    "AUTHOR_POLICY_AUD": "REPLACE_ME",
-    "CI_POLICY_AUD": "REPLACE_ME",
-    "AUTHOR_SERVICE_TOKEN_ID": "REPLACE_ME.access",
-    "CI_SERVICE_TOKEN_ID": "REPLACE_ME.access",
+    "ACCESS_TEAM_DOMAIN": "https://setoshun00424.cloudflareaccess.com",
+    "AUTHOR_POLICY_AUD": "fbc40438d9e141c9bcff9f8c0c110ca2870f5e680fd70eff483dbd2be468d214",
+    "CI_POLICY_AUD": "3ac5fe277c103dd1b2c2e6bd01f7e6e7a9ffca858d325ab403b23c8969902c55",
+    "AUTHOR_SERVICE_TOKEN_ID": "3ee65f4fa7d886c2ba85496a023e217d.access",
+    "CI_SERVICE_TOKEN_ID": "dd7aab2a41fda062798e0568bb3bd18d.access",
     "MAX_JSON_BYTES": "1048576",
     "MAX_ASSET_BYTES": "10485760"
   },

@@ -9,6 +9,8 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 
 - [機能](#機能)
 - [開発環境](#開発環境)
+- [ローカルコンテンツエディター](#ローカルコンテンツエディター)
+  - [エディターのセキュリティ境界](#エディターのセキュリティ境界)
 - [ディレクトリ構成](#ディレクトリ構成)
 - [ビルド処理の構成](#ビルド処理の構成)
 - [技術的な工夫](#技術的な工夫)
@@ -46,6 +48,7 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 - **制作物一覧**：制作物の概要と詳細ページを表示します。
 - **読書リスト**：Instapaper から取得した項目を未読と既読に分けて表示します。
 - **RSS**：ビルド時に `/feed.xml` を生成し、サイト内に購読案内を表示します。
+- **ローカル編集**：Blog、Works、About の下書き、プレビュー、画像追加、公開をブラウザーから操作できます。
 - **言語切り替え**：同じページの日英 URL を切り替えます。
 - **テーマ切り替え**：ライト、ダーク、OS 設定への追従を選べます。
 - **検索エンジン向け出力**：各 URL の canonical、hreflang、OGP、Twitter Card、サイトマップ、robots.txt を生成します。
@@ -91,7 +94,68 @@ python3 scripts/verify.py
 | `npm run post:push` | [記事の変更](#記事の公開)だけをコミットして push する |
 | `npm run new:work -- <スラッグ>` | [制作物](#制作物の追加)の雛形を作る |
 | `npm run work:push` | [制作物の変更](#制作物の公開)だけをコミットして push する |
+| `npm run about:push` | About の変更だけをコミットして push する |
 | `npm run metadata:generate:op` | 記事の自動メタデータを手元で解決する |
+
+ローカルコンテンツエディターを扱うコマンドは次のとおりです。
+
+| コマンド | 処理 |
+| --- | --- |
+| `npm run editor:setup` | Tailscale Serve を通常ユーザーで管理するための初回設定を行う |
+| `npm run editor` | 最適化したエディターをビルドして起動する |
+| `npm run editor:stop` | このリポジトリが起動したエディターを別の端末から停止する |
+| `npm run editor:build` | エディターを起動せず `editor/dist/` へビルドする |
+| `npm run editor:dev` | エディター自体の開発用に HMR 付きで起動する |
+
+## ローカルコンテンツエディター
+
+ローカルコンテンツエディターは、Blog と Works の作成と編集、About の編集、日英プレビュー、画像追加、下書き保存、公開に対応します。
+公開サイトとは別のローカル専用アプリケーションであり、`npm run build` とデプロイ対象には含まれません。
+
+WSL 内で Tailscale に接続した後、初回だけ設定を行います。
+この設定は `sudo` の承認を求め、現在の WSL ユーザーが Tailscale Serve のリスナーを管理できるようにします。
+
+```sh
+npm run editor:setup
+```
+
+通常は次のコマンドで起動します。
+
+```sh
+npm run editor
+```
+
+起動後は、端末に表示された HTTPS URL をその場で開きます。
+この URL には端末と tailnet を識別できる名前が含まれるため、README、Issue、公開ログ、スクリーンショットには記録しません。
+
+編集内容は Git 管理外の `.drafts/` に自動保存され、`src/content/`、本番ビルド、Git の変更状態には反映されません。
+`.drafts/` は同期やバックアップの仕組みではないため、未公開原稿を別の端末へ移す場合や長期保存する場合は、アクセスを制限した保存先へ別途バックアップします。
+
+公開操作は、エディターを `main` で起動した場合だけ使用できます。
+エディターは開いている項目の日英データを検証し、その項目だけを `src/content/` へ反映して検証、コミット、push を行います。
+push が完了するまで下書きは保持され、自動でブランチをマージすることはありません。
+
+停止方法、画像の保存先、プレビュー方式、障害時の復旧は [.project/build.md](.project/build.md#content-editor) に記載しています。
+
+### エディターのセキュリティ境界
+
+エディター本体は `127.0.0.1:4173` だけで待ち受け、Tailscale Serve が別の HTTPS リスナーから中継します。
+`0.0.0.0` へ変更したり、公開リバースプロキシを追加したりしません。
+
+tailnet の grants または ACL では、対象ノードの TCP 4173 番ポートへ接続できる利用者を執筆者だけに制限します。
+Tailscale Funnel はエディターをインターネットへ公開するため、有効にしません。
+
+エディター API は、中継元、要求されたホスト、Tailscale が付与するログイン情報、状態変更リクエストの Origin を検査します。
+この検査をネットワーク側のアクセス制限の代わりにはしません。
+
+端末に表示された接続 URL、MagicDNS 名、tailnet のログイン情報、`.drafts/` 内の未公開原稿を、リポジトリや共有ログへ保存しません。
+エディターの URL に認証トークンを追加する運用も行いません。
+
+Tailscale Serve を使わない復旧時は、次のコマンドでループバックからだけ接続します。
+
+```sh
+npm run editor -- --no-tailscale
+```
 
 ## ディレクトリ構成
 
@@ -101,6 +165,7 @@ python3 scripts/verify.py
 popyson-io/                         # サイトのソースと開発設定を収めるリポジトリ
 ├── .decisions/                     # 採用した設計判断と方針の履歴
 │   └── TEMPLATE.md                 # 設計判断を記録するときのひな型
+├── .drafts/                        # エディターが作る Git 管理外の未公開下書き
 ├── .github/                        # GitHub 上の自動化設定
 │   └── workflows/                  # 検証、翻訳、生成、配信を行う Actions
 ├── .plans/                         # タスクごとの作業計画
@@ -108,12 +173,18 @@ popyson-io/                         # サイトのソースと開発設定を収
 ├── .project/                       # 新しい開発者向けの現行プロジェクト資料
 │   ├── README.md                   # プロジェクト資料の索引
 │   ├── build.md                    # 構築、実行、配信の手順
+│   ├── conventions.md              # コードと文書の規約
 │   ├── metadata.md                 # 記事メタデータの仕様
+│   ├── release.md                  # リリース前後の確認事項
+│   ├── security-automation.md      # セキュリティ更新の自動化設定
 │   ├── structure.md                # モジュール構成と変更箇所の案内
 │   ├── testing.md                  # テスト構成と実行方法
 │   ├── translation.md              # 日本語記事から英語記事への翻訳規則
 │   └── verification.toml           # 検証ランナーが読むフェーズ定義
 ├── .template/                      # プロジェクト資料と設定の原本
+├── editor/                         # ローカルエディター専用の Vite 設定と生成物
+│   ├── dist/                       # Git 管理外の最適化済みエディター
+│   └── vite.config.js              # エディターとプレビューのビルド設定
 ├── public/                         # 加工せず公開する静的ファイル
 │   ├── thumbnails/                 # 記事 ID ごとの生成済みサムネイル
 │   └── provisional_ogp_image.png   # 既定の OGP 画像
@@ -121,6 +192,9 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── articleHtml.mjs             # Markdown を安全な記事 HTML へ変換する処理
 │   ├── build_pagefind.mjs          # 日英の記事を Pagefind の索引へ登録する処理
 │   ├── content_loader.mjs          # 記事と TOML コンテンツを読み込む共通処理
+│   ├── contentEditorModel.mjs      # 公開コンテンツと下書きを扱う共通モデル
+│   ├── editorApiPlugin.mjs         # ローカルエディター専用 API
+│   ├── editorServer.mjs            # エディターと Tailscale Serve の起動処理
 │   ├── fetch_instapaper.mjs        # Instapaper から読書リストを取得する処理
 │   ├── generate_metadata.mjs       # 記事メタデータと画像を補完する処理
 │   ├── metadataSchema.mjs          # 記事 front matter の検証規則
@@ -138,6 +212,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   │   ├── prompts/                # メタデータと画像の生成プロンプト
 │   │   ├── metadata.toml           # 自動生成モデルと既定値の設定
 │   │   └── theme.toml              # ライトとダークの色トークン
+│   ├── editor/                     # 編集画面、プレビュー、API クライアント
 │   ├── app.jsx                     # ルーティング、言語、テーマ、画面構成
 │   ├── blog.jsx                    # 記事一覧、検索、目次、記事画面
 │   ├── components.jsx              # ナビゲーションなどの共通 UI
@@ -152,6 +227,8 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── fixtures/                   # テストで共有する Markdown などの入力例
 │   └── setup.component.js          # コンポーネントテストの初期設定
 ├── AGENTS.md                       # このリポジトリで作業するエージェント向け規則
+├── editor.html                     # ローカルエディターの HTML エントリー
+├── editor-preview.html             # 分離したプレビューの HTML エントリー
 ├── index.html                      # Vite と事前描画処理が使う HTML の原型
 ├── package.json                    # npm スクリプトと依存パッケージ
 ├── vite.config.js                  # React、仮想モジュール、RSS のビルド設定
@@ -680,7 +757,7 @@ main へ push すると、記事と同じように英語版が自動で翻訳さ
 ## 関連資料
 
 - [プロジェクト資料の索引](.project/README.md)
-- [ビルドと配信](.project/build.md)
+- [ビルド、配信、ローカルエディター](.project/build.md)
 - [テストと検証](.project/testing.md)
 - [記事メタデータ](.project/metadata.md)
 - [ディレクトリと主要モジュール](.project/structure.md)

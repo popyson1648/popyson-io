@@ -84,19 +84,14 @@ the process is stopped.
 
 `npm run editor` builds a production-optimized editor bundle into the
 Git-ignored `editor/dist/` directory, serves it only from `127.0.0.1:4173`, and
-configures a separate HTTPS Serve listener on port 4173. It prints a stable URL
-such as:
-
-```text
-https://wsl-ubuntu.tail29f20.ts.net:4173/editor
-```
-
-Bookmark the URL printed for the current machine. It works from devices signed
-in to the permitted tailnet account and does not contain an editor secret. The
-API verifies the loopback proxy peer, Tailscale DNS host, Serve-injected login,
-and the Origin of state-changing requests. Port 4173 is strict: when it is
-occupied, startup fails instead of silently changing the bookmarked URL. The
-existing Serve listener on HTTPS port 443 is not replaced.
+configures a separate HTTPS Serve listener on port 4173. It prints the stable
+private URL for the current machine. Open that URL directly from the terminal;
+do not copy the concrete MagicDNS name or tailnet login into documentation,
+issues, screenshots, or shared logs. The URL does not contain an editor secret.
+The API verifies the loopback proxy peer, expected Tailscale DNS host,
+Serve-injected login, and the Origin of state-changing requests. Port 4173 is
+strict: when it is occupied, startup fails instead of silently changing the
+bookmarked URL. The existing Serve listener on HTTPS port 443 is not replaced.
 
 The editor can create Blog/Works items; edit Blog, Works, and the fixed About
 item; preview; save private drafts; upload images; and publish the currently

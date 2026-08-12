@@ -8,6 +8,7 @@ import {
   storeExport,
   type BackupEnvironment,
 } from "./backup";
+import { type BackupWorkerEnvironment, createScheduledBackup, notFoundResponse } from "./trigger";
 
 export class ContentBackupWorkflow extends WorkflowEntrypoint<BackupEnvironment> {
   async run(event: Readonly<WorkflowEvent<unknown>>, step: WorkflowStep) {
@@ -64,7 +65,10 @@ export class ContentBackupWorkflow extends WorkflowEntrypoint<BackupEnvironment>
 }
 
 export default {
-  fetch() {
-    return new Response("Not found", { status: 404 });
+  async scheduled(controller, env) {
+    await createScheduledBackup(env, controller.scheduledTime);
   },
-} satisfies ExportedHandler<BackupEnvironment>;
+  fetch() {
+    return notFoundResponse();
+  },
+} satisfies ExportedHandler<BackupWorkerEnvironment>;

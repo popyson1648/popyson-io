@@ -12,6 +12,9 @@
       "head_sampling_rate": 1
     }
   },
+  "triggers": {
+    "crons": ["17 18 * * *"]
+  },
   "vars": {
     "ACCOUNT_ID": "e4cad72de68b5d765bb6fb575926bb43",
     "DATABASE_ID": "18f57d00-966c-4f9d-ab14-d448b1d1b207"
@@ -20,8 +23,7 @@
     {
       "name": "popyson-content-backup",
       "binding": "CONTENT_BACKUP_WORKFLOW",
-      "class_name": "ContentBackupWorkflow",
-      "schedules": ["17 18 * * *"]
+      "class_name": "ContentBackupWorkflow"
     }
   ],
   "r2_buckets": [

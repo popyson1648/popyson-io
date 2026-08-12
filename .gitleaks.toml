@@ -2,3 +2,9 @@ title = "popyson-io Gitleaks configuration"
 
 [extend]
 useDefault = true
+
+[[allowlists]]
+description = "Exact non-secret idempotency fixture used by the content client test"
+condition = "AND"
+paths = ['''^tests/check_content_cloud_editor\.test\.mjs$''']
+regexes = ['''^idempotency-1$''']

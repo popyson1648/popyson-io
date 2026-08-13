@@ -133,8 +133,7 @@
       rgba(212, 255, 10, 0.25) 65%,
       rgba(212, 255, 10, 0) 80%
     ),
-    /* low-frequency noise: clumps the dither so the rim isn't a uniform edge */
-    var(--grain),
+    /* low-frequency noise: clumps the dither so the rim isn't a uniform edge */ var(--grain),
     var(--grain);
   background-size:
     100% 100%,

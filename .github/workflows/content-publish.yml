@@ -242,8 +242,12 @@ jobs:
         run: |
           set -euo pipefail
           if ! python3 scripts/verify.py --mode ci > "$RUNNER_TEMP/verification.log" 2>&1; then
+            # verify.py writes its own progress markers on lines that start with
+            # "[verify]" and never puts command output on them, so echoing only
+            # those lines names the failing phase without exposing source text.
+            grep '^\[verify\] ' "$RUNNER_TEMP/verification.log" >&2 || true
             rm -f "$RUNNER_TEMP/verification.log"
-            echo "Candidate verification failed; output was suppressed because it may contain source text." >&2
+            echo "Candidate verification failed; command output was suppressed because it may contain source text." >&2
             exit 1
           fi
           rm -f "$RUNNER_TEMP/verification.log"

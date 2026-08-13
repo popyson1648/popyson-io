@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { contentSnapshotRoot } from "../scripts/content_loader.mjs";
 import {
   evaluateMetadata,
   pendingMetadataReasons,
@@ -12,6 +13,9 @@ import {
 } from "../scripts/generate_metadata.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
+// Generated thumbnails land under the snapshot root, which is the repository
+// only until a build consumes D1/R2 content.
+const CONTENT_ROOT = contentSnapshotRoot();
 
 const config = {
   tag_generation: {
@@ -264,7 +268,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
     const dir = join(tempDir, postId);
     mkdirSync(dir, { recursive: true });
     const jaPath = join(dir, "index.ja.md");
-    const generatedPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+    const generatedPath = join(CONTENT_ROOT, "public", "thumbnails", `${postId}.png`);
     const source = [
       "+++",
       'title = "サムネ記事"',
@@ -348,7 +352,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
     const dir = join(tempDir, postId);
     mkdirSync(dir, { recursive: true });
     const jaPath = join(dir, "index.ja.md");
-    const generatedPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+    const generatedPath = join(CONTENT_ROOT, "public", "thumbnails", `${postId}.png`);
     const source = [
       "+++",
       'title = "概要なしの記事"',
@@ -407,7 +411,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
     const dir = join(tempDir, postId);
     mkdirSync(dir, { recursive: true });
     const jaPath = join(dir, "index.ja.md");
-    const generatedPath = join(ROOT, "public", "thumbnails", `${postId}.png`);
+    const generatedPath = join(CONTENT_ROOT, "public", "thumbnails", `${postId}.png`);
     const source = [
       "+++",
       'title = "明示コンセプト"',

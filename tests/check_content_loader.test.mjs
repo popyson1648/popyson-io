@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   assertLocaleParity,
+  contentSnapshotRoot,
   contentWatchFiles,
   localizeMarkdown,
   loadSiteContent,
@@ -327,16 +328,26 @@ describe("postIdPattern", () => {
 
 describe("contentWatchFiles", () => {
   const root = rootDir();
+  // Metadata policy and prompts stay in the repository, but articles, works,
+  // and About come from the snapshot root once a build consumes D1/R2 content.
+  // Resolving both against the same directory only holds while the two
+  // coincide, which is exactly the case a publication build does not have.
+  const contentRoot = contentSnapshotRoot();
   const watchedFiles = contentWatchFiles();
 
-  test.each([
-    ["src/content/metadata.toml"],
-    ["src/content/prompts/tag-generation.md"],
-    ["src/content/about/news.ja.toml"],
-    ["src/content/about/news.en.toml"],
-  ])("includes %s", (relativePath) => {
-    expect(watchedFiles).toContain(join(root, relativePath));
-  });
+  test.each([["src/content/metadata.toml"], ["src/content/prompts/tag-generation.md"]])(
+    "includes %s",
+    (relativePath) => {
+      expect(watchedFiles).toContain(join(root, relativePath));
+    },
+  );
+
+  test.each([["src/content/about/news.ja.toml"], ["src/content/about/news.en.toml"]])(
+    "includes %s",
+    (relativePath) => {
+      expect(watchedFiles).toContain(join(contentRoot, relativePath));
+    },
+  );
 
   // Every post that exists must be watched, so editing one still triggers HMR.
   test("includes both Markdown files of every post", () => {
@@ -344,7 +355,7 @@ describe("contentWatchFiles", () => {
     for (const post of posts) {
       for (const locale of ["ja", "en"]) {
         expect(watchedFiles).toContain(
-          join(root, "src/content/posts", post.id, `index.${locale}.md`),
+          join(contentRoot, "src/content/posts", post.id, `index.${locale}.md`),
         );
       }
     }

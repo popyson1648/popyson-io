@@ -20,5 +20,13 @@ export default defineConfig(async () => ({
   ],
   test: {
     setupFiles: ["./test/apply-migrations.ts"],
+    // These tests run in a workerd isolate against a local D1, and each one
+    // drives the Worker over many round trips. A test normally finishes in
+    // roughly 150ms, but on a loaded machine one of them occasionally crosses
+    // Vitest's 5s default and fails — a different test each run, since the
+    // cause is contention rather than the test. This matches the root config,
+    // and is still far short of a genuine hang.
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
 }));

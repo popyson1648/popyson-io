@@ -250,8 +250,9 @@ describe("editor server startup", () => {
 
     expect(root).toBe(EDITOR_SNAPSHOT_ROOT);
     expect(env.CONTENT_SNAPSHOT_ROOT).toBe(EDITOR_SNAPSHOT_ROOT);
-    // Drafts are the point of a preview, so the editor asks for them.
-    expect(calls).toEqual([{ root: EDITOR_SNAPSHOT_ROOT, includePrivate: true }]);
+    // Published content only: the site loader validates every post it reads, so
+    // an unfinished draft in the snapshot would fail the editor's own build.
+    expect(calls).toEqual([{ root: EDITOR_SNAPSHOT_ROOT, includePrivate: false }]);
   });
 
   test("keeps a snapshot the caller already chose", async () => {

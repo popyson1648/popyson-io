@@ -143,9 +143,14 @@ export function editorStartupMessages({ resolvedUrls, publicUrl, tailscaleLogin,
 export async function ensureEditorSnapshot({ env = process.env, pull = pullContentSnapshot } = {}) {
   if (String(env.CONTENT_SNAPSHOT_ROOT || "").trim()) return env.CONTENT_SNAPSHOT_ROOT;
   console.log("Pulling content from the database...");
+  // Published content only. The snapshot builds the editor's shell — the site
+  // theme, strings, and the works list its preview renders — while the item
+  // being edited comes from the editor's own state, drafts included. Pulling
+  // drafts in would instead fail the build, because the site loader validates
+  // every post it reads and a draft is unfinished by definition.
   const { itemCount, assetCount } = await pull({
     root: EDITOR_SNAPSHOT_ROOT,
-    includePrivate: true,
+    includePrivate: false,
   });
   console.log(`Pulled ${itemCount} items and ${assetCount} assets.`);
   env.CONTENT_SNAPSHOT_ROOT = EDITOR_SNAPSHOT_ROOT;
@@ -164,8 +169,7 @@ export async function startEditorServer(args = process.argv.slice(2)) {
   // Building the editor loads vite.config.js, which reads site content, and
   // content lives in D1/R2. The editor is the one process that always holds
   // author credentials, so it materializes its own snapshot rather than asking
-  // the person to run `npm run content:pull` first. Drafts are included: the
-  // preview exists to show work that is not published yet.
+  // the person to run `npm run content:pull` first.
   await ensureEditorSnapshot();
 
   const { build, createServer, preview } = await import("vite");

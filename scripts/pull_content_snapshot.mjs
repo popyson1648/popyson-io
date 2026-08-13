@@ -44,20 +44,30 @@ function parseArgs(argv) {
 
 // materializeSnapshot downloads each asset through the client it is given, so
 // the author client only has to expose the same method name the CI client uses.
-class AuthorSnapshotClient extends ContentCloudClient {
+export class AuthorSnapshotClient extends ContentCloudClient {
   async downloadAsset(assetId) {
     const response = await this.getAsset(assetId);
     return response.arrayBuffer();
   }
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const client = new AuthorSnapshotClient();
-
+/**
+ * Write a snapshot of the author's current content under `root`.
+ *
+ * @param {{
+ *   root?: string,
+ *   includePrivate?: boolean,
+ *   client?: InstanceType<typeof AuthorSnapshotClient>,
+ * }} [options]
+ */
+export async function pullContentSnapshot({
+  root = DEFAULT_ROOT,
+  includePrivate = false,
+  client = new AuthorSnapshotClient(),
+} = {}) {
   const { items } = await client.list();
   const wanted = items.filter(
-    (item) => !item.deletedAt && (args.includePrivate || item.visibility === "public"),
+    (item) => !item.deletedAt && (includePrivate || item.visibility === "public"),
   );
 
   const entries = [];
@@ -72,20 +82,26 @@ async function main() {
 
   // A snapshot root must describe exactly one state, so start from an empty
   // tree rather than layering this pull over whatever a previous one left.
-  rmSync(args.root, { recursive: true, force: true });
-  mkdirSync(args.root, { recursive: true });
-  const { itemCount, assetCount } = await materializeSnapshot({ items: entries }, args.root, {
-    client,
-  });
-
+  rmSync(root, { recursive: true, force: true });
+  mkdirSync(root, { recursive: true });
+  const { itemCount, assetCount } = await materializeSnapshot({ items: entries }, root, { client });
   const privateCount = wanted.filter((item) => item.visibility !== "public").length;
+  return { root, itemCount, assetCount, privateCount };
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const { root, itemCount, assetCount, privateCount } = await pullContentSnapshot(args);
   process.stdout.write(
     `Wrote ${itemCount} items (${privateCount} private) and ${assetCount} assets.\n\n` +
-      `export CONTENT_SNAPSHOT_ROOT=${args.root}\n`,
+      `export CONTENT_SNAPSHOT_ROOT=${root}\n`,
   );
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.message}\n`);
-  process.exitCode = 1;
-});
+// Only the CLI entry runs the pull; importers get the function.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
+}

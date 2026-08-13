@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import { contentCloudConfig } from "./contentCloudClient.mjs";
 import { githubWorkflowConfig } from "./githubWorkflowClient.mjs";
+import { pullContentSnapshot } from "./pull_content_snapshot.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const EDITOR_VITE_CONFIG = join(ROOT, "editor/vite.config.js");
 export const EDITOR_PID_FILE = join(ROOT, ".tmp/editor-server.pid");
+export const EDITOR_SNAPSHOT_ROOT = join(ROOT, ".tmp/editor-content-snapshot");
 
 function argumentValue(args, name, fallback) {
   const index = args.indexOf(name);
@@ -132,6 +134,24 @@ export function editorStartupMessages({ resolvedUrls, publicUrl, tailscaleLogin,
   return lines;
 }
 
+/**
+ * Point CONTENT_SNAPSHOT_ROOT at a freshly pulled snapshot unless the caller
+ * already chose one.
+ *
+ * @param {{ env?: NodeJS.ProcessEnv, pull?: typeof pullContentSnapshot }} [options]
+ */
+export async function ensureEditorSnapshot({ env = process.env, pull = pullContentSnapshot } = {}) {
+  if (String(env.CONTENT_SNAPSHOT_ROOT || "").trim()) return env.CONTENT_SNAPSHOT_ROOT;
+  console.log("Pulling content from the database...");
+  const { itemCount, assetCount } = await pull({
+    root: EDITOR_SNAPSHOT_ROOT,
+    includePrivate: true,
+  });
+  console.log(`Pulled ${itemCount} items and ${assetCount} assets.`);
+  env.CONTENT_SNAPSHOT_ROOT = EDITOR_SNAPSHOT_ROOT;
+  return EDITOR_SNAPSHOT_ROOT;
+}
+
 export async function startEditorServer(args = process.argv.slice(2)) {
   validateEditorEnvironment();
   const options = editorServerOptions(args);
@@ -140,6 +160,13 @@ export async function startEditorServer(args = process.argv.slice(2)) {
   process.env.CONTENT_EDITOR_ENABLED = "1";
   process.env.CONTENT_EDITOR_TRUSTED_HOST = identity?.dnsName || "";
   process.env.CONTENT_EDITOR_TAILSCALE_LOGIN = identity?.login || "";
+
+  // Building the editor loads vite.config.js, which reads site content, and
+  // content lives in D1/R2. The editor is the one process that always holds
+  // author credentials, so it materializes its own snapshot rather than asking
+  // the person to run `npm run content:pull` first. Drafts are included: the
+  // preview exists to show work that is not published yet.
+  await ensureEditorSnapshot();
 
   const { build, createServer, preview } = await import("vite");
   let server;

@@ -245,6 +245,169 @@ describe("content editor shell", () => {
     ]);
   });
 
+  test("picks work images by upload and from images already attached", async () => {
+    const content = {
+      kind: "work",
+      id: "linewatch",
+      currentRevisionId: "revision-0",
+      visibility: "private",
+      deletedAt: null,
+      assets: [{ logicalPath: "assets/screenshot.png", role: "body" }],
+      files: {
+        ja: {
+          meta: { title: "LineWatch", year: 2025, stack: [], thumbnail: "", hero: "" },
+          body: "本文",
+          revision: "ja-revision",
+        },
+        en: { meta: { title: "LineWatch" }, body: "Body", revision: "en-revision" },
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (path, options = {}) => {
+        let payload;
+        if (path === "/api/editor/content") {
+          payload = {
+            items: [
+              {
+                kind: "work",
+                id: content.id,
+                title: { ja: "LineWatch", en: "LineWatch" },
+                updatedAt: "2026-08-04T00:00:00.000Z",
+              },
+            ],
+          };
+        } else if (path.endsWith("/assets")) {
+          payload = {
+            name: JSON.parse(options.body).name,
+            url: `/content-assets/works/${content.id}/hero.png`,
+            currentRevisionId: "revision-1",
+            assets: [
+              { logicalPath: "assets/screenshot.png", role: "body" },
+              { logicalPath: "assets/hero.png", role: "body" },
+            ],
+          };
+        } else if (path === "/api/editor/preview") {
+          payload = { html: "" };
+        } else {
+          payload = content;
+        }
+        return { ok: true, json: async () => payload };
+      }),
+    );
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByText("Works"));
+    fireEvent.click(await screen.findByRole("button", { name: /LineWatch/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+
+    // The two work image fields were plain text inputs before; each now offers
+    // an upload and a list of the images already attached to the work.
+    const listField = screen.getByLabelText("一覧画像を保存済みの画像から選ぶ");
+    const heroInput = screen.getByLabelText("ヒーロー画像をアップロード");
+    expect(listField).toBeInTheDocument();
+    expect(screen.getByLabelText("一覧画像をアップロード")).toBeInTheDocument();
+
+    fireEvent.change(listField, {
+      target: { value: `/content-assets/works/${content.id}/screenshot.png` },
+    });
+    await waitFor(() =>
+      expect(
+        container.querySelector(
+          `input[value="/content-assets/works/${content.id}/screenshot.png"]`,
+        ),
+      ).toBeTruthy(),
+    );
+
+    fireEvent.change(heroInput, {
+      target: { files: [new File(["hero"], "hero.png", { type: "image/png" })] },
+    });
+    await waitFor(() =>
+      expect(
+        container.querySelector(`input[value="/content-assets/works/${content.id}/hero.png"]`),
+      ).toBeTruthy(),
+    );
+  });
+
+  test("restores the generated thumbnail after a post points at another image", async () => {
+    const generated = "/thumbnails/20260804-123456.png";
+    const content = {
+      kind: "post",
+      id: "20260804-123456",
+      currentRevisionId: "revision-0",
+      visibility: "private",
+      deletedAt: null,
+      assets: [{ logicalPath: "thumbnails/20260804-123456.png", role: "thumbnail" }],
+      files: {
+        ja: {
+          meta: {
+            title: "サムネイル",
+            date: "2026-08-04",
+            tags: [],
+            sumup: { mode: "none" },
+            thumbnail: { mode: "file", path: generated, generated: true },
+          },
+          body: "本文",
+          revision: "ja-revision",
+        },
+        en: {
+          meta: {
+            title: "Thumbnail",
+            date: "2026-08-04",
+            tags: [],
+            sumup: { mode: "none" },
+            thumbnail: { mode: "file", path: generated, generated: true },
+          },
+          body: "Body",
+          revision: "en-revision",
+        },
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (path) => {
+        let payload;
+        if (path === "/api/editor/content") {
+          payload = {
+            items: [
+              {
+                kind: "post",
+                id: content.id,
+                title: { ja: "サムネイル", en: "Thumbnail" },
+                updatedAt: "2026-08-04T00:00:00.000Z",
+              },
+            ],
+          };
+        } else if (path === "/api/editor/preview") {
+          payload = { html: "" };
+        } else {
+          payload = content;
+        }
+        return { ok: true, json: async () => payload };
+      }),
+    );
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByRole("button", { name: /サムネイル/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+
+    // Nothing to restore while the generated image is still the one in use.
+    expect(screen.queryByRole("button", { name: "自動生成の画像に戻す" })).not.toBeInTheDocument();
+
+    const pathInput = container.querySelector(`input[value="${generated}"]`);
+    fireEvent.change(pathInput, { target: { value: "/uploads/other.png" } });
+
+    const restore = await screen.findByRole("button", { name: "自動生成の画像に戻す" });
+    fireEvent.click(restore);
+
+    await waitFor(() =>
+      expect(container.querySelector(`input[value="${generated}"]`)).toBeTruthy(),
+    );
+    expect(screen.queryByRole("button", { name: "自動生成の画像に戻す" })).not.toBeInTheDocument();
+  });
+
   test("removes split mode from phone-width layouts", async () => {
     vi.stubGlobal("matchMedia", (query) => ({
       matches: query === "(max-width: 900px)",

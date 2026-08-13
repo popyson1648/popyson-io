@@ -139,6 +139,10 @@ const ACCEPTED_IMAGE_EXTENSIONS = new Set([
   "tif",
   "tiff",
 ]);
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// Mirrors ASSET_SEGMENTS in scripts/contentCloudEditorModel.mjs, which builds
+// the same URLs on the server when it returns a freshly uploaded asset.
+const ASSET_SEGMENTS = { post: "posts", work: "works", about: "about" };
 const LOCALES = ["ja", "en"];
 const TOOLBAR_GROUPS = [
   {
@@ -295,6 +299,125 @@ function SuggestionButtons({ label, suggestions, selected, onAdd }) {
   );
 }
 
+function acceptsImage(file) {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (!ACCEPTED_IMAGE_TYPES.has(file.type) && !ACCEPTED_IMAGE_EXTENSIONS.has(extension)) {
+    return false;
+  }
+  return file.size > 0 && file.size <= MAX_IMAGE_BYTES;
+}
+
+// Body images land under `assets/`, while the metadata pipeline writes a
+// generated thumbnail to `thumbnails/`, which the site serves from public/.
+function assetUrl(kind, id, logicalPath) {
+  const path = String(logicalPath || "");
+  const segment = ASSET_SEGMENTS[kind];
+  if (path.startsWith("thumbnails/")) {
+    return `/thumbnails/${encodeURIComponent(path.slice("thumbnails/".length))}`;
+  }
+  const name = path.startsWith("assets/") ? path.slice("assets/".length) : path;
+  if (!segment || !name) return "";
+  return `/content-assets/${segment}/${encodeURIComponent(id)}/${encodeURIComponent(name)}`;
+}
+
+function assetChoices(kind, id, assets) {
+  return (assets || [])
+    .map((asset) => ({
+      url: assetUrl(kind, id, asset.logicalPath),
+      label: String(asset.logicalPath || "").replace(/^(assets|thumbnails)\//, ""),
+      role: asset.role,
+    }))
+    .filter((choice) => choice.url);
+}
+
+/**
+ * A path field that can also upload a new image or reuse one already attached
+ * to the content. The text input stays editable because a path under public/
+ * — a generated thumbnail, say — need not exist as an attached asset.
+ */
+function ImageField({
+  label,
+  value,
+  onChange,
+  onUpload,
+  choices,
+  helpMessage = undefined,
+  disabled = false,
+}) {
+  const inputRef = useRef(null);
+  const current = value ?? "";
+
+  const chooseFile = async (files) => {
+    const file = files?.[0];
+    if (inputRef.current) inputRef.current.value = "";
+    if (!file) return;
+    const url = await onUpload(file);
+    if (url) onChange(url);
+  };
+
+  return (
+    <FormControl label={label} helpMessage={helpMessage}>
+      <div className="editor-image-field">
+        <Input
+          type="text"
+          width="100%"
+          value={current}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <div className="editor-image-field-actions">
+          <Button
+            type="button"
+            size="S"
+            variant="secondary"
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+          >
+            画像をアップロード
+          </Button>
+          <input
+            ref={inputRef}
+            className="editor-file-input"
+            type="file"
+            accept={IMAGE_ACCEPT}
+            aria-label={`${label}をアップロード`}
+            onChange={(event) => chooseFile(event.target.files)}
+          />
+          {current && (
+            <Button
+              type="button"
+              size="S"
+              variant="text"
+              disabled={disabled}
+              onClick={() => onChange("")}
+            >
+              画像を外す
+            </Button>
+          )}
+        </div>
+        {choices.length > 0 && (
+          <Select
+            width="100%"
+            value={choices.some((choice) => choice.url === current) ? current : ""}
+            disabled={disabled}
+            aria-label={`${label}を保存済みの画像から選ぶ`}
+            options={[
+              { value: "", label: "保存済みの画像から選ぶ" },
+              ...choices.map((choice) => ({ value: choice.url, label: choice.label })),
+            ]}
+            onChangeValue={(next) => {
+              if (next) onChange(next);
+            }}
+          />
+        )}
+        {current && (
+          <img className="editor-image-field-preview" src={current} alt="" loading="lazy" />
+        )}
+      </div>
+    </FormControl>
+  );
+}
+
 function MetaInput({ label, value, onChange, type = "text", helpMessage = undefined }) {
   return (
     <FormControl label={label} helpMessage={helpMessage}>
@@ -308,9 +431,13 @@ function MetaInput({ label, value, onChange, type = "text", helpMessage = undefi
   );
 }
 
-function PostMetadata({ meta, update, locale, suggestions }) {
+function PostMetadata({ meta, update, locale, suggestions, imageChoices, onUpload, busy }) {
   const sumup = meta.sumup || { mode: "text", text: "" };
   const thumbnail = meta.thumbnail || { mode: "none" };
+  // The metadata workflow rewrites `mode = "auto"` into a file path under
+  // /thumbnails/ and attaches the image with role "thumbnail", so that asset is
+  // the way back to the generated image after picking a different one.
+  const generatedUrl = imageChoices.find((choice) => choice.role === "thumbnail")?.url || "";
   return (
     <div className="editor-meta-grid">
       <MetaInput label="タイトル" value={meta.title} onChange={(value) => update("title", value)} />
@@ -368,11 +495,35 @@ function PostMetadata({ meta, update, locale, suggestions }) {
         />
       </FormControl>
       {thumbnail.mode === "file" && (
-        <MetaInput
-          label="サムネイルのパス"
-          value={thumbnail.path}
-          onChange={(value) => update("thumbnail", { ...thumbnail, path: value })}
-        />
+        <>
+          <ImageField
+            label="サムネイル画像"
+            value={thumbnail.path}
+            choices={imageChoices}
+            onUpload={onUpload}
+            disabled={busy}
+            onChange={(value) =>
+              update("thumbnail", {
+                ...thumbnail,
+                path: value,
+                generated: Boolean(generatedUrl) && value === generatedUrl,
+              })
+            }
+          />
+          {generatedUrl && thumbnail.path !== generatedUrl && (
+            <Button
+              type="button"
+              size="S"
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                update("thumbnail", { ...thumbnail, path: generatedUrl, generated: true })
+              }
+            >
+              自動生成の画像に戻す
+            </Button>
+          )}
+        </>
       )}
       <FormControl label="自動タグ">
         <Checkbox
@@ -397,7 +548,7 @@ function PostMetadata({ meta, update, locale, suggestions }) {
   );
 }
 
-function WorkMetadata({ meta, update, locale, suggestions }) {
+function WorkMetadata({ meta, update, locale, suggestions, imageChoices, onUpload, busy }) {
   return (
     <div className="editor-meta-grid">
       <MetaInput label="作品名" value={meta.title} onChange={(value) => update("title", value)} />
@@ -434,14 +585,20 @@ function WorkMetadata({ meta, update, locale, suggestions }) {
             selected={meta.stack || []}
             onAdd={(value) => update("stack", [...(meta.stack || []), value])}
           />
-          <MetaInput
+          <ImageField
             label="一覧画像"
             value={meta.thumbnail}
+            choices={imageChoices}
+            onUpload={onUpload}
+            disabled={busy}
             onChange={(value) => update("thumbnail", value)}
           />
-          <MetaInput
+          <ImageField
             label="ヒーロー画像"
             value={meta.hero}
+            choices={imageChoices}
+            onUpload={onUpload}
+            disabled={busy}
             onChange={(value) => update("hero", value)}
           />
         </>
@@ -549,6 +706,10 @@ function App() {
     () =>
       [...new Set(items.flatMap((item) => item.stack || []))].sort((a, b) => a.localeCompare(b)),
     [items],
+  );
+  const imageChoices = useMemo(
+    () => (content ? assetChoices(content.kind, content.id, content.assets) : []),
+    [content],
   );
   const filteredItems = useMemo(
     () =>
@@ -901,20 +1062,18 @@ function App() {
     setSplitRatio(Math.min(70, Math.max(30, percentage)));
   };
 
+  const rejectImage = (file) => {
+    setMessage({
+      type: "error",
+      text: `${file.name || "画像"}は対応形式ではないか、10MBを超えています。`,
+    });
+  };
+
   const prepareImages = (files) => {
     const selected = [...files];
-    const invalid = selected.find(
-      (file) =>
-        (!ACCEPTED_IMAGE_TYPES.has(file.type) &&
-          !ACCEPTED_IMAGE_EXTENSIONS.has(file.name.split(".").pop()?.toLowerCase())) ||
-        file.size === 0 ||
-        file.size > 10 * 1024 * 1024,
-    );
+    const invalid = selected.find((file) => !acceptsImage(file));
     if (invalid) {
-      setMessage({
-        type: "error",
-        text: `${invalid.name || "画像"}は対応形式ではないか、10MBを超えています。`,
-      });
+      rejectImage(invalid);
       return;
     }
     if (!selected.length) return;
@@ -992,6 +1151,43 @@ function App() {
                 : `${uploaded}件の画像をオブジェクトストレージへ保存して挿入しました。`,
           },
     );
+  };
+
+  /**
+   * Uploads a single image for a metadata field and returns its URL. Unlike
+   * `uploadImages` it never touches the Markdown body, and it leaves the field
+   * itself to the caller so each field owns how it stores the path.
+   */
+  const uploadMetaImage = async (file) => {
+    if (!content) return "";
+    if (!acceptsImage(file)) {
+      rejectImage(file);
+      return "";
+    }
+    setBusy(true);
+    setMessage({ type: "info", text: "画像を保存しています…" });
+    try {
+      const asset = await api.upload(content.kind, content.id, file, content.currentRevisionId);
+      setContent((current) => {
+        const next = cloneContent(current);
+        next.currentRevisionId = asset.currentRevisionId;
+        next.assets = asset.assets;
+        for (const fileLocale of LOCALES) {
+          next.files[fileLocale].revision = asset.currentRevisionId;
+        }
+        return next;
+      });
+      setMessage({
+        type: "success",
+        text: "画像をオブジェクトストレージへ保存しました。",
+      });
+      return asset.url;
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+      return "";
+    } finally {
+      setBusy(false);
+    }
   };
 
   const openHistory = async () => {
@@ -1823,6 +2019,9 @@ function App() {
                     update={updateMeta}
                     locale={locale}
                     suggestions={tagSuggestions}
+                    imageChoices={imageChoices}
+                    onUpload={uploadMetaImage}
+                    busy={busy}
                   />
                 ) : (
                   <WorkMetadata
@@ -1830,6 +2029,9 @@ function App() {
                     update={updateMeta}
                     locale={locale}
                     suggestions={stackSuggestions}
+                    imageChoices={imageChoices}
+                    onUpload={uploadMetaImage}
+                    busy={busy}
                   />
                 ))}
               {inspector === "outline" && (

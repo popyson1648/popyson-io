@@ -28,6 +28,10 @@ Materialize one for local work with `npm run content:pull`, which writes
 `.tmp/content-snapshot` from the author API and prints the line to export. It
 takes public content by default; pass `-- --include-private` to preview drafts.
 
+`npm run editor` needs no such step: it pulls its own snapshot, drafts
+included, into `.tmp/editor-content-snapshot` before building. Set
+`CONTENT_SNAPSHOT_ROOT` first to make it use that tree instead.
+
 The Blog UI and rendered article bodies are emitted as a lazy route chunk, so
 About and other entry routes do not download Blog/search code. Direct Blog and
 article visits preload that chunk before replacing their prerendered HTML.

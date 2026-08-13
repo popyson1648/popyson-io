@@ -8,7 +8,9 @@ import {
   isTrustedTailscaleHost,
 } from "../scripts/editorApiPlugin.mjs";
 import {
+  EDITOR_SNAPSHOT_ROOT,
   editorServerOptions,
+  ensureEditorSnapshot,
   editorStartupMessages,
   parseTailscaleIdentity,
   tailscaleServeArguments,
@@ -231,6 +233,34 @@ describe("editor server startup", () => {
       strictPort: true,
       allowedHosts: ["editor-node.tailnet.example.invalid"],
     });
+  });
+
+  // The editor build reads site content, so without this the editor cannot
+  // start at all now that content lives only in D1/R2.
+  test("materializes its own snapshot before building", async () => {
+    const calls = [];
+    const env = {};
+    const root = await ensureEditorSnapshot({
+      env,
+      pull: async (options) => {
+        calls.push(options);
+        return { root: options.root, itemCount: 3, assetCount: 1, privateCount: 1 };
+      },
+    });
+
+    expect(root).toBe(EDITOR_SNAPSHOT_ROOT);
+    expect(env.CONTENT_SNAPSHOT_ROOT).toBe(EDITOR_SNAPSHOT_ROOT);
+    // Drafts are the point of a preview, so the editor asks for them.
+    expect(calls).toEqual([{ root: EDITOR_SNAPSHOT_ROOT, includePrivate: true }]);
+  });
+
+  test("keeps a snapshot the caller already chose", async () => {
+    const env = { CONTENT_SNAPSHOT_ROOT: "/tmp/chosen-snapshot" };
+    const pull = async () => {
+      throw new Error("must not pull when a root is already set");
+    };
+
+    await expect(ensureEditorSnapshot({ env, pull })).resolves.toBe("/tmp/chosen-snapshot");
   });
 
   test("development mode is explicit", () => {

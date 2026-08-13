@@ -1,0 +1,45 @@
+[person]
+icon = ""
+name = "Test Person"
+role = "Tester"
+location = "Nowhere"
+tagline = "A person the tests can render"
+bio = [
+  "A fixture so the About page has something to load.",
+  "It describes nobody real.",
+]
+
+[news]
+file = "news.en.toml"
+count = 5
+
+[[person.activities]]
+title = "Reading the fixtures"
+description = ""
+
+[[person.career]]
+period = "2026/1 — 2026/2"
+role = "Fixture maintainer"
+org = ""
+
+[[person.education]]
+period = "2025/4 - 2026/3"
+school = "Test College"
+description = ""
+
+[[person.education]]
+period = "2026/4 - present"
+school = "Test University, research student"
+description = "Research on fixtures"
+
+[[person.links]]
+label = "GitHub"
+href = "https://github.com/popyson1648"
+
+[[person.links]]
+label = "RSS"
+href = "/rss"
+
+# No href: the loader keeps it so the page can render plain text.
+[[person.links]]
+label = "fixture at example.com"

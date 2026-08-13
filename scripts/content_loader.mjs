@@ -23,14 +23,21 @@ const WORK_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
  * Resolve the tree that contains `src/content/{posts,works,about}` and
- * `public/`. Builds that consume D1/R2 content set CONTENT_SNAPSHOT_ROOT to an
- * isolated directory. The repository remains the deliberate default for local
- * development and verification until the production cutover removes the
- * checked-in content.
+ * `public/`. Articles, works, and About live in D1/R2, so every build reads a
+ * materialized snapshot named by CONTENT_SNAPSHOT_ROOT: the publication and
+ * deploy workflows point it at a release they downloaded, and `npm run
+ * content:pull` writes one for local work. There is deliberately no repository
+ * fallback — one would let a build ship whatever content happened to be on
+ * disk, which is the failure the cutover removed.
  */
 export function contentSnapshotRoot(env = process.env) {
   const configured = String(env.CONTENT_SNAPSHOT_ROOT || "").trim();
-  if (!configured) return ROOT;
+  if (!configured) {
+    throw new Error(
+      "CONTENT_SNAPSHOT_ROOT is not set. Content lives in D1/R2: run `npm run content:pull` " +
+        "and export the path it prints, or let a workflow download a release.",
+    );
+  }
   if (!isAbsolute(configured)) {
     throw new Error("CONTENT_SNAPSHOT_ROOT must be an absolute path");
   }

@@ -229,6 +229,16 @@ export class ContentCiClient extends ContentCloudClient {
   }
 }
 
+/**
+ * Write a snapshot's sources and assets under `root`.
+ *
+ * Only asset download is asked of the client, so the author-side client can
+ * serve local pulls just as the CI client serves the workflows.
+ *
+ * @param {unknown} snapshot
+ * @param {string} root
+ * @param {{ client?: { downloadAsset(assetId: string): Promise<ArrayBufferLike> } }} [options]
+ */
 export async function materializeSnapshot(snapshot, root, { client = new ContentCiClient() } = {}) {
   const snapshotRoot = requireAbsoluteRoot(root);
   const entries = snapshotEntries(snapshot);

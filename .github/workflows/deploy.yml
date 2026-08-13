@@ -55,7 +55,6 @@ jobs:
         run: npm ci
 
       - name: Reconcile an interrupted content deployment
-        if: vars.CONTENT_CLOUD_CUTOVER == '1'
         shell: bash
         env:
           CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
@@ -97,7 +96,6 @@ jobs:
           rm -f "$RUNNER_TEMP/pages-deployments.json" "$RUNNER_TEMP/pages-list.log"
 
       - name: Download active database release
-        if: vars.CONTENT_CLOUD_CUTOVER == '1'
         env:
           CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}

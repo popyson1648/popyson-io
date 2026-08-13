@@ -19,10 +19,14 @@ npm run build
 ```
 
 The production build runs Vite, prerenders route HTML, then generates Pagefind
-custom-record indexes under `dist/pagefind/`. Set `CONTENT_SNAPSHOT_ROOT` to an
-existing absolute directory to build the Blog, Works, About, and their assets
-from an isolated database snapshot. Without it, local development deliberately
-uses the repository tree until the production cutover.
+custom-record indexes under `dist/pagefind/`. Blog, Works, About, and their
+assets come from a database snapshot named by `CONTENT_SNAPSHOT_ROOT`, which
+must be an existing absolute directory. The build fails without it: the
+repository holds no content to fall back to.
+
+Materialize one for local work with `npm run content:pull`, which writes
+`.tmp/content-snapshot` from the author API and prints the line to export. It
+takes public content by default; pass `-- --include-private` to preview drafts.
 
 The Blog UI and rendered article bodies are emitted as a lazy route chunk, so
 About and other entry routes do not download Blog/search code. Direct Blog and
@@ -203,9 +207,9 @@ newer content release.
   publication job id. It generates metadata, translates, verifies, deploys, and
   atomically finalizes the pinned release without committing content to Git.
 
-After `CONTENT_CLOUD_CUTOVER=1`, code and reading-list deployments download the
-active immutable release from the Worker after acquiring the shared queue.
-Before cutover, they retain the checked-in content fallback for safe rollout.
+Code and reading-list deployments download the active immutable release from
+the Worker after acquiring the shared queue, and `ci.yml` downloads the same
+release before verification so CI checks what the site actually ships.
 
 See `.decisions/instapaper-reading-list.md` and
 `.decisions/split-reading-and-site-deploy.md`.

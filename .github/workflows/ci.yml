@@ -40,5 +40,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Content lives in D1/R2. Verification builds the site, so it needs the
+      # release the site currently ships rather than a fixture: a build that
+      # only ever sees test data would never exercise the real content again.
+      # The unit and component suites keep their own fixture and stay hermetic.
+      - name: Download active database release
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+          SNAPSHOT_ROOT: ${{ runner.temp }}/content-active
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id active \
+            --root "$SNAPSHOT_ROOT" \
+            --output "$RUNNER_TEMP/active-release.json"
+          echo "CONTENT_SNAPSHOT_ROOT=$SNAPSHOT_ROOT" >> "$GITHUB_ENV"
+
       - name: Run verification
         run: python3 scripts/verify.py --mode ci

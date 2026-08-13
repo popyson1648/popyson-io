@@ -15,10 +15,13 @@ public/thumbnails/
 public/content-assets/
 ```
 
-The repository-backed content tree remains the local development default until
-the production cutover. GitHub workflows set the snapshot root explicitly and
-never put it, `dist/`, or Pagefind output in an Actions artifact or content
-cache.
+Nothing reads content from the repository: `contentSnapshotRoot()` requires
+`CONTENT_SNAPSHOT_ROOT` and throws without it, so a build cannot silently ship
+whatever happens to be on disk. Workflows point it at a release they
+downloaded, `npm run content:pull` writes one for local work, and the unit and
+component suites use `tests/fixtures/content/` so they stay hermetic. GitHub
+workflows never put the snapshot, `dist/`, or Pagefind output in an Actions
+artifact or content cache.
 
 ## Worker API contract
 
@@ -58,10 +61,9 @@ verifies the immutable candidate release before deploying it. The Pages commit
 message carries `content-release:<release-id>` so a later run can reconcile a
 successful upload whose finalize call was interrupted.
 
-`deploy.yml` and `reading-refresh.yml` acquire the same queue and download the
-active release before building when the `CONTENT_CLOUD_CUTOVER` repository
-variable is `1`. Before that switch, they deliberately use the checked-in
-content fallback.
+`deploy.yml` and `reading-refresh.yml` acquire the same queue and always
+download the active release before building. `ci.yml` downloads it too, without
+the queue, because it verifies rather than deploys.
 
 Workflow logs may contain ids, states, checksums, counts, and sanitized errors.
 Provider and deployment command output is kept in runner-temporary files and is
@@ -97,7 +99,6 @@ GitHub Actions secrets.
 Set these repository variables:
 
 - `CONTENT_API_URL`
-- `CONTENT_CLOUD_CUTOVER` (`1` only after the active release is verified)
 - `CLOUDFLARE_PAGES_PROJECT`
 
 Set these repository secrets:

@@ -31,8 +31,8 @@ reason = "Now a Vitest spec (tests/check_frontmatter.test.mjs) run by the test_u
 enabled = true
 command = "node scripts/generate_metadata.mjs --check"
 # Publication resolves metadata inside the isolated database snapshot before
-# translation. Repository fallback content remains a CI fixture until cutover,
-# so this check stays CI-only.
+# translation. A standard run has no snapshot of its own unless the person
+# pulled one, so this check stays CI-only.
 run_standard = false
 run_in_ci = true
 

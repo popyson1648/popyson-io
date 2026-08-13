@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { evaluateMetadata } from "../scripts/generate_metadata.mjs";
-import { postsDir, rootDir } from "../scripts/content_loader.mjs";
+import { contentSnapshotRoot, postsDir, rootDir } from "../scripts/content_loader.mjs";
 import { parseMarkdownFrontmatter } from "../scripts/frontmatter.mjs";
 import { parseMetadataConfig } from "../scripts/metadataConfig.mjs";
 import { dateToIsoDate } from "../scripts/metadataSchema.mjs";
@@ -144,7 +144,10 @@ function validateThumbnail(meta, filePath) {
   if (path.includes("..") || path.includes("//")) {
     return [`${filePath}: thumbnail.path: must be a normalized public path`];
   }
-  if (!existsSync(join(ROOT, "public", path.slice(1)))) {
+  // An article's thumbnail travels with the article, so it sits in the content
+  // snapshot's public/ rather than the checkout's. The default thumbnail above
+  // is policy and stays repository-rooted.
+  if (!existsSync(join(contentSnapshotRoot(), "public", path.slice(1)))) {
     return [`${filePath}: thumbnail.path: public file does not exist`];
   }
   return [];

@@ -9,7 +9,9 @@ mode = "text"
 text = "配列を一度だけ走査する場合の計算量を確かめる。"
 
 [thumbnail]
-mode = "none"
+mode = "file"
+path = "/thumbnails/20260101-aaaa1111.png"
+generated = true
 +++
 
 ## 走査の計算量

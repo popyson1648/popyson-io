@@ -7,6 +7,11 @@ kana = ""
 [sumup]
 mode = "text"
 text = "Counting the work in a single pass over an array."
+
+[thumbnail]
+mode = "file"
+path = "/thumbnails/20260101-aaaa1111.png"
+generated = true
 +++
 
 ## The cost of one pass

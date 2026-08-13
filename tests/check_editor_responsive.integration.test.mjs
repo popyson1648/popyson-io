@@ -9,6 +9,13 @@ import { expect, test } from "vitest";
 
 const EDITOR_DIST = join(process.cwd(), "editor", "dist");
 
+// A cold CI runner needs far longer than a warm local machine to launch Chrome
+// and open its debug port, so budget generously here rather than let the run
+// fail on a slow start. A Chrome that dies is still reported immediately, and
+// the per-test timeout above this one still catches a genuine hang.
+const CHROME_TARGET_TIMEOUT_MS = 45000;
+const TEST_TIMEOUT_MS = 90000;
+
 function chromePath() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -84,7 +91,8 @@ async function retry(action, attempts = 80) {
 
 async function waitForChromeTarget(debugPort, chrome, stderr) {
   let lastError;
-  for (let attempt = 0; attempt < 300; attempt += 1) {
+  const deadline = Date.now() + CHROME_TARGET_TIMEOUT_MS;
+  while (Date.now() < deadline) {
     if (chrome.exitCode !== null) {
       throw new Error(`Chrome exited before its debug target was ready:\n${stderr()}`);
     }
@@ -103,7 +111,7 @@ async function waitForChromeTarget(debugPort, chrome, stderr) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(
-    `Chrome did not expose its editor target within 15 seconds: ${lastError?.message || "unknown error"}\n${stderr()}`,
+    `Chrome did not expose its editor target within ${CHROME_TARGET_TIMEOUT_MS / 1000} seconds: ${lastError?.message || "unknown error"}\n${stderr()}`,
   );
 }
 
@@ -166,66 +174,70 @@ async function layoutMetrics(client) {
   })()`);
 }
 
-test("keeps the rendered editor within iPad and 200% full-page zoom viewports", async () => {
-  const server = await staticEditorServer();
-  const { port } = server.address();
-  const debugPort = await freePort();
-  const profile = mkdtempSync(join(tmpdir(), "popyson-editor-chrome-"));
-  const chrome = spawn(
-    chromePath(),
-    [
-      "--headless=new",
-      "--no-sandbox",
-      "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--disable-extensions",
-      "--no-first-run",
-      `--remote-debugging-port=${debugPort}`,
-      `--user-data-dir=${profile}`,
-      `http://127.0.0.1:${port}/editor`,
-    ],
-    { stdio: ["ignore", "ignore", "pipe"] },
-  );
-  let chromeStderr = "";
-  chrome.stderr.setEncoding("utf8");
-  chrome.stderr.on("data", (chunk) => {
-    chromeStderr = `${chromeStderr}${chunk}`.slice(-8000);
-  });
-  let client;
-  try {
-    client = await connectToPage(debugPort, chrome, () => chromeStderr.trim());
+test(
+  "keeps the rendered editor within iPad and 200% full-page zoom viewports",
+  async () => {
+    const server = await staticEditorServer();
+    const { port } = server.address();
+    const debugPort = await freePort();
+    const profile = mkdtempSync(join(tmpdir(), "popyson-editor-chrome-"));
+    const chrome = spawn(
+      chromePath(),
+      [
+        "--headless=new",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-extensions",
+        "--no-first-run",
+        `--remote-debugging-port=${debugPort}`,
+        `--user-data-dir=${profile}`,
+        `http://127.0.0.1:${port}/editor`,
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+    let chromeStderr = "";
+    chrome.stderr.setEncoding("utf8");
+    chrome.stderr.on("data", (chunk) => {
+      chromeStderr = `${chromeStderr}${chunk}`.slice(-8000);
+    });
+    let client;
+    try {
+      client = await connectToPage(debugPort, chrome, () => chromeStderr.trim());
 
-    for (const width of [1024, 1180, 1181, 1194, 1366]) {
-      await setViewport(client, width);
-      const ipadOpen = await layoutMetrics(client);
-      expect(ipadOpen.sidebarVisible).toBe(true);
-      expect(ipadOpen.createRight).toBeLessThanOrEqual(ipadOpen.sidebarRight);
-      expect(ipadOpen.scrollWidth).toBeLessThanOrEqual(ipadOpen.clientWidth);
+      for (const width of [1024, 1180, 1181, 1194, 1366]) {
+        await setViewport(client, width);
+        const ipadOpen = await layoutMetrics(client);
+        expect(ipadOpen.sidebarVisible).toBe(true);
+        expect(ipadOpen.createRight).toBeLessThanOrEqual(ipadOpen.sidebarRight);
+        expect(ipadOpen.scrollWidth).toBeLessThanOrEqual(ipadOpen.clientWidth);
+      }
+
+      await setViewport(client, 1024);
+      await client.evaluate("document.querySelector('.editor-menu-button').click()");
+      const ipadCollapsed = await layoutMetrics(client);
+      expect(ipadCollapsed.sidebarVisible).toBe(false);
+      expect(ipadCollapsed.scrollWidth).toBeLessThanOrEqual(ipadCollapsed.clientWidth);
+
+      await setViewport(client, 512);
+      const zoomCollapsed = await layoutMetrics(client);
+      expect(zoomCollapsed.sidebarVisible).toBe(false);
+      expect(zoomCollapsed.scrollWidth).toBeLessThanOrEqual(zoomCollapsed.clientWidth);
+
+      await client.evaluate("document.querySelector('.editor-menu-button').click()");
+      const zoomOpen = await layoutMetrics(client);
+      expect(zoomOpen.sidebarVisible).toBe(true);
+      expect(zoomOpen.createRight).toBeLessThanOrEqual(zoomOpen.sidebarRight);
+      expect(zoomOpen.scrollWidth).toBeLessThanOrEqual(zoomOpen.clientWidth);
+    } finally {
+      client?.socket.close();
+      if (chrome.exitCode === null) {
+        chrome.kill("SIGTERM");
+        await once(chrome, "exit");
+      }
+      await new Promise((resolve) => server.close(resolve));
+      await retry(() => rmSync(profile, { recursive: true, force: true }));
     }
-
-    await setViewport(client, 1024);
-    await client.evaluate("document.querySelector('.editor-menu-button').click()");
-    const ipadCollapsed = await layoutMetrics(client);
-    expect(ipadCollapsed.sidebarVisible).toBe(false);
-    expect(ipadCollapsed.scrollWidth).toBeLessThanOrEqual(ipadCollapsed.clientWidth);
-
-    await setViewport(client, 512);
-    const zoomCollapsed = await layoutMetrics(client);
-    expect(zoomCollapsed.sidebarVisible).toBe(false);
-    expect(zoomCollapsed.scrollWidth).toBeLessThanOrEqual(zoomCollapsed.clientWidth);
-
-    await client.evaluate("document.querySelector('.editor-menu-button').click()");
-    const zoomOpen = await layoutMetrics(client);
-    expect(zoomOpen.sidebarVisible).toBe(true);
-    expect(zoomOpen.createRight).toBeLessThanOrEqual(zoomOpen.sidebarRight);
-    expect(zoomOpen.scrollWidth).toBeLessThanOrEqual(zoomOpen.clientWidth);
-  } finally {
-    client?.socket.close();
-    if (chrome.exitCode === null) {
-      chrome.kill("SIGTERM");
-      await once(chrome, "exit");
-    }
-    await new Promise((resolve) => server.close(resolve));
-    await retry(() => rmSync(profile, { recursive: true, force: true }));
-  }
-});
+  },
+  TEST_TIMEOUT_MS,
+);

@@ -45,6 +45,7 @@ import "smarthr-ui/smarthr-ui.css";
 
 import AboutEditor from "./AboutEditor.jsx";
 import { createEditorApi } from "./editorApi.js";
+import { isSupportedSource, prepareImageForUpload } from "./imagePreparation.js";
 import { writingMetrics } from "./markdownEditing.js";
 import "./editor.css";
 
@@ -115,14 +116,11 @@ const theme = createTheme({
 });
 const PREVIEW_URL = import.meta.env.MODE === "test" ? "about:blank" : "/editor-preview";
 const COMPACT_MEDIA = "(max-width: 900px)";
-// Must stay in step with IMAGE_SIGNATURES in workers/content-api/src/repository.ts:
-// the Content API sniffs magic bytes and rejects anything else with a 415, so a
-// wider list here only turns a clear "unsupported" message into a failed upload.
-// tests/check_editor_image_types.test.mjs fails when the two drift apart.
-const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
-const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
-const ACCEPTED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// HEIC is offered even though the Content API rejects it, because
+// prepareImageForUpload converts it to JPEG before the upload. Anything the
+// API itself accepts is listed in UPLOAD_IMAGE_TYPES, which
+// tests/check_editor_image_types.test.mjs holds against the Worker.
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif";
 // Mirrors ASSET_SEGMENTS in scripts/contentCloudEditorModel.mjs, which builds
 // the same URLs on the server when it returns a freshly uploaded asset.
 const ASSET_SEGMENTS = { post: "posts", work: "works", about: "about" };
@@ -280,14 +278,6 @@ function SuggestionButtons({ label, suggestions, selected, onAdd }) {
       </div>
     </div>
   );
-}
-
-function acceptsImage(file) {
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  if (!ACCEPTED_IMAGE_TYPES.has(file.type) && !ACCEPTED_IMAGE_EXTENSIONS.has(extension)) {
-    return false;
-  }
-  return file.size > 0 && file.size <= MAX_IMAGE_BYTES;
 }
 
 // Body images land under `assets/`, while the metadata pipeline writes a
@@ -1048,13 +1038,25 @@ function App() {
   const rejectImage = (file) => {
     setMessage({
       type: "error",
-      text: `${file.name || "画像"}は対応形式ではないか、10MBを超えています。`,
+      text: `${file.name || "画像"}は対応形式ではありません。`,
     });
+  };
+
+  /**
+   * Converts and shrinks a file so the Content API will take it, reporting the
+   * step because HEIC decoding and re-encoding both take a noticeable moment on
+   * a phone.
+   */
+  const readyImage = async (file) => {
+    const { file: prepared, notes } = await prepareImageForUpload(file, {
+      onStep: (text) => setMessage({ type: "info", text }),
+    });
+    return { file: prepared, notes };
   };
 
   const prepareImages = (files) => {
     const selected = [...files];
-    const invalid = selected.find((file) => !acceptsImage(file));
+    const invalid = selected.find((file) => !isSupportedSource(file));
     if (invalid) {
       rejectImage(invalid);
       return;
@@ -1083,9 +1085,14 @@ function App() {
       try {
         setMessage({
           type: "info",
+          text: `画像を準備しています… ${index + 1}/${uploadQueue.length}`,
+        });
+        const { file: ready } = await readyImage(item.file);
+        setMessage({
+          type: "info",
           text: `画像を保存しています… ${index + 1}/${uploadQueue.length}`,
         });
-        const asset = await api.upload(content.kind, content.id, item.file, uploadRevisionId);
+        const asset = await api.upload(content.kind, content.id, ready, uploadRevisionId);
         uploadRevisionId = asset.currentRevisionId;
         setContent((current) => {
           const next = cloneContent(current);
@@ -1143,14 +1150,16 @@ function App() {
    */
   const uploadMetaImage = async (file) => {
     if (!content) return "";
-    if (!acceptsImage(file)) {
+    if (!isSupportedSource(file)) {
       rejectImage(file);
       return "";
     }
     setBusy(true);
-    setMessage({ type: "info", text: "画像を保存しています…" });
+    setMessage({ type: "info", text: "画像を準備しています…" });
     try {
-      const asset = await api.upload(content.kind, content.id, file, content.currentRevisionId);
+      const { file: ready, notes } = await readyImage(file);
+      setMessage({ type: "info", text: "画像を保存しています…" });
+      const asset = await api.upload(content.kind, content.id, ready, content.currentRevisionId);
       setContent((current) => {
         const next = cloneContent(current);
         next.currentRevisionId = asset.currentRevisionId;
@@ -1162,7 +1171,9 @@ function App() {
       });
       setMessage({
         type: "success",
-        text: "画像をオブジェクトストレージへ保存しました。",
+        text: notes.length
+          ? `画像をオブジェクトストレージへ保存しました。${notes.join("、")}。`
+          : "画像をオブジェクトストレージへ保存しました。",
       });
       return asset.url;
     } catch (error) {

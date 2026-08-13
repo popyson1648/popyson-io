@@ -499,6 +499,28 @@ select {
   grid-template-columns: repeat(4, minmax(150px, 1fr));
 }
 
+.editor-image-field {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-image-field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Bounded so a tall image cannot push the rest of the metadata form out of
+   reach; the checkerboard shows transparency and marks a failed load. */
+.editor-image-field-preview {
+  max-width: 100%;
+  max-height: 140px;
+  border: 1px solid var(--editor-border);
+  border-radius: 6px;
+  background-color: var(--editor-surface-muted);
+  object-fit: contain;
+}
+
 .editor-suggestions {
   display: grid;
   align-content: start;

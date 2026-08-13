@@ -115,30 +115,13 @@ const theme = createTheme({
 });
 const PREVIEW_URL = import.meta.env.MODE === "test" ? "about:blank" : "/editor-preview";
 const COMPACT_MEDIA = "(max-width: 900px)";
-const ACCEPTED_IMAGE_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "image/avif",
-  "image/heic",
-  "image/heif",
-  "image/tiff",
-]);
-const IMAGE_ACCEPT =
-  "image/png,image/jpeg,image/gif,image/webp,image/avif,image/heic,image/heif,image/tiff,.heic,.heif,.tif,.tiff";
-const ACCEPTED_IMAGE_EXTENSIONS = new Set([
-  "jpg",
-  "jpeg",
-  "png",
-  "gif",
-  "webp",
-  "avif",
-  "heic",
-  "heif",
-  "tif",
-  "tiff",
-]);
+// Must stay in step with IMAGE_SIGNATURES in workers/content-api/src/repository.ts:
+// the Content API sniffs magic bytes and rejects anything else with a 415, so a
+// wider list here only turns a clear "unsupported" message into a failed upload.
+// tests/check_editor_image_types.test.mjs fails when the two drift apart.
+const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
+const ACCEPTED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 // Mirrors ASSET_SEGMENTS in scripts/contentCloudEditorModel.mjs, which builds
 // the same URLs on the server when it returns a freshly uploaded asset.

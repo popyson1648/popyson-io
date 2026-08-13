@@ -67,17 +67,14 @@ export function createEditorApi() {
     upload: (kind, id, file, currentRevisionId) =>
       new Promise((resolve, reject) => {
         const extension = file.name.split(".").pop()?.toLowerCase();
+        // Only the media types the Content API accepts; see ACCEPTED_IMAGE_TYPES
+        // in EditorRoot.jsx for why the list stops here.
         const inferredType = {
           jpg: "image/jpeg",
           jpeg: "image/jpeg",
           png: "image/png",
           gif: "image/gif",
           webp: "image/webp",
-          avif: "image/avif",
-          heic: "image/heic",
-          heif: "image/heif",
-          tif: "image/tiff",
-          tiff: "image/tiff",
         }[extension];
         const reader = new FileReader();
         reader.onerror = () => reject(new EditorApiError("画像を読み込めませんでした"));

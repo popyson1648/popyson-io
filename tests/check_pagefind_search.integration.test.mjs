@@ -47,6 +47,19 @@ function serveDist() {
   });
 }
 
+// Pagefind tokenizes a query the same way it tokenizes a page, and punctuation
+// ends a token. Searching a raw title therefore says nothing about the index
+// when the title carries punctuation: "切替検証用（自動削除）" matches nothing
+// even though the article is indexed. Query the longest punctuation-free run of
+// the title instead, which is what a reader would actually type.
+function queryFor(title) {
+  const segments = title.split(/[\s\p{P}\p{S}]+/u).filter(Boolean);
+  return segments.reduce(
+    (longest, segment) => (segment.length > longest.length ? segment : longest),
+    "",
+  );
+}
+
 // Every match, not just the top one: ranking is deterministic but not part of
 // what this suite is asserting.
 async function searchWithLang(pagefind, base, lang, query) {
@@ -83,7 +96,7 @@ describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
   });
 
   test("finds the Japanese article for a Japanese query", async () => {
-    const results = await searchWithLang(pagefind, base, "ja", POST.title.ja);
+    const results = await searchWithLang(pagefind, base, "ja", queryFor(POST.title.ja));
 
     expect(results).toContainEqual(
       expect.objectContaining({
@@ -94,7 +107,7 @@ describe.skipIf(!HAS_POSTS)("Pagefind search over the built dist/", () => {
   });
 
   test("finds the English article for an English query", async () => {
-    const results = await searchWithLang(pagefind, base, "en", POST.title.en);
+    const results = await searchWithLang(pagefind, base, "en", queryFor(POST.title.en));
 
     expect(results).toContainEqual(
       expect.objectContaining({

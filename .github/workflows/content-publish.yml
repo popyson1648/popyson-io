@@ -65,8 +65,12 @@ jobs:
           if [[ "$(jq '.releases | length' "$RUNNER_TEMP/pending-releases.json")" == "0" ]]; then
             exit 0
           fi
-          if ! npx wrangler pages deployment list \
-            --project-name "$PROJECT" --environment production --json \
+          # `wrangler pages deployment list --json` emits the columns it would
+          # render as a table, and none of them carry the commit message, so the
+          # release marker is only reachable through the REST API.
+          if ! curl -sS --fail-with-body \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT/deployments?env=production&per_page=25" \
             > "$RUNNER_TEMP/pages-deployments.json" 2> "$RUNNER_TEMP/pages-list.log"; then
             rm -f "$RUNNER_TEMP/pages-list.log" "$RUNNER_TEMP/pages-deployments.json"
             echo "Unable to list Pages deployments for reconciliation." >&2
@@ -81,7 +85,7 @@ jobs:
             fi
             marker="content-release:${release_id}"
             deployment_id="$(jq -r --arg marker "$marker" \
-              '[.[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
+              '[.result[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
               "$RUNNER_TEMP/pages-deployments.json")"
             if [[ -n "$deployment_id" ]]; then
               node scripts/contentSnapshotCli.mjs reconcile \
@@ -235,6 +239,20 @@ jobs:
             --root "$CANDIDATE_ROOT" \
             --output "$RUNNER_TEMP/candidate-snapshot.json"
 
+      - name: Refresh reading list (best-effort)
+        # The reading list is not part of a release: deploy.yml and
+        # reading-refresh.yml fetch it at build time and never commit the
+        # result, so src/reading.json in the repository is a stale fallback.
+        # Publishing without this step would rebuild the reading page from that
+        # fallback and silently roll the live page back to it.
+        continue-on-error: true
+        env:
+          INSTAPAPER_CONSUMER_KEY: ${{ secrets.INSTAPAPER_CONSUMER_KEY }}
+          INSTAPAPER_CONSUMER_SECRET: ${{ secrets.INSTAPAPER_CONSUMER_SECRET }}
+          INSTAPAPER_OAUTH_TOKEN: ${{ secrets.INSTAPAPER_OAUTH_TOKEN }}
+          INSTAPAPER_OAUTH_TOKEN_SECRET: ${{ secrets.INSTAPAPER_OAUTH_TOKEN_SECRET }}
+        run: npm run reading:fetch
+
       - name: Verify candidate release
         env:
           CONTENT_SNAPSHOT_ROOT: ${{ runner.temp }}/content-candidate
@@ -242,8 +260,12 @@ jobs:
         run: |
           set -euo pipefail
           if ! python3 scripts/verify.py --mode ci > "$RUNNER_TEMP/verification.log" 2>&1; then
+            # verify.py writes its own progress markers on lines that start with
+            # "[verify]" and never puts command output on them, so echoing only
+            # those lines names the failing phase without exposing source text.
+            grep '^\[verify\] ' "$RUNNER_TEMP/verification.log" >&2 || true
             rm -f "$RUNNER_TEMP/verification.log"
-            echo "Candidate verification failed; output was suppressed because it may contain source text." >&2
+            echo "Candidate verification failed; command output was suppressed because it may contain source text." >&2
             exit 1
           fi
           rm -f "$RUNNER_TEMP/verification.log"
@@ -276,15 +298,17 @@ jobs:
             echo "Cloudflare Pages deployment failed; detailed output was suppressed." >&2
             exit 1
           fi
-          if ! npx wrangler pages deployment list \
-            --project-name "$PROJECT" --environment production --json \
+          # See the reconciliation step: only the REST API carries the marker.
+          if ! curl -sS --fail-with-body \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJECT/deployments?env=production&per_page=25" \
             > "$RUNNER_TEMP/pages-deployments.json" 2> "$RUNNER_TEMP/pages-list.log"; then
             rm -f "$RUNNER_TEMP/pages-list.log" "$RUNNER_TEMP/pages-deployments.json"
             echo "Pages deployed, but its deployment id could not be read." >&2
             exit 1
           fi
           deployment_id="$(jq -r --arg marker "$marker" \
-            '[.[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
+            '[.result[] | select(.deployment_trigger.metadata.commit_message == $marker)][0].id // empty' \
             "$RUNNER_TEMP/pages-deployments.json")"
           test -n "$deployment_id"
           echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"

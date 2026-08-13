@@ -1,5 +1,13 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config.js";
+
+// Content lives in D1/R2, so there is no repository tree for a test to read.
+// The unit and component projects therefore run against a checked-in fixture:
+// they stay hermetic, deterministic, and runnable without credentials. The
+// integration project asserts against dist/ and so must read whatever snapshot
+// that build used, which is why it inherits CONTENT_SNAPSHOT_ROOT untouched.
+const FIXTURE_CONTENT_ROOT = fileURLToPath(new URL("tests/fixtures/content", import.meta.url));
 
 // Reuse vite.config.js (aliases, virtual modules, the React/TOML plugins) so the
 // test pipeline matches the build. Tests are split into three named projects so
@@ -22,6 +30,7 @@ export default mergeConfig(
           extends: true,
           test: {
             name: "unit",
+            env: { CONTENT_SNAPSHOT_ROOT: FIXTURE_CONTENT_ROOT },
             environment: "node",
             include: ["tests/**/*.test.mjs"],
             exclude: ["tests/**/*.integration.test.mjs"],
@@ -39,6 +48,7 @@ export default mergeConfig(
           extends: true,
           test: {
             name: "component",
+            env: { CONTENT_SNAPSHOT_ROOT: FIXTURE_CONTENT_ROOT },
             environment: "happy-dom",
             include: ["tests/**/*.test.jsx"],
             setupFiles: ["./tests/setup.component.js"],

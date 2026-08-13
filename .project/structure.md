@@ -47,7 +47,10 @@
 - `scripts/contentCloudEditorModel.mjs` and `scripts/contentCloudClient.mjs`: schema-aware editor adapter and authenticated Worker client.
 - `scripts/contentAssetsPlugin.mjs`: serves snapshot assets in development and emits them under the static public build.
 - `src/readingTime.js`: estimates the reading time of a Markdown body per locale, replacing the removed `reading` front-matter field.
-- `src/content/works/<slug>/index.{ja,en}.md`: one work per directory, TOML front matter plus a Markdown body. The slug is the URL segment (`/app/<slug>`). Exposed as `APPS` (metadata) and `WORK_BODIES` (rendered HTML) through `virtual:site-content`.
+- `<snapshot>/src/content/works/<slug>/index.{ja,en}.md`: one work per directory inside the content snapshot, TOML front matter plus a Markdown body. The slug is the URL segment (`/app/<slug>`). Exposed as `APPS` (metadata) and `WORK_BODIES` (rendered HTML) through `virtual:site-content`. Articles and About have the same shape under `posts/` and `about/`.
+- `archive/content/`: the articles, works, About, and thumbnails the repository shipped before the D1/R2 cutover. Read-only history; nothing reads it.
+- `tests/fixtures/content/`: the snapshot the unit and component suites read, so they need neither credentials nor production data.
+- `scripts/pull_content_snapshot.mjs`: writes a snapshot from the author API for local work (`npm run content:pull`).
 - `scripts/workSchema.mjs`: front matter schema for works, separate from the article one.
 - `scripts/new_work.mjs`: creates a work directory from a slug. Run it with `npm run new:work -- <slug>`.
 - `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings.

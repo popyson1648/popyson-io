@@ -27,8 +27,12 @@ afterEach(() => {
 });
 
 describe("contentSnapshotRoot", () => {
-  test("keeps the repository as the deliberate pre-cutover local fallback", () => {
-    expect(contentSnapshotRoot({})).toBe(ROOT);
+  // Content lives in D1/R2. A build that fell back to the checkout would ship
+  // whatever content happened to be on disk, so an unset root is an error and
+  // the message has to say how to get one.
+  test("refuses to fall back to the checkout", () => {
+    expect(() => contentSnapshotRoot({})).toThrow(/CONTENT_SNAPSHOT_ROOT is not set/);
+    expect(() => contentSnapshotRoot({})).toThrow(/content:pull/);
   });
 
   test("requires an existing absolute explicit root", () => {
@@ -40,10 +44,11 @@ describe("contentSnapshotRoot", () => {
     ).toThrow(/does not exist/);
   });
 
-  test("loads managed content from the explicit root instead of the checkout", () => {
+  test("loads managed content from the explicit root instead of the ambient one", () => {
+    const fixtureRoot = contentSnapshotRoot();
     const root = temporaryRoot();
-    cpSync(join(ROOT, "src/content"), join(root, "src/content"), { recursive: true });
-    const original = join(ROOT, "src/content/posts/20260729-94519dc2");
+    cpSync(join(fixtureRoot, "src/content"), join(root, "src/content"), { recursive: true });
+    const original = join(fixtureRoot, "src/content/posts/20260101-aaaa1111");
     const isolated = join(root, "src/content/posts/20990101-000000");
     cpSync(original, isolated, { recursive: true });
 

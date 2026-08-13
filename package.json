@@ -32,6 +32,7 @@
     "about:push": "node scripts/publish_content.mjs about --id about",
     "content:cloud:migrate": "node scripts/migrate_content_to_cloud.mjs",
     "content:cloud:migrate:op": "op run --env-file=.op.env -- node scripts/migrate_content_to_cloud.mjs",
+    "content:pull": "op run --env-file=.op.env -- node scripts/pull_content_snapshot.mjs",
     "content:worker:test": "vitest run --root workers/content-api --config vitest.config.ts",
     "content:worker:typecheck": "tsc -p workers/content-api/tsconfig.json",
     "content:backup:test": "vitest run --root workers/content-backup --config vitest.config.ts",

@@ -42,7 +42,10 @@ export function contentAssetsPlugin({
   cloudAssets = false,
   cloudClient,
 } = {}) {
-  const snapshotRoot = contentSnapshotRoot();
+  // Resolved when a hook runs, not while the plugin is constructed: config
+  // files are loaded by tools that never build (Vitest reads vite.config.js to
+  // share its aliases), and those must not require a content snapshot.
+  const snapshotRoot = () => contentSnapshotRoot();
   const configureMiddleware = (server) => {
     const cloud = cloudAssets ? cloudClient || new ContentCloudClient() : null;
     server.middlewares.use(async (request, response, next) => {
@@ -108,7 +111,7 @@ export function contentAssetsPlugin({
     configurePreviewServer: configureMiddleware,
     generateBundle() {
       if (!emitAssets) return;
-      for (const asset of listContentAssets({ snapshotRoot })) {
+      for (const asset of listContentAssets({ snapshotRoot: snapshotRoot() })) {
         this.addWatchFile(asset.filePath);
         this.emitFile({
           type: "asset",
@@ -116,8 +119,10 @@ export function contentAssetsPlugin({
           source: readFileSync(asset.filePath),
         });
       }
-      const publicRoot = join(snapshotRoot, "public");
-      if (snapshotRoot === contentSnapshotRoot({}) || !existsSync(publicRoot)) return;
+      // Thumbnails and other public files arrive inside the snapshot, so they
+      // are emitted from there rather than from the checkout's public/.
+      const publicRoot = join(snapshotRoot(), "public");
+      if (!existsSync(publicRoot)) return;
       const pending = [publicRoot];
       while (pending.length > 0) {
         const directory = pending.pop();

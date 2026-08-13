@@ -1,0 +1,46 @@
+[person]
+icon = ""
+name = "Test Person"
+role = "Tester"
+location = "Nowhere"
+tagline = "A person the tests can render"
+bio = [
+  "テストが About ページを読み込むための人物です。",
+  "実在しません。",
+]
+
+[news]
+file = "news.ja.toml"
+count = 5
+
+[[person.activities]]
+title = "フィクスチャの読み込み"
+description = ""
+
+[[person.career]]
+period = "2026/1 — 2026/2"
+role = "フィクスチャ管理"
+org = ""
+
+[[person.education]]
+period = "2025/4 - 2026/3"
+school = "テスト専門学校"
+description = ""
+
+# A period can carry words, so this one differs per locale on purpose.
+[[person.education]]
+period = "2026/4 - 現在"
+school = "テスト大学 研究生"
+description = "フィクスチャに関する研究"
+
+[[person.links]]
+label = "GitHub"
+href = "https://github.com/popyson1648"
+
+[[person.links]]
+label = "RSS"
+href = "/rss"
+
+# No href: the loader keeps it so the page can render plain text.
+[[person.links]]
+label = "fixture at example.com"

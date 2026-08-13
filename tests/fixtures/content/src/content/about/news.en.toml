@@ -1,0 +1,9 @@
+[[news]]
+date = "2026-01-02"
+title = "Second fixture entry"
+description = "Present so the newest-first ordering has something to order."
+
+[[news]]
+date = "2026-01-01"
+title = "First fixture entry"
+description = ""

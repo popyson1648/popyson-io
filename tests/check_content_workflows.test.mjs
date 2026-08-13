@@ -73,7 +73,9 @@ describe("database content workflows", () => {
       expect(source).toMatch(/group: cloudflare-deploy\n\s+cancel-in-progress: false/);
       expect(source).toContain("name: Download active database release");
       expect(source).toContain("--release-id active");
-      expect(source).toContain("CONTENT_CLOUD_CUTOVER == '1'");
+      // Content only comes from D1/R2 now, so the download is unconditional: a
+      // switch that could turn it off would let a deploy ship stale content.
+      expect(source).not.toContain("CONTENT_CLOUD_CUTOVER");
       expect(source).toContain("name: Reconcile an interrupted content deployment");
       expect(source.indexOf("name: Reconcile an interrupted content deployment")).toBeLessThan(
         source.indexOf("name: Download active database release"),
@@ -82,6 +84,18 @@ describe("database content workflows", () => {
       expect(source).not.toMatch(/actions\/(?:upload-artifact|cache)@/);
     },
   );
+
+  // Verification builds the site, and the site's content is in D1/R2. Without
+  // this step CI would either fail outright or, worse, verify something other
+  // than what the site ships.
+  test("ci.yml verifies the release the site ships", () => {
+    const source = workflow("ci.yml");
+    const download = source.indexOf("name: Download active database release");
+    expect(download).toBeGreaterThan(-1);
+    expect(source).toContain("--release-id active");
+    expect(source).toContain("CONTENT_SNAPSHOT_ROOT=$SNAPSHOT_ROOT");
+    expect(download).toBeLessThan(source.indexOf("name: Run verification"));
+  });
 
   test("removes the old workflows that committed generated content", () => {
     expect(existsSync(resolve(ROOT, ".github/workflows/generate-metadata.yml"))).toBe(false);

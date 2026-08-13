@@ -60,9 +60,11 @@ React で画面遷移を処理しつつ、ビルド時には各 URL の本文と
 | --- | --- |
 | Cloudflare D1 | Blog、Works、About の本文、公開範囲、削除状態、改訂履歴、公開ジョブ |
 | Cloudflare R2 | 本文画像、サムネイル、D1/R2 のバックアップ |
-| GitHub | React アプリケーション、Worker、ビルド規則、メタデータ生成規則、翻訳規則、リポジトリビルド用コンテンツ |
+| GitHub | React アプリケーション、Worker、ビルド規則、メタデータ生成規則、翻訳規則、テーマ |
 
-現在の Blog、Works、About と画像は D1/R2 に保存されています。
+Blog、Works、About と画像は D1/R2 だけに保存されています。
+リポジトリはコンテンツを持たず、ビルドは D1/R2 から取り出したスナップショットを読みます。
+スナップショットの場所を `CONTENT_SNAPSHOT_ROOT` で指定しないビルドは、途中で成功したように見せずにその場で失敗します。
 
 ローカルコンテンツエディターは認証付き Worker API を通して D1/R2 を読み書きし、Blog と Works の作成、Blog、Works、About の読み込みと編集、日英プレビュー、画像追加、改訂の保存と復元、公開範囲の変更、ソフト削除と復元を扱います。
 保存時は新しい改訂を追加し、改訂番号による競合検出で編集内容を保護します。
@@ -80,8 +82,14 @@ Node.js 22、npm、Python 3.11 を使用します。
 
 ```sh
 npm ci
+npm run content:pull
+export CONTENT_SNAPSHOT_ROOT=<content:pull が表示したパス>
 npm run dev
 ```
+
+`npm run content:pull` は公開中のコンテンツを `.tmp/content-snapshot` へ展開します。
+下書きも見るときは `npm run content:pull -- --include-private` を使います。
+エディターは起動時に自前のスナップショットを取得するため、この手順は不要です。
 
 本番用の静的ファイルは次のコマンドで `dist/` に生成します。
 
@@ -111,6 +119,7 @@ python3 scripts/verify.py
 
 | コマンド | 処理 |
 | --- | --- |
+| `npm run content:pull` | 公開中のコンテンツを D1/R2 から手元へ展開する |
 | `npm run editor:setup` | Tailscale Serve を通常ユーザーで管理するための初回設定を行う |
 | `npm run editor` | エディターをビルドして起動する |
 | `npm run editor:stop` | このリポジトリが起動したエディターを停止する |
@@ -125,6 +134,8 @@ python3 scripts/verify.py
 
 ```text
 popyson-io/                         # サイトのソースと開発設定を収めるリポジトリ
+├── archive/                        # 切り替え前にリポジトリが持っていたコンテンツの控え
+│   └── content/                    # 記事、制作物、About、サムネイル。何も読み込まない
 ├── .decisions/                     # 採用した設計判断と方針の履歴
 │   └── TEMPLATE.md                 # 設計判断を記録するときのひな型
 ├── .github/                        # GitHub 上の自動化設定
@@ -144,7 +155,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 ├── .template/                      # プロジェクト資料と設定の原本
 ├── editor/                         # ローカルエディターのビルド設定
 ├── public/                         # 静的ファイルの公開ルート
-│   ├── thumbnails/                 # リポジトリビルド用の生成済みサムネイル
+│   ├── thumbnails/                 # スナップショットのサムネイルが入る空の置き場
 │   └── provisional_ogp_image.png   # 既定の OGP 画像
 ├── scripts/                        # コンテンツ処理、ビルド、検証のスクリプト
 │   ├── articleHtml.mjs             # Markdown を安全な記事 HTML へ変換する処理
@@ -159,9 +170,10 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── metadataSchema.mjs          # 記事 front matter の検証規則
 │   ├── workSchema.mjs              # 制作物 front matter の検証規則
 │   ├── prerender.mjs               # ルート別の HTML と SEO 用ファイルを生成する処理
+│   ├── pull_content_snapshot.mjs   # 手元の作業用にコンテンツを D1/R2 から展開する処理
 │   └── verify.py                   # 検証フェーズをまとめて実行するランナー
 ├── src/                            # React アプリケーションとサイトデータ
-│   ├── content/                    # プロンプト、テーマ、リポジトリビルド用コンテンツ
+│   ├── content/                    # メタデータ規則、プロンプト、テーマ
 │   │   ├── prompts/                # メタデータと画像の生成プロンプト
 │   │   ├── metadata.toml           # 自動生成モデルと既定値の設定
 │   │   └── theme.toml              # ライトとダークの色トークン
@@ -177,7 +189,7 @@ popyson-io/                         # サイトのソースと開発設定を収
 │   ├── styles.css                  # 全体のレイアウトと基本スタイル
 │   └── app.css                     # 各画面とコンポーネントのスタイル
 ├── tests/                          # 単体、コンポーネント、統合テスト
-│   ├── fixtures/                   # テストで共有する Markdown などの入力例
+│   ├── fixtures/                   # テストが読む入力例と、資格情報なしで動くコンテンツ
 │   └── setup.component.js          # コンポーネントテストの初期設定
 ├── AGENTS.md                       # このリポジトリで作業するエージェント向け規則
 ├── workers/                        # D1/R2 API と日次バックアップ Workflow

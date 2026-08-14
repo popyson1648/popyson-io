@@ -61,6 +61,11 @@ verifies the immutable candidate release before deploying it. The Pages commit
 message carries `content-release:<release-id>` so a later run can reconcile a
 successful upload whose finalize call was interrupted.
 
+Translation writes the English files from the Japanese ones, so the editor's
+publish check asks for Japanese prose and accepts English that is still empty.
+It does ask both locales for structure — a News date is not prose and no
+translation supplies one.
+
 `deploy.yml` and `reading-refresh.yml` acquire the same queue and always
 download the active release before building. `ci.yml` downloads it too, without
 the queue, because it verifies rather than deploys.

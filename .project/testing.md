@@ -27,6 +27,11 @@ check (`tests/check_accessibility_static.py`) stays a standalone phase.
 - Integration (`integration` project): runs after the build — Pagefind search
   against the built Japanese/English indexes, and a prerender smoke check that
   every route/locale bakes its primary body into the static `#root`.
+- Editor startup (`tests/check_editor_startup.test.mjs`): pulls a snapshot from a
+  stubbed author API and loads it with the site loader, because `npm run editor`
+  does both and neither half proves the editor can start. The author state it
+  stubs is the ordinary one — a save in Japanese with the English not yet
+  written — since that is what once stopped the editor from building at all.
 - Metadata generation check: statically verifies generated metadata is written back.
 - Build: Vite production builds for the public site and the isolated local editor.
 - Secret scan: Gitleaks over pushed and proposed changes.

@@ -281,13 +281,20 @@ export function serializeEditorAbout(locale, meta, { validate = true } = {}) {
   }
   const normalized = normalizeAboutMeta(locale, meta);
   if (validate) {
-    if (!String(normalized.person.name ?? "").trim()) throw new Error("Name is required");
+    // Japanese is the source; publication translates about.en.toml and
+    // news.en.toml from it. Demanding English prose here would block the one
+    // run that writes it. What English still has to bring is structure — a date
+    // is not translated, and an entry without one cannot be read at all.
+    const requireText = locale === "ja";
+    if (requireText && !String(normalized.person.name ?? "").trim()) {
+      throw new Error("Name is required");
+    }
     for (const [index, item] of normalized.newsItems.entries()) {
       const date = String(item?.date ?? "").trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         throw new Error(`News ${index + 1}: date must use YYYY-MM-DD`);
       }
-      if (!String(item?.title ?? "").trim()) {
+      if (requireText && !String(item?.title ?? "").trim()) {
         throw new Error(`News ${index + 1}: title is required`);
       }
     }

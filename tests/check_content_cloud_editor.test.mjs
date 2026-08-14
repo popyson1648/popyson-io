@@ -7,6 +7,7 @@ import {
   newCloudContent,
   safeCloudAssetName,
   toCloudRevision,
+  validateCloudContent,
 } from "../scripts/contentCloudEditorModel.mjs";
 import { ContentCloudClient } from "../scripts/contentCloudClient.mjs";
 import { githubWorkflowConfig, GitHubWorkflowClient } from "../scripts/githubWorkflowClient.mjs";
@@ -67,6 +68,45 @@ describe("cloud-backed editor model", () => {
     expect(created).toMatchObject({ kind: "work", id: "cloud-work", visibility: "private" });
     expect(created.sourceJa).toContain('title = ""');
     expect(created.documents.files.en.body).toBe("");
+  });
+
+  // The publish button reads this. About in Japanese with the English News
+  // headlines still empty is not an incomplete draft: it is the input the
+  // publication translation expects, and blocking it there leaves nothing that
+  // can ever fill them in.
+  test("clears About for publication once the Japanese is written", () => {
+    const aboutFiles = (enTitle) => ({
+      ja: {
+        meta: {
+          person: { name: "名前" },
+          newsConfig: { file: "news.ja.toml", count: 5 },
+          newsItems: [{ date: "2026-08-09", title: "登壇しました", description: "" }],
+        },
+        body: "",
+      },
+      en: {
+        meta: {
+          person: { name: "Name" },
+          newsConfig: { file: "news.en.toml", count: 5 },
+          newsItems: [{ date: "2026-08-09", title: enTitle, description: "" }],
+        },
+        body: "",
+      },
+    });
+    const about = (files) => ({ kind: "about", id: "about", visibility: "public", files });
+
+    expect(validateCloudContent(about(aboutFiles("")))).toEqual({ valid: true, issues: [] });
+    expect(validateCloudContent(about(aboutFiles("Gave a talk")))).toEqual({
+      valid: true,
+      issues: [],
+    });
+
+    const undated = aboutFiles("");
+    undated.en.meta.newsItems[0].date = "";
+    expect(validateCloudContent(about(undated))).toMatchObject({
+      valid: false,
+      issues: [{ locale: "en", message: expect.stringContaining("date must use YYYY-MM-DD") }],
+    });
   });
 
   test("uses collision-free logical asset paths", () => {

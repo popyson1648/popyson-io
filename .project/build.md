@@ -26,10 +26,16 @@ repository holds no content to fall back to.
 
 Materialize one for local work with `npm run content:pull`, which writes
 `.tmp/content-snapshot` from the author API and prints the line to export. It
-takes public content by default; pass `-- --include-private` to preview drafts.
+takes public content at its current revision by default, so a saved edit shows
+up before it is published; pass `-- --include-private` to preview drafts, or
+`-- --published` for the state the site serves.
 
-`npm run editor` needs no such step: it pulls its own snapshot, drafts
-included, into `.tmp/editor-content-snapshot` before building. Set
+`npm run editor` needs no such step: it pulls its own snapshot into
+`.tmp/editor-content-snapshot` before building. That pull asks for published
+revisions, because the snapshot builds the editor's shell and the site loader
+rejects unfinished content — an entry the author is still filling in would
+otherwise fail the build of the tool they need to finish it. The item being
+edited is unaffected: it comes from the editor's own state. Set
 `CONTENT_SNAPSHOT_ROOT` first to make it use that tree instead.
 
 The Blog UI and rendered article bodies are emitted as a lazy route chunk, so

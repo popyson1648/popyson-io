@@ -19,6 +19,7 @@ import {
 } from "@tanstack/react-table";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
+import { watchEmbedFrames } from "./embedFrames.js";
 import { sectionId } from "./headingSlug.js";
 
 const FILTER_PROPS = ["tags", "title", "body"];
@@ -939,6 +940,11 @@ export function Article({ id }) {
       timers.clear();
     };
   }, [bodyHtml, t.copy_code, t.copied_code]);
+
+  useEffect(() => {
+    const root = proseRef.current;
+    return root ? watchEmbedFrames(root) : undefined;
+  }, [bodyHtml]);
 
   if (!post)
     return (

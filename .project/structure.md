@@ -21,6 +21,7 @@
 - `src/blog.jsx`: blog list, filters, Pagefind search combobox, article shell, TOC behavior, and delegated article code-copy interaction. Article body HTML is generated at build time.
 - `src/blogRoute.jsx`: browser-only lazy route boundary that loads the Blog UI and rendered article bodies only when a Blog list or article route is opened. Build-time prerendering continues to import `src/blog.jsx` directly.
 - `src/pages.jsx`: about (default landing), application, reading, and RSS pages.
+- `src/embedFrames.js`: runtime side of post embeds. It takes the height X and Instagram report for their frames and points the X frame at the current theme. Used by the two article bodies (`src/blog.jsx`, `src/pages.jsx`).
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
 - `scripts/contentSnapshotClient.mjs`: validates and materializes pinned D1/R2 publication and release snapshots into an explicit isolated root.
@@ -32,7 +33,7 @@
 - `workers/content-api/src/`: author CRUD, revision history, asset, publication job, release, and reconciliation handlers.
 - `workers/content-backup/src/`: scheduled D1 export and content-addressed R2 backup handlers.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, resolves `::embed` directives into iframes, and generates search plain text. Author-facing syntax is documented in `.project/article-markdown.md`.
-- `scripts/embedProviders.mjs`: maps a URL an author can copy (YouTube, Docswell, Vimeo page URLs; the Speaker Deck `/player/<id>` URL, since a talk page does not carry the player id) to the iframe URL that service documents. One entry per service; unknown URLs stay links.
+- `scripts/embedProviders.mjs`: maps a URL an author can copy (YouTube, Docswell, Vimeo, X, and Instagram page URLs; the Speaker Deck `/player/<id>` URL, since a talk page does not carry the player id) to the iframe URL that service documents. One entry per service; unknown URLs stay links.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
 - `tests/check_frontmatter.test.mjs`: metadata lint for every article Markdown file.

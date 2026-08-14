@@ -19,12 +19,24 @@ const YOUTUBE_HOSTS = new Set([
 const DOCSWELL_HOSTS = new Set(["docswell.com", "www.docswell.com"]);
 const SPEAKERDECK_HOSTS = new Set(["speakerdeck.com", "www.speakerdeck.com"]);
 const VIMEO_HOSTS = new Set(["vimeo.com", "www.vimeo.com", "player.vimeo.com"]);
+const X_HOSTS = new Set([
+  "x.com",
+  "www.x.com",
+  "mobile.x.com",
+  "twitter.com",
+  "www.twitter.com",
+  "mobile.twitter.com",
+]);
+const INSTAGRAM_HOSTS = new Set(["instagram.com", "www.instagram.com"]);
 
 const YOUTUBE_ID = /^[\w-]{11}$/;
 const DOCSWELL_ID = /^[A-Za-z0-9]+$/;
 // Speaker Deck player ids are hex: 32 characters today, 24 on older decks.
 const SPEAKERDECK_ID = /^(?:[0-9a-f]{24}|[0-9a-f]{32})$/i;
 const VIMEO_ID = /^\d+$/;
+const X_ID = /^\d{1,25}$/;
+const INSTAGRAM_CODE = /^[\w-]{5,32}$/;
+const INSTAGRAM_KINDS = new Set(["p", "reel", "reels", "tv"]);
 
 // `allow` mirrors what YouTube's own embed code ships. Without it the player
 // falls back to a degraded mode (no fullscreen button, no picture-in-picture).
@@ -101,11 +113,56 @@ function vimeo(url) {
   };
 }
 
+// A post lives at /<user>/status/<id>, and X also answers /i/web/status/<id>
+// and the older /statuses/<id>. Trailing segments such as /photo/1 name a
+// picture inside the post, which the embed shows anyway.
+function xPostId(url) {
+  const parts = segments(url.pathname);
+  const marker = parts.findIndex((part) => part === "status" || part === "statuses");
+  return marker === -1 ? "" : parts[marker + 1] || "";
+}
+
+// platform.twitter.com is the frame X's own widget script builds, and the only
+// way in: the documented embed code is a <blockquote> plus widgets.js, and raw
+// HTML never survives the renderer. `dnt=true` is X's do-not-track flag, the
+// same bargain youtube-nocookie.com offers above. The theme is baked in here
+// and swapped on the page when the visitor changes it (see src/embedFrames.js).
+function x(url) {
+  const id = xPostId(url);
+  if (!X_ID.test(id)) return null;
+  return {
+    name: "x",
+    src: `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true&theme=light`,
+    scrolling: "no",
+  };
+}
+
+// Posts, reels, and IGTV all embed the same way, under the path they were
+// shared from. /<user>/p/<code> is the same post as /p/<code>.
+function instagram(url) {
+  const parts = segments(url.pathname);
+  const marker = parts.findIndex((part) => INSTAGRAM_KINDS.has(part));
+  if (marker === -1) return null;
+  const kind = parts[marker] === "reels" ? "reel" : parts[marker];
+  const code = parts[marker + 1] || "";
+  if (!INSTAGRAM_CODE.test(code)) return null;
+  // The /captioned/ variant keeps the text of the post, which is the part worth
+  // quoting in an article.
+  return {
+    name: "instagram",
+    src: `https://www.instagram.com/${kind}/${code}/embed/captioned/`,
+    allow: "encrypted-media; picture-in-picture; web-share",
+    scrolling: "no",
+  };
+}
+
 const PROVIDERS = [
   { hosts: YOUTUBE_HOSTS, resolve: youtube },
   { hosts: DOCSWELL_HOSTS, resolve: docswell },
   { hosts: SPEAKERDECK_HOSTS, resolve: speakerdeck },
   { hosts: VIMEO_HOSTS, resolve: vimeo },
+  { hosts: X_HOSTS, resolve: x },
+  { hosts: INSTAGRAM_HOSTS, resolve: instagram },
 ];
 
 /**
@@ -113,7 +170,7 @@ const PROVIDERS = [
  * renderer cannot embed, which the caller renders as an ordinary link.
  *
  * @param {string} url
- * @returns {{ name: string, src: string, allow?: string } | null}
+ * @returns {{ name: string, src: string, allow?: string, scrolling?: string } | null}
  */
 export function resolveEmbed(url) {
   const value = String(url || "").trim();

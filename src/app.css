@@ -1332,6 +1332,26 @@
   height: 100%;
   border: 0;
 }
+/* A post is as tall as the text and pictures in it, and src/embedFrames.js
+   gives the box that height as soon as the service reports it. These figures
+   hold the space until then, at the width both services lay their card out
+   for. */
+.prose .embed[data-embed="x"],
+.prose .embed[data-embed="instagram"] {
+  max-width: 550px;
+}
+/* Both services draw their own card, so the frame stays out of the way and
+   lets that edge be the only one. */
+.prose .embed[data-embed="x"] .embed-frame {
+  aspect-ratio: auto;
+  height: 420px;
+  border: 0;
+}
+.prose .embed[data-embed="instagram"] .embed-frame {
+  aspect-ratio: auto;
+  height: 640px;
+  border: 0;
+}
 .prose .embed-caption {
   margin: 8px 0 0;
   font-size: 13px;

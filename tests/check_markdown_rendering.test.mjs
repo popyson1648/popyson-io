@@ -375,6 +375,58 @@ describe("embed directive", () => {
     }
   });
 
+  test("embeds every X post URL shape through the platform frame", async () => {
+    const sources = [
+      "https://x.com/jack/status/20",
+      "https://twitter.com/jack/status/20?s=20",
+      "https://mobile.twitter.com/jack/statuses/20",
+      "https://x.com/i/web/status/20",
+      "https://x.com/jack/status/20/photo/1",
+    ];
+
+    for (const url of sources) {
+      const html = await renderArticleHtml(`::embed{url="${url}"}`);
+      expect(html, url).toMatch(
+        /<iframe src="https:\/\/platform\.twitter\.com\/embed\/Tweet\.html\?id=20&#x26;dnt=true&#x26;theme=light"/,
+      );
+      expect(html, url).toMatch(/data-embed="x"/);
+      expect(html, url).toMatch(/title="X"/);
+    }
+  });
+
+  test("embeds an Instagram post, reel, and IGTV item with its caption", async () => {
+    const sources = [
+      ["https://www.instagram.com/p/Dbd3EBdnW_u/", "p"],
+      ["https://instagram.com/nasa/p/Dbd3EBdnW_u/", "p"],
+      ["https://www.instagram.com/reel/Dbd3EBdnW_u/?igsh=x", "reel"],
+      ["https://www.instagram.com/reels/Dbd3EBdnW_u/", "reel"],
+      ["https://www.instagram.com/tv/Dbd3EBdnW_u/", "tv"],
+    ];
+
+    for (const [url, kind] of sources) {
+      const html = await renderArticleHtml(`::embed{url="${url}"}`);
+      expect(html, url).toMatch(
+        new RegExp(
+          `<iframe src="https://www\\.instagram\\.com/${kind}/Dbd3EBdnW_u/embed/captioned/"`,
+        ),
+      );
+      expect(html, url).toMatch(/data-embed="instagram"/);
+      expect(html, url).toMatch(/title="Instagram"/);
+    }
+  });
+
+  test.each([
+    ["an X profile", "https://x.com/jack"],
+    ["an X post id that is not a number", "https://x.com/jack/status/not-an-id"],
+    ["an Instagram profile", "https://www.instagram.com/nasa/"],
+    ["an Instagram post without a code", "https://www.instagram.com/p/"],
+  ])("links %s rather than framing it", async (_name, url) => {
+    const html = await renderArticleHtml(`::embed{url="${url}"}`);
+
+    expect(html).not.toMatch(/<iframe/);
+    expect(html).toMatch(new RegExp(`<a href="${url}"`));
+  });
+
   test("falls back to a link for a service it cannot embed", async () => {
     const html = await renderArticleHtml('::embed[Notes]{url="https://example.com/page"}');
 

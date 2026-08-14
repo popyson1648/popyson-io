@@ -1,9 +1,10 @@
 /* ============================================================
    Pages: About (default landing), Application(+detail), Reading List, RSS
    ============================================================ */
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { AppCtx, Chip, Icon, L, PageHead, Ph } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
+import { watchEmbedFrames } from "./embedFrames.js";
 import { splitLinks } from "./linkText.js";
 import { localized } from "./meta.js";
 
@@ -297,9 +298,14 @@ export function ApplicationDetail({ id }) {
   const body = WORK_BODIES?.[id];
   const localizedBody = body?.[lang] || body?.ja;
   const bodyHtml = typeof localizedBody === "string" ? localizedBody : localizedBody?.html || "";
+  const proseRef = useRef(null);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
+  useEffect(() => {
+    const root = proseRef.current;
+    return root ? watchEmbedFrames(root) : undefined;
+  }, [bodyHtml]);
   if (!a)
     return (
       <div className="container route-fade">
@@ -320,7 +326,7 @@ export function ApplicationDetail({ id }) {
           <Ph className="adetail-hero" />
         )}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: built at build time from our own Markdown */}
-        <div className="prose" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+        <div className="prose" ref={proseRef} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
         <div className="adetail-side">
           <div className="kv">
             <span className="k">{t.stack}</span>

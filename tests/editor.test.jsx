@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import EditorRoot from "../src/editor/EditorRoot.jsx";
+import EditorRoot, { publicationIsLive } from "../src/editor/EditorRoot.jsx";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -541,6 +541,20 @@ describe("content editor shell", () => {
       { timeout: 2500 },
     );
     expect(fetchMock.mock.calls.some(([path]) => String(path).includes("undefined"))).toBe(false);
+  });
+
+  test("treats a retry as under way until the new run touches the job row", () => {
+    // Publishing again after a failure dispatches a fresh run against the same
+    // row, which still holds the previous attempt's failure.
+    expect(publicationIsLive({ status: "failed", attempts: 1, dispatchedAttempts: 1 })).toBe(true);
+    // The run has started and written to the row, so what it says is this
+    // attempt's answer.
+    expect(publicationIsLive({ status: "failed", attempts: 2, dispatchedAttempts: 1 })).toBe(false);
+    expect(publicationIsLive({ status: "running", attempts: 2, dispatchedAttempts: 1 })).toBe(true);
+    expect(publicationIsLive({ status: "succeeded", attempts: 1, dispatchedAttempts: 0 })).toBe(
+      false,
+    );
+    expect(publicationIsLive(null)).toBe(false);
   });
 
   test("shows which stage of the publication is running", async () => {

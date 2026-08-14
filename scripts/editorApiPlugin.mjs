@@ -127,12 +127,13 @@ function apiError(response, error) {
   });
 }
 
+const TERMINAL_JOB_STATES = new Set(["succeeded", "failed", "cancelled"]);
+
 function publicJob(job, run = null) {
-  const terminal = new Set(["succeeded", "failed", "cancelled"]);
   return {
     ...job,
     contentId: job.contentId || job.slug,
-    status: terminal.has(job.state) ? job.state : "running",
+    status: TERMINAL_JOB_STATES.has(job.state) ? job.state : "running",
     phase: job.state,
     log: job.sanitizedError || "",
     progress: publishProgress({ job, run }),
@@ -323,7 +324,14 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
     const result = await cloud.publication(jobMatch[1]);
     // The workflow records its run id on the job as its first step, so from
     // then on the editor can show which step of the publication is running.
-    const run = result.job.githubRunId ? await workflows.runProgress(result.job.githubRunId) : null;
+    // The reading that lands on a finished job skips the cache: it is the one
+    // the author is left looking at, so it has to name the step that actually
+    // ended the run, not one up to RUN_CACHE_MS behind it.
+    const run = result.job.githubRunId
+      ? await workflows.runProgress(result.job.githubRunId, {
+          fresh: TERMINAL_JOB_STATES.has(result.job.state),
+        })
+      : null;
     sendJson(response, 200, publicJob(result.job, run));
     return;
   }

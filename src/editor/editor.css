@@ -1183,10 +1183,18 @@ select {
 }
 
 .editor-publish-progress {
+  /* The editing workspace fills the window, so in the flow this panel sits just
+     below the fold — invisible at the one moment it is worth reading. It is
+     pinned to the bottom of the viewport for as long as it exists, and the
+     author closes it when they are done with the result. */
+  position: sticky;
+  z-index: 20;
+  bottom: 12px;
   display: grid;
   gap: 10px;
   margin-top: 16px;
   padding: 14px 16px;
+  box-shadow: var(--editor-shadow-layer-3);
   border: 1px solid var(--editor-border);
   border-radius: var(--editor-radius-m);
   background: var(--editor-surface);

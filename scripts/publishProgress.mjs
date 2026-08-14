@@ -57,17 +57,19 @@ const NAMED_STEPS = [
   ["Record sanitized failure", "deploy", "失敗の記録"],
 ];
 
-// Steps GitHub adds around the workflow's own. They carry no publication
-// meaning, so they only keep the stage from resetting while they run.
-/** @type {Array<[RegExp, string, string]>} */
+// Steps GitHub adds around the workflow's own. The ones before it belong to
+// preparation. The ones GitHub appends afterwards run whatever the outcome — a
+// run that died while translating still reports them — so they carry no stage:
+// giving them one would walk the display past the stage that ended the run.
+/** @type {Array<[RegExp, string | null, string]>} */
 const GENERATED_STEPS = [
   [/^Set up job$/, "prepare", "実行環境の準備"],
   [/^Run actions\/checkout/, "prepare", "リポジトリの取得"],
   [/^Run actions\/setup-python/, "prepare", "Python の準備"],
   [/^Run actions\/setup-node/, "prepare", "Node.js の準備"],
   [/^Run /, "prepare", "実行環境の準備"],
-  [/^Post /, "deploy", "後片付け"],
-  [/^Complete job$/, "deploy", "実行の終了"],
+  [/^Post /, null, "後片付け"],
+  [/^Complete job$/, null, "実行の終了"],
 ];
 
 const STEPS_BY_NAME = new Map(NAMED_STEPS.map(([name, stage, label]) => [name, { stage, label }]));
@@ -77,11 +79,13 @@ function stageStepCount(stageKey) {
 }
 
 /**
- * The stage and Japanese label for one workflow step, or null when the step is
- * unknown — a workflow edit must leave the display readable, not blank it.
+ * The stage and Japanese label for one workflow step. The stage is null for a
+ * step that names no point in the publication, and the whole result is null for
+ * a step this file has never heard of — a workflow edit must leave the display
+ * readable, not blank it.
  *
  * @param {string} name
- * @returns {{ stage: string, label: string } | null}
+ * @returns {{ stage: string | null, label: string } | null}
  */
 export function stageForStepName(name) {
   const value = String(name || "").trim();
@@ -116,19 +120,37 @@ function stageFromJob(job) {
   return "queued";
 }
 
+function labelOf(step, mapped) {
+  return mapped?.label || String(step.name || "");
+}
+
+/**
+ * Where the run is, read from its steps.
+ *
+ * A failed run is searched first. GitHub keeps reporting steps after the one
+ * that broke — the cleanup it always appends, and the workflow's own failure
+ * recorder, which is still running at that moment — so neither the last step
+ * nor the running one says where the publication actually stopped.
+ */
 function stageFromSteps(steps) {
   let current = "prepare";
+  for (const [index, step] of steps.entries()) {
+    const mapped = stageForStepName(step.name);
+    if (step.conclusion === "failure") {
+      return { stage: mapped?.stage || current, stepLabel: labelOf(step, mapped), failedAt: index };
+    }
+    if (mapped?.stage) current = mapped.stage;
+  }
+
+  current = "prepare";
   let stepLabel = "";
   for (const step of steps) {
     const mapped = stageForStepName(step.name);
-    if (mapped) current = mapped.stage;
-    if (step.status !== "completed") {
-      stepLabel = mapped?.label || String(step.name || "");
-      return { stage: current, stepLabel, pending: true };
-    }
-    stepLabel = mapped?.label || String(step.name || "");
+    if (mapped?.stage) current = mapped.stage;
+    stepLabel = labelOf(step, mapped);
+    if (step.status !== "completed") break;
   }
-  return { stage: current, stepLabel, pending: false };
+  return { stage: current, stepLabel, failedAt: -1 };
 }
 
 /**
@@ -148,23 +170,32 @@ function stageFromSteps(steps) {
  */
 export function publishProgress({ job = {}, run = null } = {}) {
   const state = String(job.state || "queued");
-  const steps = Array.isArray(run?.steps) ? run.steps : [];
-  const completedSteps = steps.filter((step) => step.status === "completed").length;
+  const allSteps = Array.isArray(run?.steps) ? run.steps : [];
   const done = state === "succeeded";
   let stageKey = stageFromJob(job);
   let stepLabel = "";
   let fraction = 0;
+  // Everything after the step that broke is cleanup, so a failed run is
+  // measured up to that step. Counting the rest would draw a stage the
+  // publication never got through as one it finished.
+  let steps = allSteps;
 
-  if (steps.length > 0) {
-    const derived = stageFromSteps(steps);
+  if (allSteps.length > 0) {
+    const derived = stageFromSteps(allSteps);
+    if (derived.failedAt >= 0) steps = allSteps.slice(0, derived.failedAt);
     // The job row is the authority on where the publication got to: it is
     // written by the workflow itself, so it can only be behind the steps, never
     // ahead of them. Taking the later of the two keeps the stage from stepping
     // back when GitHub has not yet reported the step that wrote the row.
     stageKey = stageIndexOf(derived.stage) > stageIndexOf(stageKey) ? derived.stage : stageKey;
     stepLabel = derived.stepLabel;
+    // Counted over the workflow's own steps only, which is what stageStepCount
+    // measures: including the ones GitHub generates would fill a stage before
+    // its work was done.
     const inStage = steps.filter(
-      (step) => step.status === "completed" && stageForStepName(step.name)?.stage === stageKey,
+      (step) =>
+        step.status === "completed" &&
+        STEPS_BY_NAME.get(String(step.name || "").trim())?.stage === stageKey,
     ).length;
     fraction = inStage / Math.max(1, stageStepCount(stageKey));
   } else if (stageKey !== "queued") {
@@ -189,7 +220,7 @@ export function publishProgress({ job = {}, run = null } = {}) {
     stageIndex,
     stageCount: PUBLISH_STAGES.length,
     stepLabel: stepLabel || PUBLISH_STAGES[stageIndex].label,
-    completedSteps,
+    completedSteps: steps.filter((step) => step.status === "completed").length,
     totalSteps: steps.length,
     percent: percentThrough(stageKey, fraction),
     runUrl: run?.runUrl || null,

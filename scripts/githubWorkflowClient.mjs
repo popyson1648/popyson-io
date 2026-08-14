@@ -71,7 +71,14 @@ export class GitHubWorkflowClient {
    * never throws: an unreadable run leaves the editor showing what the job row
    * alone can say.
    *
+   * `fresh` skips the cache. A publication that has just finished is read once
+   * more without it: the step the author is shown is the last thing they see,
+   * and a cached reading is up to RUN_CACHE_MS behind — enough to name a step
+   * that had already passed when the run failed, sending them to the wrong
+   * place to look.
+   *
    * @param {string | number} runId
+   * @param {{ fresh?: boolean }} [options]
    * @returns {Promise<{
    *   runUrl: string | null,
    *   status: string,
@@ -80,11 +87,11 @@ export class GitHubWorkflowClient {
    *   steps: Array<{ name: string, status: string, conclusion: string | null }>,
    * } | null>}
    */
-  async runProgress(runId) {
+  async runProgress(runId, { fresh = false } = {}) {
     const id = String(runId || "");
     if (!/^\d{1,20}$/.test(id)) return null;
     const cached = this.runCache.get(id);
-    if (cached && this.now() - cached.at < RUN_CACHE_MS) return cached.value;
+    if (!fresh && cached && this.now() - cached.at < RUN_CACHE_MS) return cached.value;
     const value = await this.#fetchRunProgress(id).catch(() => null);
     this.runCache.set(id, { at: this.now(), value });
     return value;

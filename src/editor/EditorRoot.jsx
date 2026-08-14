@@ -614,6 +614,21 @@ function elapsedLabel(startedAt, now) {
 }
 
 /**
+ * Whether the publication the editor asked for is still under way.
+ *
+ * Publishing an item that failed before dispatches a fresh run against the same
+ * job row, and that row keeps the previous attempt's outcome until the new run
+ * reaches its first step and increments the attempt counter. Reading the state
+ * alone would report the old failure as this attempt's result and stop polling
+ * on a run that had only just started.
+ */
+export function publicationIsLive(job) {
+  if (!job) return false;
+  if (job.status === "running") return true;
+  return Number(job.attempts) === Number(job.dispatchedAttempts);
+}
+
+/**
  * What the publication is doing right now.
  *
  * Publishing runs a workflow that takes minutes — it generates metadata,
@@ -622,9 +637,8 @@ function elapsedLabel(startedAt, now) {
  * name and the elapsed time come from the API, which reads them from the
  * workflow run itself.
  */
-function PublishProgressPanel({ job }) {
-  const progress = job.progress;
-  const running = job.status === "running";
+function PublishProgressPanel({ job, onClose }) {
+  const running = publicationIsLive(job);
   // The clock ticks only while the job runs, so a finished publication keeps
   // the time it took instead of counting on past its own end.
   const [now, setNow] = useState(() => Date.now());
@@ -634,22 +648,45 @@ function PublishProgressPanel({ job }) {
     return () => clearInterval(timer);
   }, [running]);
 
-  const failed = job.status === "failed" || job.status === "cancelled";
-  const succeeded = job.status === "succeeded";
+  // Dispatched, but the run has not written to the job row yet, so everything
+  // the row and its last run still say belongs to the attempt before this one.
+  const waiting = running && job.status !== "running";
+  const progress = waiting ? null : job.progress;
+  const failed = !running && (job.status === "failed" || job.status === "cancelled");
+  const succeeded = !running && job.status === "succeeded";
   const headline = failed ? "公開に失敗しました" : succeeded ? "公開が完了しました" : "公開中";
   const elapsed = elapsedLabel(progress?.startedAt, now);
   const percent = Math.min(100, Math.max(0, Number(progress?.percent) || 0));
-  const stages = progress?.stages || [];
+  const stages = progress?.stages || job.progress?.stages || [];
+  const stageIndex = waiting ? 0 : progress?.stageIndex;
+  const stepLabel = waiting
+    ? "GitHub Actions の実行開始を待っています"
+    : progress?.stepLabel || job.phase || job.status;
+  // A failure is measured up to the step that broke, so its counter would read
+  // as a completed run. The step name is what says where it stopped.
   const stepCount =
-    progress?.totalSteps > 0 ? `${progress.completedSteps}/${progress.totalSteps} ステップ・` : "";
+    !failed && progress?.totalSteps > 0
+      ? `${progress.completedSteps}/${progress.totalSteps} ステップ・`
+      : "";
 
   return (
-    <section className="editor-publish-progress" aria-label="公開の進捗">
+    <section
+      className="editor-publish-progress"
+      // The panel sits below a workspace that fills the window, so it lands
+      // off-screen on the press of 公開. It is pinned for as long as it exists:
+      // the outcome is as worth seeing as the progress.
+      aria-label="公開の進捗"
+    >
       <header>
         <strong data-state={failed ? "failed" : succeeded ? "succeeded" : "running"}>
           {headline}
         </strong>
         {elapsed && <span>経過 {elapsed}</span>}
+        {!running && (
+          <Button size="S" variant="text" onClick={onClose}>
+            閉じる
+          </Button>
+        )}
       </header>
       {stages.length > 0 && (
         <ol className="editor-publish-stages">
@@ -657,11 +694,7 @@ function PublishProgressPanel({ job }) {
             <li
               key={label}
               data-state={
-                succeeded || index < progress.stageIndex
-                  ? "done"
-                  : index === progress.stageIndex
-                    ? "current"
-                    : "todo"
+                succeeded || index < stageIndex ? "done" : index === stageIndex ? "current" : "todo"
               }
             >
               {label}
@@ -681,7 +714,7 @@ function PublishProgressPanel({ job }) {
         <span style={{ width: `${percent}%` }} />
       </div>
       <p className="editor-publish-step" aria-live="polite">
-        {progress?.stepLabel || job.phase || job.status}
+        {stepLabel}
         <span>
           （{stepCount}
           {percent}%・目安）
@@ -692,7 +725,9 @@ function PublishProgressPanel({ job }) {
           GitHub Actions の実行を開く
         </a>
       )}
-      {job.log && <pre>{job.log}</pre>}
+      {/* The row keeps the last failure's message, which is the previous
+          attempt's while a new run is under way. */}
+      {!running && job.log && <pre>{job.log}</pre>}
     </section>
   );
 }
@@ -962,14 +997,17 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!publishJob || publishJob.status !== "running") return;
+    if (!publicationIsLive(publishJob)) return;
     const timeout = setTimeout(() => {
       api
         .publishJob(publishJob.id)
         .then((job) => {
           const nextJob = { ...publishJob, ...job };
           setPublishJob(nextJob);
-          if (job.status === "succeeded") {
+          // A row still holding the previous attempt's outcome is not this
+          // run's answer; the next poll asks again.
+          if (publicationIsLive(nextJob)) return;
+          if (nextJob.status === "succeeded") {
             setMessage({
               type: "success",
               text: "コンテンツの公開処理が完了しました。",
@@ -982,7 +1020,7 @@ function App() {
                 setSavedAt(new Date());
               })
               .catch((error) => setMessage({ type: "error", text: error.message }));
-          } else if (job.status === "failed") {
+          } else if (nextJob.status === "failed") {
             setMessage({ type: "error", text: "公開に失敗しました。ログを確認してください。" });
           }
         })
@@ -1005,6 +1043,8 @@ function App() {
       setContent(cloneContent(result));
       setKind(item.kind);
       setDirty(false);
+      // The panel reports the publication of the item being left behind.
+      if (item.id !== content?.id || item.kind !== content?.kind) setPublishJob(null);
       editVersionRef.current = 0;
       autoSaveFailureVersionRef.current = -1;
       setSavedAt(null);
@@ -1409,7 +1449,10 @@ function App() {
     if (!saved) return;
     try {
       const job = await api.publish(saved.kind, saved.id);
-      setPublishJob(job);
+      // The attempt count as it stood when this run was dispatched. The run
+      // increments it when it starts, which is what tells the outcome of this
+      // attempt apart from the one already recorded on the row.
+      setPublishJob({ ...job, dispatchedAttempts: Number(job.attempts) || 0 });
       setMessage({ type: "info", text: "公開ジョブを開始しました…" });
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -2028,7 +2071,9 @@ function App() {
               )}
             </section>
 
-            {publishJob && <PublishProgressPanel job={publishJob} />}
+            {publishJob && (
+              <PublishProgressPanel job={publishJob} onClose={() => setPublishJob(null)} />
+            )}
           </main>
         )}
         {content && inspector && (

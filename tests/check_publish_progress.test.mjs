@@ -36,8 +36,12 @@ describe("publication stages", () => {
   test("maps the steps GitHub adds around the workflow's own", () => {
     expect(stageForStepName("Set up job")?.stage).toBe("prepare");
     expect(stageForStepName("Run actions/setup-node@v7")?.stage).toBe("prepare");
-    expect(stageForStepName("Post Run actions/setup-node@v7")?.stage).toBe("deploy");
-    expect(stageForStepName("Complete job")?.stage).toBe("deploy");
+    // Appended whatever the outcome, so they name no stage but keep a label.
+    expect(stageForStepName("Post Run actions/setup-node@v7")).toEqual({
+      stage: null,
+      label: "後片付け",
+    });
+    expect(stageForStepName("Complete job")?.stage).toBeNull();
     expect(stageForStepName("")).toBeNull();
   });
 });
@@ -117,6 +121,29 @@ describe("publication progress", () => {
     expect(progress.state).toBe("failed");
     expect(progress.stageKey).toBe("verify");
   });
+
+  // What a failed run actually reports: the step that broke, then the workflow's
+  // own failure recorder still running, then the cleanup GitHub always appends.
+  test("names the step that broke, not the ones that ran after it", () => {
+    const steps = [
+      ...stepsUpTo("Generate post metadata", { pending: false }).slice(0, -1),
+      { name: "Generate post metadata", status: "completed", conclusion: "failure" },
+      { name: "Record sanitized failure", status: "in_progress", conclusion: null },
+      { name: "Post Run actions/setup-node@v7", status: "completed", conclusion: "success" },
+      { name: "Complete job", status: "completed", conclusion: "success" },
+    ];
+    const progress = publishProgress({
+      job: { state: "failed", githubRunId: "42" },
+      run: { steps },
+    });
+    expect(progress.stepLabel).toBe("タグ・要約・サムネイルの生成");
+    expect(progress.stageKey).toBe("translate");
+    expect(progress.stageLabel).toBe("英訳と付加情報の生成");
+    // It broke on the stage's first step, so the stage is where it stopped and
+    // none of it was completed — the cleanup afterwards must not read as one.
+    expect(progress.percent).toBe(17);
+    expect(progress.totalSteps).toBe(steps.length - 4);
+  });
 });
 
 describe("workflow run readings", () => {
@@ -160,6 +187,25 @@ describe("workflow run readings", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     clock = 9000;
     await workflows.runProgress("42");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  // A cached reading can name a step the run had already left, which is how a
+  // failed publication ends up pointing at the wrong step.
+  test("re-reads a finished run instead of answering from the cache", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        jobs: [{ html_url: "https://github.invalid/job/1", status: "completed", steps: [] }],
+      }),
+    }));
+    const workflows = client(fetchMock, () => 0);
+
+    await workflows.runProgress("42");
+    await workflows.runProgress("42");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await workflows.runProgress("42", { fresh: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

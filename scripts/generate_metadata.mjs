@@ -99,6 +99,12 @@ function isLikelyJapanese(text) {
   return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(text);
 }
 
+// The length an article card has room for, and the limit both a written and a
+// generated summary are held to.
+function summaryMaxChars(config = {}) {
+  return config.summary_generation?.max_chars || 180;
+}
+
 /**
  * @param {import("./frontmatter.mjs").MarkdownMetadata} meta
  * @param {{ filePath?: string, locale?: string, config?: import("./metadataConfig.mjs").MetadataConfig }} [options]
@@ -108,7 +114,7 @@ export function evaluateMetadata(meta, { filePath = "metadata", locale = "en", c
   const tags = normalizeTags(meta.tags);
   const maxTagChars = config.tag_generation?.max_tag_chars || 32;
   const maxTotalTags = config.tag_generation?.max_total_tags || 8;
-  const maxSummaryChars = config.summary_generation?.max_chars || 180;
+  const maxSummaryChars = summaryMaxChars(config);
 
   if (tags.length > maxTotalTags) {
     errors.push(`${filePath}: tags: must contain at most ${maxTotalTags} tags`);
@@ -172,9 +178,20 @@ function buildTagPrompt({ filePath, meta, body, config, knownTags, count }) {
   ].join("\n");
 }
 
-function buildSummaryPrompt({ filePath, meta, body, config }) {
+// A model writes to a length it feels rather than one it counts, and it lands
+// a little over whatever number it is given. Asking for a fraction of the limit
+// leaves room for that overshoot to still fit. The fractions fall away on each
+// retry, which is the lever that works: told only that its last answer was too
+// long, the model writes another of the same length.
+const SUMMARY_BUDGETS = [0.8, 0.65, 0.5];
+
+function summaryBudget(maxChars, attempt) {
+  return Math.max(1, Math.round(maxChars * (SUMMARY_BUDGETS[attempt] ?? 0.5)));
+}
+
+function buildSummaryPrompt({ filePath, meta, body, config, attempt = 0 }) {
   return [
-    `Maximum summary length: ${config.summary_generation?.max_chars || 180} characters.`,
+    `Maximum summary length: ${summaryBudget(summaryMaxChars(config), attempt)} characters.`,
     "",
     articlePromptBase({ filePath, meta, body }),
   ].join("\n");
@@ -380,12 +397,12 @@ function tagGenerationRequest({ filePath, meta, body, config, knownTags, count }
   };
 }
 
-function summaryGenerationRequest({ filePath, meta, body, config }) {
+function summaryGenerationRequest({ filePath, meta, body, config, attempt = 0 }) {
   return {
     model: config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash",
     systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
     schema: summarySchema(),
-    prompt: buildSummaryPrompt({ filePath, meta, body, config }),
+    prompt: buildSummaryPrompt({ filePath, meta, body, config, attempt }),
   };
 }
 
@@ -469,12 +486,29 @@ async function resolveAutoTags(meta, { filePath, body, config, knownTags, provid
   return true;
 }
 
+// An English summary of a Japanese article runs long — the same content needs
+// roughly twice the characters — and the limit is the width of a card, not a
+// preference. Each attempt asks for less until the answer fits.
+async function generateSummary({ filePath, meta, body, config, provider }) {
+  const maxChars = summaryMaxChars(config);
+  let last = "";
+  for (let attempt = 0; attempt < SUMMARY_BUDGETS.length; attempt += 1) {
+    const result = await provider(
+      summaryGenerationRequest({ filePath, meta, body, config, attempt }),
+    );
+    last = String(result.summary || "").trim();
+    if (!last) throw new Error(`${filePath}: AI summary generation returned an empty summary`);
+    if (last.length <= maxChars) return last;
+  }
+  throw new Error(
+    `${filePath}: AI summary generation returned ${last.length} characters, over the ${maxChars} a summary may use`,
+  );
+}
+
 async function resolveAutoSummary(meta, { filePath, body, config, provider }) {
   if (meta.sumup?.mode !== "auto") return false;
 
-  const result = await provider(summaryGenerationRequest({ filePath, meta, body, config }));
-  const summary = String(result.summary || "").trim();
-  if (!summary) throw new Error(`${filePath}: AI summary generation returned an empty summary`);
+  const summary = await generateSummary({ filePath, meta, body, config, provider });
   meta.sumup = { mode: "text", text: summary, generated: true };
   return true;
 }

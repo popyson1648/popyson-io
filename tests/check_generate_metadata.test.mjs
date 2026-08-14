@@ -112,6 +112,64 @@ describe("resolveMetadata tag and summary generation", () => {
     expect(evaluateMetadata(result.meta, { filePath, locale: "ja", config })).toEqual([]);
   });
 
+  test("asks for less than the limit so an overshoot still fits the card", async () => {
+    const filePath = join(tempDir, "index.ja.md");
+    const prompts = [];
+
+    const result = await resolveMetadata({
+      filePath,
+      source: autoTagSummarySource,
+      config: { ...config, summary_generation: { ...config.summary_generation, max_chars: 180 } },
+      knownTags: [],
+      provider: async (request) => {
+        if (request.schema.required.includes("tags")) return { tags: ["react", "build"] };
+        prompts.push(request.prompt);
+        // 185 characters: the length the model lands on when it is given 180.
+        return { summary: prompts.length === 1 ? "あ".repeat(185) : "い".repeat(150) };
+      },
+    });
+
+    expect(prompts[0]).toContain("Maximum summary length: 144 characters.");
+    expect(prompts[1]).toContain("Maximum summary length: 117 characters.");
+    expect(result.meta.sumup.text).toHaveLength(150);
+  });
+
+  test("stops asking for a summary once one fits", async () => {
+    const filePath = join(tempDir, "index.ja.md");
+    let summaryCalls = 0;
+
+    await resolveMetadata({
+      filePath,
+      source: autoTagSummarySource,
+      config,
+      knownTags: [],
+      provider: async (request) => {
+        if (request.schema.required.includes("tags")) return { tags: ["react", "build"] };
+        summaryCalls += 1;
+        return { summary: "短い要約。" };
+      },
+    });
+
+    expect(summaryCalls).toBe(1);
+  });
+
+  test("reports the length when every attempt overruns the limit", async () => {
+    const filePath = join(tempDir, "index.ja.md");
+
+    await expect(
+      resolveMetadata({
+        filePath,
+        source: autoTagSummarySource,
+        config,
+        knownTags: [],
+        provider: async (request) =>
+          request.schema.required.includes("tags")
+            ? { tags: ["react", "build"] }
+            : { summary: "あ".repeat(240) },
+      }),
+    ).rejects.toThrow(/returned 240 characters, over the 180/);
+  });
+
   test("rejects when generated tags lack enough usable values", async () => {
     const filePath = join(tempDir, "index.ja.md");
 

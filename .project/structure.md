@@ -32,7 +32,7 @@
 - `workers/content-api/src/`: author CRUD, revision history, asset, publication job, release, and reconciliation handlers.
 - `workers/content-backup/src/`: scheduled D1 export and content-addressed R2 backup handlers.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, resolves `::embed` directives into iframes, and generates search plain text. Author-facing syntax is documented in `.project/article-markdown.md`.
-- `scripts/embedProviders.mjs`: maps a shareable page URL (YouTube, Docswell, Speaker Deck, Vimeo) to the iframe URL that service documents. One entry per service; unknown URLs stay links.
+- `scripts/embedProviders.mjs`: maps a URL an author can copy (YouTube, Docswell, Vimeo page URLs; the Speaker Deck `/player/<id>` URL, since a talk page does not carry the player id) to the iframe URL that service documents. One entry per service; unknown URLs stay links.
 - `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
 - `tests/check_frontmatter.test.mjs`: metadata lint for every article Markdown file.

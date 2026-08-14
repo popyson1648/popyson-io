@@ -281,6 +281,25 @@ describe("embed directive", () => {
     expect(html).not.toMatch(/embed-caption/);
   });
 
+  test("embeds a Speaker Deck player id and rejects anything else", async () => {
+    const embedded = await renderArticleHtml(
+      '::embed{url="https://speakerdeck.com/player/0123456789abcdef0123456789abcdef"}',
+    );
+    expect(embedded).toMatch(
+      /<iframe src="https:\/\/speakerdeck\.com\/player\/0123456789abcdef0123456789abcdef"/,
+    );
+
+    for (const url of [
+      "https://speakerdeck.com/popyson1648/a-talk",
+      "https://speakerdeck.com/player/not-a-hex-id",
+      "https://speakerdeck.com/player/0123456789abcdef0123456789abcdef/extra",
+    ]) {
+      const html = await renderArticleHtml(`::embed{url="${url}"}`);
+      expect(html, url).not.toMatch(/<iframe/);
+      expect(html, url).toMatch(new RegExp(`<a href="${url}"`));
+    }
+  });
+
   test("falls back to a link for a service it cannot embed", async () => {
     const html = await renderArticleHtml('::embed[Notes]{url="https://example.com/page"}');
 

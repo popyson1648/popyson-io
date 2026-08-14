@@ -15,9 +15,11 @@ Accepted
 ## Decision
 
 Article bodies embed third-party content through a `::embed{url="…"}` leaf
-directive. `scripts/embedProviders.mjs` maps a shareable page URL to the iframe
-URL the service documents. Unknown or non-`http(s)` URLs render as ordinary
-links. Raw HTML stays disabled, and a bare URL keeps rendering as a link.
+directive. `scripts/embedProviders.mjs` maps a URL the author can copy to the
+iframe URL the service documents — usually the shareable page URL, though
+Speaker Deck only exposes its player id in the embed code, so it takes that
+`/player/<id>` URL. Unknown or non-`http(s)` URLs render as ordinary links.
+Raw HTML stays disabled, and a bare URL keeps rendering as a link.
 
 ## Context
 

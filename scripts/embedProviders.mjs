@@ -22,6 +22,8 @@ const VIMEO_HOSTS = new Set(["vimeo.com", "www.vimeo.com", "player.vimeo.com"]);
 
 const YOUTUBE_ID = /^[\w-]{11}$/;
 const DOCSWELL_ID = /^[A-Za-z0-9]+$/;
+// Speaker Deck player ids are hex: 32 characters today, 24 on older decks.
+const SPEAKERDECK_ID = /^(?:[0-9a-f]{24}|[0-9a-f]{32})$/i;
 const VIMEO_ID = /^\d+$/;
 
 // `allow` mirrors what YouTube's own embed code ships. Without it the player
@@ -78,11 +80,13 @@ function docswell(url) {
   return { name: "docswell", src: `https://www.docswell.com/slide/${id}/embed` };
 }
 
-// Speaker Deck keys its player by a UUID that only appears in the embed code,
-// not in the talk URL, so the author has to paste the /player/<uuid> URL.
+// Speaker Deck keys its player by a hex id that only appears in the embed code,
+// not in the talk URL, so the author has to paste the /player/<id> URL. A talk
+// URL falls through to a link, which is the honest outcome: there is nothing to
+// derive the player id from.
 function speakerdeck(url) {
   const parts = segments(url.pathname);
-  if (parts[0] !== "player" || !parts[1]) return null;
+  if (parts.length !== 2 || parts[0] !== "player" || !SPEAKERDECK_ID.test(parts[1])) return null;
   return { name: "speakerdeck", src: `https://speakerdeck.com/player/${parts[1]}` };
 }
 

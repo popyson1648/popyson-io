@@ -234,6 +234,24 @@ describe("line blocks", () => {
     expect(html).toBe("<p>AAA<br>\n<strong>BBB</strong> CCC</p>");
   });
 
+  test.each([
+    ["two trailing spaces", "AAA  \n| BBB"],
+    ["a trailing backslash", "AAA\\\n| BBB"],
+  ])("drops the bar after a line broken by %s", async (_name, markdown) => {
+    const html = await renderArticleHtml(markdown);
+
+    expect(html).toBe("<p>AAA<br>\nBBB</p>");
+  });
+
+  test.each([
+    ["a tab", "AAA\n|\tBBB"],
+    ["several spaces", "AAA\n|   BBB"],
+  ])("starts the line at its first character when the bar is followed by %s", async (_n, md) => {
+    const html = await renderArticleHtml(md);
+
+    expect(html).toBe("<p>AAA<br>\nBBB</p>");
+  });
+
   test("writes an escaped bar as a bar on the same line", async () => {
     const html = await renderArticleHtml("AAA\n\\| BBB");
 

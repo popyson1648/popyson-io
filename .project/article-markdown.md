@@ -25,8 +25,10 @@ AAA
   line blocks keep their division into lines. The break renders as `<br>`, so
   the two lines sit a line-height apart — the gap a wrapped line leaves, rather
   than the paragraph gap a blank line opens.
-- The bar and one space after it are dropped; the rest of the line is ordinary
-  Markdown. `\|` writes a literal bar and leaves the lines joined.
+- The bar and the whitespace after it are dropped; the rest of the line is
+  ordinary Markdown. `\|` writes a literal bar and leaves the lines joined.
+- On a line already broken by two trailing spaces or a trailing backslash, the
+  bar is dropped and that one break stands.
 - Works inside paragraphs, blockquotes, list items, and callout bodies. Bars
   that open a block still read as a table, since a table cannot start in the
   middle of a paragraph.

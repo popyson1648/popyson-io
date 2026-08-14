@@ -543,6 +543,109 @@ describe("content editor shell", () => {
     expect(fetchMock.mock.calls.some(([path]) => String(path).includes("undefined"))).toBe(false);
   });
 
+  test("shows which stage of the publication is running", async () => {
+    const content = {
+      kind: "post",
+      id: "20260814-090000",
+      currentRevisionId: "revision-1",
+      visibility: "public",
+      deletedAt: null,
+      status: "public",
+      files: {
+        ja: {
+          meta: { title: "進捗", date: "2026-08-14", tags: [] },
+          body: "本文",
+          revision: "revision-1",
+        },
+        en: {
+          meta: { title: "Progress", date: "2026-08-14", tags: [] },
+          body: "Body",
+          revision: "revision-1",
+        },
+      },
+    };
+    const publishPath = `/api/editor/content/post/${content.id}/publish`;
+    const progress = {
+      state: "running",
+      stages: [
+        "公開の受付",
+        "準備",
+        "英訳と付加情報の生成",
+        "候補リリースの作成",
+        "検証",
+        "サイトへの反映",
+      ],
+      stageKey: "translate",
+      stageLabel: "英訳と付加情報の生成",
+      stageIndex: 2,
+      stageCount: 6,
+      stepLabel: "日本語から英語への翻訳",
+      completedSteps: 12,
+      totalSteps: 14,
+      percent: 40,
+      runUrl: "https://github.invalid/job/1",
+      startedAt: new Date(Date.now() - 95_000).toISOString(),
+    };
+    const fetchMock = vi.fn(async (path, options = {}) => {
+      let payload;
+      if (path === "/api/editor/content") {
+        payload = {
+          items: [
+            {
+              kind: "post",
+              id: content.id,
+              title: { ja: "進捗", en: "Progress" },
+              updatedAt: "2026-08-14T00:00:00.000Z",
+              status: "public",
+              visibility: "public",
+            },
+          ],
+        };
+      } else if (path === "/api/editor/preview") {
+        payload = { html: "<p>本文</p>" };
+      } else if (path === publishPath && options.method === "POST") {
+        payload = {
+          id: "00000000-0000-4000-8000-000000000002",
+          kind: "post",
+          contentId: content.id,
+          status: "running",
+          phase: "running",
+          progress,
+        };
+      } else if (path === publishPath) {
+        payload = { valid: true, issues: [], visibility: "public", deletedAt: null };
+      } else if (path.startsWith("/api/editor/publish/")) {
+        payload = { id: "00000000-0000-4000-8000-000000000002", status: "running", progress };
+      } else {
+        payload = content;
+      }
+      return { ok: true, json: async () => payload };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByRole("button", { name: /進捗/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開" }));
+    fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
+
+    const panel = await screen.findByRole("region", { name: "公開の進捗" });
+    expect(panel).toHaveTextContent("公開中");
+    expect(panel).toHaveTextContent("日本語から英語への翻訳");
+    expect(panel).toHaveTextContent("12/14 ステップ");
+    expect(panel).toHaveTextContent("経過 1分35秒");
+    expect(screen.getByRole("progressbar", { name: "公開の進み具合（目安）" })).toHaveAttribute(
+      "aria-valuenow",
+      "40",
+    );
+    expect(screen.getByRole("link", { name: "GitHub Actions の実行を開く" })).toHaveAttribute(
+      "href",
+      "https://github.invalid/job/1",
+    );
+    const current = container.querySelector('.editor-publish-stages li[data-state="current"]');
+    expect(current).toHaveTextContent("英訳と付加情報の生成");
+  });
+
   test("opens About without loading Markdown and exposes its structured fields", async () => {
     const content = {
       kind: "about",

@@ -1182,26 +1182,128 @@ select {
   min-width: 1180px;
 }
 
-.editor-publish-log {
+.editor-publish-progress {
+  display: grid;
+  gap: 10px;
   margin-top: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--editor-border);
   border-radius: var(--editor-radius-m);
   background: var(--editor-surface);
 }
 
-.editor-publish-log summary {
-  padding: 10px 13px;
+.editor-publish-progress > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
   font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.editor-publish-log pre {
+.editor-publish-progress > header strong {
+  font-size: 13px;
+}
+
+.editor-publish-progress > header strong[data-state="succeeded"] {
+  color: var(--editor-success);
+}
+
+.editor-publish-progress > header strong[data-state="failed"] {
+  color: var(--editor-danger);
+}
+
+.editor-publish-progress > header span {
+  color: var(--editor-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-publish-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--editor-text-muted);
+}
+
+.editor-publish-stages li {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* The dot carries the stage state; the text says which stage it is, so the
+   colour is never the only thing that distinguishes them. */
+.editor-publish-stages li::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--editor-border-strong);
+  border-radius: 50%;
+}
+
+.editor-publish-stages li[data-state="done"]::before {
+  border-color: var(--editor-main);
+  background: var(--editor-main);
+}
+
+.editor-publish-stages li[data-state="current"] {
+  color: var(--editor-text);
+  font-weight: 700;
+}
+
+.editor-publish-stages li[data-state="current"]::before {
+  border-color: var(--editor-main);
+  background: var(--editor-main-soft);
+}
+
+.editor-publish-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--editor-surface-muted);
+}
+
+.editor-publish-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--editor-main);
+  transition: width 400ms ease;
+}
+
+.editor-publish-bar[data-state="succeeded"] > span {
+  background: var(--editor-success);
+}
+
+.editor-publish-bar[data-state="failed"] > span {
+  background: var(--editor-danger);
+}
+
+.editor-publish-step {
+  margin: 0;
+  font-size: 12px;
+}
+
+.editor-publish-step span {
+  color: var(--editor-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-publish-progress > a {
+  font-size: 12px;
+  color: var(--editor-main-strong);
+}
+
+.editor-publish-progress pre {
   max-height: 320px;
   margin: 0;
   overflow: auto;
   padding: 14px;
-  border-top: 1px solid var(--editor-border);
+  border-radius: var(--editor-radius-s);
   color: #fff;
   background: var(--editor-text);
   font: 11px / 1.6 var(--editor-mono);

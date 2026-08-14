@@ -19,27 +19,40 @@ describe("database content workflows", () => {
     expect(publication).toContain("persist-credentials: false");
   });
 
-  test("generates metadata before translation and builds the exact candidate", () => {
+  /**
+   * Translation comes first. scripts/generate_metadata.mjs reads both locales
+   * of a post and derives tags, a summary and a thumbnail concept from the body
+   * it is given; the author writes Japanese only, so with metadata generation
+   * ahead of translation it read an English file that was still empty and
+   * stopped the publication on `title: must be a non-empty string`. No Blog or
+   * Works item could be published without hand-written English.
+   */
+  test("translates before it generates metadata and builds the exact candidate", () => {
+    const translation = publication.indexOf("name: Translate the Japanese source");
     const metadata = publication.indexOf("name: Generate post metadata");
-    const translation = publication.indexOf("name: Translate finalized Japanese source");
     const candidate = publication.indexOf("name: Create immutable candidate release");
     const exactRelease = publication.indexOf("name: Download exact candidate release");
     const verification = publication.indexOf("name: Verify candidate release");
     const deployment = publication.indexOf("name: Deploy exact candidate to Cloudflare Pages");
     const finalize = publication.indexOf("name: Finalize active release");
-    expect([
-      metadata,
+    const order = [
       translation,
+      metadata,
       candidate,
       exactRelease,
       verification,
       deployment,
       finalize,
-    ]).toEqual(
-      [
-        ...[metadata, translation, candidate, exactRelease, verification, deployment, finalize],
-      ].sort((a, b) => a - b),
+    ];
+    expect(order).not.toContain(-1);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // Each boundary check measures the step it follows, so the checksums it
+    // compares against have to be taken after the previous step has finished.
+    expect(publication.indexOf("name: Record pre-translation checksums")).toBeLessThan(translation);
+    expect(publication.indexOf("name: Validate translation output boundary")).toBeLessThan(
+      publication.indexOf("name: Record pre-generation checksums"),
     );
+    expect(publication.indexOf("name: Record pre-generation checksums")).toBeLessThan(metadata);
   });
 
   test("shares the queued deploy lock and never persists content as an artifact or cache", () => {

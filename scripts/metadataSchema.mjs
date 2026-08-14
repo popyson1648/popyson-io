@@ -32,7 +32,16 @@ function addError(errors, field, reason) {
   errors.push({ field, reason });
 }
 
-export function validateMetadata(meta) {
+/**
+ * @param {*} meta
+ * @param {{ requireText?: boolean }} [options] `requireText: false` accepts prose
+ *   that has not been written yet. Only the editor's publish check passes it:
+ *   English is written by the publication's translation step, so demanding it
+ *   before publication blocks the run that would write it. Everything that
+ *   reads finished content — the site build, the candidate verification —
+ *   keeps the default and stays strict.
+ */
+export function validateMetadata(meta, { requireText = true } = {}) {
   const errors = [];
 
   if (!isPlainObject(meta)) {
@@ -46,8 +55,10 @@ export function validateMetadata(meta) {
   }
 
   if (!("title" in meta)) {
-    addError(errors, "title", "is required");
-  } else if (typeof meta.title !== "string" || meta.title.trim() === "") {
+    if (requireText) addError(errors, "title", "is required");
+  } else if (typeof meta.title !== "string") {
+    addError(errors, "title", "must be a non-empty string");
+  } else if (requireText && meta.title.trim() === "") {
     addError(errors, "title", "must be a non-empty string");
   }
 
@@ -127,8 +138,8 @@ export function validateMetadata(meta) {
   return errors;
 }
 
-export function assertValidMetadata(meta, filePath = "frontmatter") {
-  const errors = validateMetadata(meta);
+export function assertValidMetadata(meta, filePath = "frontmatter", options = {}) {
+  const errors = validateMetadata(meta, options);
   if (errors.length === 0) return meta;
   const details = errors.map((error) => `${filePath}: ${error.field}: ${error.reason}`).join("\n");
   throw new Error(details);

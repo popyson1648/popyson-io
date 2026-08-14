@@ -109,6 +109,48 @@ describe("cloud-backed editor model", () => {
     });
   });
 
+  // Same rule as About, for the two kinds that were left out of it: a post or
+  // a work whose English is empty is what the publication's translation step
+  // takes as input, so the publish check cannot ask for it first.
+  test("clears a post and a work for publication on the Japanese alone", () => {
+    const post = (files) => ({ kind: "post", id: "20260814-090000", visibility: "public", files });
+    const postFiles = {
+      ja: { meta: { title: "日本語の題", date: "2026-08-14", tags: [] }, body: "本文" },
+      en: { meta: { title: "", date: "2026-08-14", tags: [] }, body: "" },
+    };
+    expect(validateCloudContent(post(postFiles))).toEqual({ valid: true, issues: [] });
+
+    const work = (files) => ({ kind: "work", id: "sample", visibility: "public", files });
+    const workFiles = {
+      ja: { meta: { title: "日本語の題", year: 2026 }, body: "本文" },
+      en: { meta: { title: "" }, body: "" },
+    };
+    expect(validateCloudContent(work(workFiles))).toEqual({ valid: true, issues: [] });
+  });
+
+  test("still holds the Japanese to a title and a body", () => {
+    const post = (jaMeta, jaBody) => ({
+      kind: "post",
+      id: "20260814-090000",
+      visibility: "public",
+      files: {
+        ja: { meta: jaMeta, body: jaBody },
+        en: { meta: { title: "", date: "2026-08-14", tags: [] }, body: "" },
+      },
+    });
+
+    const untitled = validateCloudContent(
+      post({ title: "", date: "2026-08-14", tags: [] }, "本文"),
+    );
+    expect(untitled).toMatchObject({
+      valid: false,
+      issues: [{ locale: "ja", field: "metadata" }],
+    });
+
+    const empty = validateCloudContent(post({ title: "題", date: "2026-08-14", tags: [] }, ""));
+    expect(empty).toMatchObject({ valid: false, issues: [{ locale: "ja", field: "body" }] });
+  });
+
   test("uses collision-free logical asset paths", () => {
     expect(safeCloudAssetName("My Photo.PNG", ["assets/my-photo.png"])).toBe("my-photo-2.png");
     expect(cloudAssetUrl("post", "20260812-120000", "my-photo-2.png")).toBe(

@@ -189,7 +189,9 @@ export function validateCloudContent(content) {
           content.files[locale].meta,
           content.files[locale].body,
         );
-        if (!String(content.files[locale].body || "").trim()) {
+        // Japanese only: the English body is what the publication's translation
+        // step writes, so an empty one is the normal state to publish from.
+        if (locale === "ja" && !String(content.files[locale].body || "").trim()) {
           issues.push({ locale, field: "body", message: "本文を入力してください" });
         }
       }

@@ -405,10 +405,8 @@ describe("embed directive", () => {
 
     for (const [url, kind] of sources) {
       const html = await renderArticleHtml(`::embed{url="${url}"}`);
-      expect(html, url).toMatch(
-        new RegExp(
-          `<iframe src="https://www\\.instagram\\.com/${kind}/Dbd3EBdnW_u/embed/captioned/"`,
-        ),
+      expect(html, url).toContain(
+        `<iframe src="https://www.instagram.com/${kind}/Dbd3EBdnW_u/embed/captioned/"`,
       );
       expect(html, url).toMatch(/data-embed="instagram"/);
       expect(html, url).toMatch(/title="Instagram"/);
@@ -424,7 +422,7 @@ describe("embed directive", () => {
     const html = await renderArticleHtml(`::embed{url="${url}"}`);
 
     expect(html).not.toMatch(/<iframe/);
-    expect(html).toMatch(new RegExp(`<a href="${url}"`));
+    expect(html).toContain(`<a href="${url}"`);
   });
 
   test("falls back to a link for a service it cannot embed", async () => {

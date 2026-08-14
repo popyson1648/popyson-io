@@ -1137,11 +1137,11 @@ function App() {
   );
 
   useEffect(() => {
-    if (!dirty || saving || busy || publishJob?.status === "running") return;
+    if (!dirty || saving || busy || publicationIsLive(publishJob)) return;
     if (autoSaveFailureVersionRef.current === editVersionRef.current) return;
     const timeout = window.setTimeout(() => save({ quiet: true }), 1500);
     return () => window.clearTimeout(timeout);
-  }, [busy, dirty, publishJob?.status, save, saving]);
+  }, [busy, dirty, publishJob, save, saving]);
 
   useEffect(() => {
     if (!previewFull) return;
@@ -1623,7 +1623,10 @@ function App() {
           </Button>
           <Button
             variant="primary"
-            disabled={!content || busy || saving || publishJob?.status === "running"}
+            // Covers the window where a retry has been dispatched but the job
+            // row still reads as the previous attempt's failure; publishing
+            // again there would put a second run on the same job.
+            disabled={!content || busy || saving || publicationIsLive(publishJob)}
             onClick={openPublish}
           >
             公開

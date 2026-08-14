@@ -54,6 +54,13 @@ describe("editor Markdown commands", () => {
     expect(markdownEdit("task", "one\ntwo", 0, 7).value).toBe("- [ ] one\n- [ ] two");
   });
 
+  test("inserts an embed directive with the URL selected", () => {
+    const edit = markdownEdit("embed", "before\n", 7, 7);
+
+    expect(edit.value).toBe('before\n::embed{url="https://"}\n');
+    expect(edit.value.slice(edit.selectionStart, edit.selectionEnd)).toBe("https://");
+  });
+
   test("inserts the stable uploaded image URL as Markdown", () => {
     expect(
       insertImageMarkdown("before\n", 7, 7, "/content-assets/posts/id/diagram.png", "diagram")

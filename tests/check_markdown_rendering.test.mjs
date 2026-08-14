@@ -211,3 +211,121 @@ describe("renderArticleHtml", () => {
     expect(html).not.toMatch(/bad image/);
   });
 });
+
+describe("embed directive", () => {
+  test("embeds a Docswell deck from its public page URL", async () => {
+    const html = await renderArticleHtml(
+      '::embed{url="https://www.docswell.com/s/popyson1648/57NLRN-2026-08-07-222150"}',
+    );
+
+    expectMatchesAll(html, [
+      /<div class="embed" data-embed="docswell">/,
+      /<iframe src="https:\/\/www\.docswell\.com\/slide\/57NLRN\/embed"/,
+      /title="Docswell"/,
+      /loading="lazy"/,
+      /allowfullscreen/,
+    ]);
+  });
+
+  test("embeds a Docswell deck from a slide URL", async () => {
+    const html = await renderArticleHtml('::embed{url="https://www.docswell.com/slide/57NLRN"}');
+
+    expect(html).toMatch(/<iframe src="https:\/\/www\.docswell\.com\/slide\/57NLRN\/embed"/);
+  });
+
+  test("embeds every YouTube URL shape through the no-cookie host", async () => {
+    const sources = [
+      "https://youtu.be/dQw4w9WgXcQ",
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1",
+      "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+      "https://www.youtube.com/live/dQw4w9WgXcQ",
+      "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+    ];
+
+    for (const url of sources) {
+      const html = await renderArticleHtml(`::embed{url="${url}"}`);
+      expect(html, url).toMatch(
+        /<iframe src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/,
+      );
+      expect(html, url).toMatch(/data-embed="youtube"/);
+    }
+  });
+
+  test("keeps the YouTube start time in seconds", async () => {
+    const fromClock = await renderArticleHtml(
+      '::embed{url="https://youtu.be/dQw4w9WgXcQ?t=1m30s"}',
+    );
+    const fromSeconds = await renderArticleHtml(
+      '::embed{url="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90"}',
+    );
+
+    expect(fromClock).toMatch(/embed\/dQw4w9WgXcQ\?start=90"/);
+    expect(fromSeconds).toMatch(/embed\/dQw4w9WgXcQ\?start=90"/);
+  });
+
+  test("adds a linked caption when the directive carries a label", async () => {
+    const html = await renderArticleHtml(
+      '::embed[登壇資料]{url="https://www.docswell.com/slide/57NLRN"}',
+    );
+
+    expectMatchesAll(html, [
+      /title="登壇資料"/,
+      /<p class="embed-caption"><a href="https:\/\/www\.docswell\.com\/slide\/57NLRN" rel="noreferrer">登壇資料<\/a><\/p>/,
+    ]);
+  });
+
+  test("accepts the URL as the label when no attribute is given", async () => {
+    const html = await renderArticleHtml("::embed[https://vimeo.com/123456]");
+
+    expect(html).toMatch(/<iframe src="https:\/\/player\.vimeo\.com\/video\/123456"/);
+    expect(html).not.toMatch(/embed-caption/);
+  });
+
+  test("embeds a Speaker Deck player id and rejects anything else", async () => {
+    const embedded = await renderArticleHtml(
+      '::embed{url="https://speakerdeck.com/player/0123456789abcdef0123456789abcdef"}',
+    );
+    expect(embedded).toMatch(
+      /<iframe src="https:\/\/speakerdeck\.com\/player\/0123456789abcdef0123456789abcdef"/,
+    );
+
+    for (const url of [
+      "https://speakerdeck.com/popyson1648/a-talk",
+      "https://speakerdeck.com/player/not-a-hex-id",
+      "https://speakerdeck.com/player/0123456789abcdef0123456789abcdef/extra",
+    ]) {
+      const html = await renderArticleHtml(`::embed{url="${url}"}`);
+      expect(html, url).not.toMatch(/<iframe/);
+      expect(html, url).toMatch(new RegExp(`<a href="${url}"`));
+    }
+  });
+
+  test("falls back to a link for a service it cannot embed", async () => {
+    const html = await renderArticleHtml('::embed[Notes]{url="https://example.com/page"}');
+
+    expect(html.trim()).toBe(
+      '<p><a href="https://example.com/page" rel="noreferrer">Notes</a></p>',
+    );
+  });
+
+  test("refuses to embed a URL that is not http(s)", async () => {
+    const html = await renderArticleHtml('::embed{url="javascript:alert(1)"}');
+
+    expect(html).not.toMatch(/<iframe/);
+    expect(html).not.toMatch(/href/);
+  });
+
+  test("keeps embeds out of the search text", async () => {
+    const plain = markdownToPlainText(
+      [
+        "Intro",
+        "",
+        '::embed[登壇資料]{url="https://youtu.be/dQw4w9WgXcQ"}',
+        "",
+        "::embed[https://vimeo.com/123456]",
+      ].join("\n"),
+    );
+
+    expect(plain).toBe("Intro 登壇資料");
+  });
+});

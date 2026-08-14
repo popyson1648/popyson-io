@@ -8,8 +8,15 @@ import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
+import { resolveEmbed } from "./embedProviders.mjs";
 
 const CALLOUT_TYPES = new Set(["note", "tip", "info", "warning", "danger"]);
+const EMBED_TITLES = {
+  youtube: "YouTube",
+  docswell: "Docswell",
+  speakerdeck: "Speaker Deck",
+  vimeo: "Vimeo",
+};
 const articleProcessors = new Map();
 
 function calloutVariant(type) {
@@ -55,6 +62,93 @@ function remarkCallouts() {
   };
 }
 
+function embedLinkNode(url, label) {
+  return {
+    type: "paragraph",
+    children: [
+      {
+        type: "link",
+        url,
+        children: [{ type: "text", value: label || url }],
+      },
+    ],
+  };
+}
+
+function embedFrameNode(embed, title) {
+  return {
+    type: "element",
+    tagName: "iframe",
+    properties: {
+      src: embed.src,
+      title,
+      loading: "lazy",
+      allow: embed.allow,
+      allowFullScreen: true,
+      referrerPolicy: "strict-origin-when-cross-origin",
+      frameBorder: "0",
+    },
+    children: [],
+  };
+}
+
+function embedChildren(embed, title, url, label) {
+  const frame = {
+    type: "element",
+    tagName: "div",
+    properties: { className: ["embed-frame"] },
+    children: [embedFrameNode(embed, title)],
+  };
+  if (!label) return [frame];
+  return [
+    frame,
+    {
+      type: "element",
+      tagName: "p",
+      properties: { className: ["embed-caption"] },
+      children: [
+        {
+          type: "element",
+          tagName: "a",
+          properties: { href: url },
+          children: [{ type: "text", value: label }],
+        },
+      ],
+    },
+  ];
+}
+
+// `::embed{url="…"}` turns a page URL into the iframe its service documents.
+// Anything this renderer cannot embed — an unknown service, a typo, a scheme
+// other than http(s) — becomes an ordinary link rather than an empty frame, so
+// a mistake in the directive never swallows the reference.
+function remarkEmbeds() {
+  return (tree) => {
+    visit(tree, "leafDirective", (node, index, parent) => {
+      if (node.name !== "embed" || !parent || typeof index !== "number") return;
+
+      const label = nodeText(node).trim();
+      const url = String(node.attributes?.url || "").trim() || label;
+      if (!url) return;
+
+      const embed = resolveEmbed(url);
+      if (!embed) {
+        parent.children[index] = embedLinkNode(url, label === url ? "" : label);
+        return;
+      }
+
+      const caption = label === url ? "" : label;
+      const title = caption || EMBED_TITLES[embed.name] || embed.name;
+      node.data = {
+        ...node.data,
+        hName: "div",
+        hProperties: { className: ["embed"], dataEmbed: embed.name },
+        hChildren: embedChildren(embed, title, url, caption),
+      };
+    });
+  };
+}
+
 function directiveAttributes(node) {
   const entries = Object.entries(node.attributes || {}).filter(([, value]) => value != null);
   if (entries.length === 0) return "";
@@ -76,6 +170,8 @@ function remarkDirectiveFallback() {
   return (tree) => {
     visit(tree, ["textDirective", "leafDirective"], (node, index, parent) => {
       if (!parent || typeof index !== "number") return;
+      // A directive an earlier plugin turned into markup is already handled.
+      if (node.data?.hName) return;
       const marker = node.type === "textDirective" ? ":" : "::";
       const label = nodeText(node);
       const source = `${marker}${node.name}${label ? `[${label}]` : ""}${directiveAttributes(node)}`;
@@ -291,18 +387,25 @@ function rehypeCodeToolbar(copyLabel) {
 }
 
 export function markdownToPlainText(markdown) {
-  return String(markdown || "")
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/~~~[\s\S]*?~~~/g, " ")
-    .replace(/^:::\w+(?:\[([^\]]*)\])?.*$/gm, " $1 ")
-    .replace(/^:::\s*$/gm, " ")
-    .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/gi, " $1 ")
-    .replace(/<[^>\n]*>/g, " ")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[`*_~>#:[\](){}|\\-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    String(markdown || "")
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/~~~[\s\S]*?~~~/g, " ")
+      // An embed contributes nothing readable: its caption is optional and its
+      // URL is machinery, not prose worth matching a search query against.
+      .replace(/^::embed(?:\[([^\]]*)\])?.*$/gm, (_, label) =>
+        label && !/^https?:\/\//i.test(label) ? ` ${label} ` : " ",
+      )
+      .replace(/^:::\w+(?:\[([^\]]*)\])?.*$/gm, " $1 ")
+      .replace(/^:::\s*$/gm, " ")
+      .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/gi, " $1 ")
+      .replace(/<[^>\n]*>/g, " ")
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[`*_~>#:[\](){}|\\-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 function articleProcessor(copyLabel) {
@@ -314,6 +417,7 @@ function articleProcessor(copyLabel) {
         .use(remarkGfm)
         .use(remarkDirective)
         .use(remarkCallouts)
+        .use(remarkEmbeds)
         .use(remarkDirectiveFallback)
         .use(remarkHeadingIds)
         .use(remarkRehype)

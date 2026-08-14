@@ -8,6 +8,7 @@ import { APPS } from "virtual:site-content";
 import { Icon, L, Ph } from "../components.jsx";
 import { makeDateLabel } from "../dateLabel.js";
 import { splitLinks } from "../linkText.js";
+import { compareNewsDates, newsDateOf } from "./newsOrder.js";
 import "./preview.css";
 
 const MESSAGE_CONTENT = "popyson-editor-preview-content";
@@ -46,10 +47,11 @@ function RichText({ text }) {
 
 function AboutPreview({ data }) {
   const person = data.meta.person || {};
-  // Newest first before the cap, the same order normalizeNewsEntries gives the
-  // built page, so the preview shows the entries the site would show.
+  // Ordered before the cap, the way the built page and the About form both do
+  // it, so the preview shows the entries the site would show — and does not drop
+  // a row that is still being filled in.
   const news = [...(data.meta.newsItems || [])]
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .sort((a, b) => compareNewsDates(newsDateOf(a), newsDateOf(b)))
     .slice(0, Number(data.meta.newsConfig?.count) || Infinity);
   const [openActivity, setOpenActivity] = useState(null);
   const labels = {

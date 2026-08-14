@@ -10,7 +10,7 @@ hard to scan.
 
 - `src/editor/AboutEditor.jsx`
   - `date` becomes a shared field: editing it writes to both locales, and any stored pair
-    where one locale has a date and the other does not is repaired on the next edit.
+    where one locale has a date and the other does not is repaired when the editor opens.
   - News items are kept sorted newest first. Items without a usable date sort to the top so a
     newly added row is visible immediately; new rows are inserted at the top.
   - The manual up/down buttons are dropped for News because the order is derived from the date.
@@ -49,5 +49,6 @@ hard to scan.
 
 ## Open Issues
 
-- Stored entries are only repaired once the About form is edited; opening the page alone does
-  not rewrite anything.
+- While the two locales hold different numbers of entries, nothing is shared or reordered:
+  position no longer identifies an entry, so a date written across would land on the wrong
+  event. The parity check already reports the count difference as the thing to fix.

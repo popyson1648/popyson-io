@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import AboutEditor, { NEWS_PAGE_SIZE, normalizeNewsItems } from "../src/editor/AboutEditor.jsx";
+import { compareNewsDates, newsDateOf } from "../src/editor/newsOrder.js";
 
 function aboutFiles(jaNews, enNews) {
   const person = {
@@ -62,6 +63,24 @@ function renderAbout(initialFiles, locale = "ja") {
   return latest;
 }
 
+// The About preview applies `count` after this order, so an entry the form shows
+// first has to survive the cap there too.
+describe("compareNewsDates", () => {
+  test("orders newest first and keeps undated entries above a capped list", () => {
+    const entries = [
+      { date: "2026-06-27" },
+      { date: "" },
+      { date: "2026-08-07" },
+      { date: "not-a-date" },
+    ];
+    const ordered = [...entries]
+      .sort((a, b) => compareNewsDates(newsDateOf(a), newsDateOf(b)))
+      .map((entry) => entry.date);
+    expect(ordered).toEqual(["", "not-a-date", "2026-08-07", "2026-06-27"]);
+    expect(ordered.slice(0, 2)).toContain("");
+  });
+});
+
 describe("normalizeNewsItems", () => {
   test("copies a date onto the locale that is missing one", () => {
     const files = aboutFiles(
@@ -98,17 +117,19 @@ describe("normalizeNewsItems", () => {
     expect(files.ja.meta.newsItems.map((item) => item.title)).toEqual(["", "既存"]);
   });
 
-  test("leaves locales alone when their item counts already disagree", () => {
+  test("leaves both locales alone when their item counts disagree", () => {
     const files = aboutFiles(
       [
         { date: "2026-06-27", title: "古い" },
         { date: "2026-08-07", title: "新しい" },
       ],
-      [{ date: "2026-06-27", title: "Older" }],
+      [{ date: "", title: "Older" }],
     );
     normalizeNewsItems(files);
-    expect(files.ja.meta.newsItems).toHaveLength(2);
-    expect(files.en.meta.newsItems).toHaveLength(1);
+    // Position no longer says which entries pair up, so neither the order nor
+    // the missing date may be touched until the counts match again.
+    expect(files.ja.meta.newsItems.map((item) => item.title)).toEqual(["古い", "新しい"]);
+    expect(files.en.meta.newsItems).toEqual([{ date: "", title: "Older" }]);
   });
 });
 
@@ -156,6 +177,25 @@ describe("AboutEditor News section", () => {
       { date: "2026-09-01", title: "Undated" },
       { date: "2026-08-07", title: "Newer" },
     ]);
+  });
+
+  test("keeps an edited date on one locale while the counts disagree", () => {
+    const latest = renderAbout(
+      aboutFiles(
+        [
+          { date: "2026-06-27", title: "古い" },
+          { date: "2026-08-07", title: "新しい" },
+        ],
+        [{ date: "2026-06-27", title: "Older" }],
+      ),
+    );
+    fireEvent.change(screen.getAllByLabelText("日付")[0], { target: { value: "2026-09-01" } });
+
+    expect(latest.files.ja.meta.newsItems.map((item) => item.date)).toEqual([
+      "2026-09-01",
+      "2026-08-07",
+    ]);
+    expect(latest.files.en.meta.newsItems).toEqual([{ date: "2026-06-27", title: "Older" }]);
   });
 
   test("adds a new entry at the top of both locales", () => {

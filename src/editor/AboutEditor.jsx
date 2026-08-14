@@ -5,6 +5,8 @@ import { FaCameraIcon, FaImageIcon, FaPlusIcon } from "smarthr-ui/lib/components
 import { Input } from "smarthr-ui/lib/components/Input/index";
 import { Textarea } from "smarthr-ui/lib/components/Textarea/index";
 
+import { compareNewsDates, newsDateOf } from "./newsOrder.js";
+
 export const NEWS_PAGE_SIZE = 5;
 
 function TextField({ label, value, onChange, type = "text", helpMessage = undefined }) {
@@ -168,40 +170,39 @@ const EMPTY_ITEMS = {
   newsItems: { date: "", title: "", description: "", href: "" },
 };
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 function newsItemsOf(files, locale) {
   const items = files[locale]?.meta?.newsItems;
   return Array.isArray(items) ? items : [];
 }
 
+// The two locales describe the same events in the same positions, so an entry
+// only has a counterpart while the lists are the same length.
+export function newsLocalesArePaired(files) {
+  return newsItemsOf(files, "ja").length === newsItemsOf(files, "en").length;
+}
+
 /**
  * A News date names the same event in both locales, so the two sides are kept
- * equal and the list is ordered by it: newest first, with undated entries on top
- * so a freshly added row stays in view until it has a date. Locales whose item
- * counts already disagree are left alone; the parity check reports that.
+ * equal and the list is ordered by it. Lists of differing lengths are left
+ * untouched: position no longer says which entries belong together, and
+ * reordering or copying a date across would attach it to the wrong event. The
+ * parity check reports that state, and the counts are the thing to fix first.
  */
 export function normalizeNewsItems(files) {
+  if (!newsLocalesArePaired(files)) return files;
   const ja = newsItemsOf(files, "ja");
   const en = newsItemsOf(files, "en");
-  for (let index = 0; index < Math.min(ja.length, en.length); index += 1) {
-    const date = String(ja[index]?.date || "").trim() || String(en[index]?.date || "").trim();
-    ja[index].date = date;
+  for (const [index, item] of ja.entries()) {
+    const date = newsDateOf(item) || newsDateOf(en[index]);
+    item.date = date;
     en[index].date = date;
   }
   const order = ja
-    .map((item, index) => ({ index, date: String(item?.date || "").trim() }))
-    .sort((a, b) => {
-      const aDated = ISO_DATE_RE.test(a.date);
-      const bDated = ISO_DATE_RE.test(b.date);
-      if (aDated !== bDated) return aDated ? 1 : -1;
-      if (aDated && a.date !== b.date) return b.date.localeCompare(a.date);
-      return a.index - b.index;
-    })
+    .map((item, index) => ({ index, date: newsDateOf(item) }))
+    .sort((a, b) => compareNewsDates(a.date, b.date) || a.index - b.index)
     .map((entry) => entry.index);
   for (const fileLocale of ["ja", "en"]) {
     const items = newsItemsOf(files, fileLocale);
-    if (items.length !== order.length) continue;
     files[fileLocale].meta.newsItems = order.map((index) => items[index]);
   }
   return files;
@@ -281,9 +282,12 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
     });
   // The date is one value shown twice: writing it to both locales keeps the
   // ordering identical and stops the other locale from being left without one.
+  // While the lists have different lengths there is no counterpart to write to,
+  // so the date stays on the locale being edited until the counts are fixed.
+  const shareNewsDate = newsLocalesArePaired(files);
   const setNewsField = (index, key, value) =>
     mutate((next) => {
-      for (const fileLocale of key === "date" ? ["ja", "en"] : [locale]) {
+      for (const fileLocale of key === "date" && shareNewsDate ? ["ja", "en"] : [locale]) {
         const item = next[fileLocale].meta.newsItems?.[index];
         if (item) item[key] = value;
       }

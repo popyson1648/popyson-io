@@ -36,7 +36,13 @@ function addError(errors, field, reason) {
 // `year` is only required in the Japanese file, which is where the loader reads
 // it and `stack` from. An English file may still carry them — older works do —
 // but the values are ignored, so they are not demanded there.
-export function validateWorkMetadata(meta, { locale = "ja" } = {}) {
+/**
+ * @param {*} meta
+ * @param {{ locale?: string, requireText?: boolean }} [options] See
+ *   validateMetadata in metadataSchema.mjs for what `requireText: false` is
+ *   for: English prose arrives with the publication, not before it.
+ */
+export function validateWorkMetadata(meta, { locale = "ja", requireText = true } = {}) {
   const errors = [];
 
   if (!isPlainObject(meta)) {
@@ -50,8 +56,10 @@ export function validateWorkMetadata(meta, { locale = "ja" } = {}) {
   }
 
   if (!("title" in meta)) {
-    addError(errors, "title", "is required");
-  } else if (typeof meta.title !== "string" || meta.title.trim() === "") {
+    if (requireText) addError(errors, "title", "is required");
+  } else if (typeof meta.title !== "string") {
+    addError(errors, "title", "must be a non-empty string");
+  } else if (requireText && meta.title.trim() === "") {
     addError(errors, "title", "must be a non-empty string");
   }
 

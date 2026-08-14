@@ -78,7 +78,7 @@ describe("publication progress", () => {
       job: { state: "running", githubRunId: "42" },
       run: {
         runUrl: "https://github.invalid/job/1",
-        steps: stepsUpTo("Translate finalized Japanese source"),
+        steps: stepsUpTo("Translate the Japanese source"),
       },
     });
     expect(translating.stageKey).toBe("translate");
@@ -139,9 +139,18 @@ describe("publication progress", () => {
     expect(progress.stepLabel).toBe("タグ・要約・サムネイルの生成");
     expect(progress.stageKey).toBe("translate");
     expect(progress.stageLabel).toBe("英訳と付加情報の生成");
-    // It broke on the stage's first step, so the stage is where it stopped and
-    // none of it was completed — the cleanup afterwards must not read as one.
-    expect(progress.percent).toBe(17);
+    // Part way through the stage: the translation before it counts, the cleanup
+    // after it does not, so the bar stops short of the stage it never finished.
+    const stageStart = publishProgress({
+      job: { state: "running", githubRunId: "42" },
+      run: { steps: stepsUpTo("Record pre-translation checksums") },
+    }).percent;
+    const stageEnd = publishProgress({
+      job: { state: "running", githubRunId: "42", candidateRevisionId: "r" },
+      run: { steps: stepsUpTo("Create immutable candidate release") },
+    }).percent;
+    expect(progress.percent).toBeGreaterThan(stageStart);
+    expect(progress.percent).toBeLessThan(stageEnd);
     expect(progress.totalSteps).toBe(steps.length - 4);
   });
 });

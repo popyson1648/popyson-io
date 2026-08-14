@@ -114,6 +114,72 @@ jobs:
             echo "code_sha=${code_sha:-$GITHUB_SHA}"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Record pre-translation checksums
+        if: steps.snapshot.outputs.resumed != 'true'
+        run: |
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/pre-translation.sha256"
+
+      # Runs before metadata generation, which is written for content whose two
+      # locales both carry prose: it derives tags and a summary from the body it
+      # is given, per locale. The author writes Japanese only, so English has to
+      # exist by the time that step reads it.
+      - name: Translate the Japanese source
+        if: steps.snapshot.outputs.resumed != 'true'
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TRANSLATION_PROMPT: |
+            Read .project/translation.md and follow it exactly.
+            The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains exactly one item.
+            Translate its Japanese source into the matching English source.
+            Metadata still marked for generation — auto_tags, date = "auto", [sumup] mode = "auto",
+            [thumbnail] mode = "auto" — is resolved by a later step. Copy those tables across
+            unchanged rather than filling them in.
+            Change only index.en.md for Blog/Works, or about.en.toml and news.en.toml for About.
+            Do not change Japanese source, assets, paths, ids, configuration, or repository files.
+        run: |
+          set -euo pipefail
+          translation_prompt="${TRANSLATION_PROMPT}
+          Isolated absolute root: ${CONTENT_SNAPSHOT_ROOT}"
+          if ! npx --yes @anthropic-ai/claude-code@2.1.179 -p "$translation_prompt" \
+            --add-dir "$CONTENT_SNAPSHOT_ROOT" \
+            --max-turns 20 \
+            --allowed-tools "Read,Edit,MultiEdit,Write" \
+            --permission-mode acceptEdits \
+            > "$RUNNER_TEMP/translation.log" 2>&1; then
+            rm -f "$RUNNER_TEMP/translation.log"
+            echo "Translation provider failed; output was suppressed because it may contain source text." >&2
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/translation.log"
+
+      - name: Validate translation output boundary
+        if: steps.snapshot.outputs.resumed != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet HEAD || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            echo "Translation changed the repository checkout." >&2
+            exit 1
+          fi
+          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "$RUNNER_TEMP/post-translation.sha256"
+          sort -k2 "$RUNNER_TEMP/pre-translation.sha256" > "$RUNNER_TEMP/pre-translation.sorted"
+          sort -k2 "$RUNNER_TEMP/post-translation.sha256" > "$RUNNER_TEMP/post-translation.sorted"
+          join -a1 -a2 -e MISSING -o 0,1.1,2.1 -1 2 -2 2 \
+            "$RUNNER_TEMP/pre-translation.sorted" "$RUNNER_TEMP/post-translation.sorted" \
+            | awk '$2 != $3 { print $1 }' > "$RUNNER_TEMP/translated-paths.txt"
+          while IFS= read -r file; do
+            relative="${file#"$CONTENT_SNAPSHOT_ROOT"/}"
+            case "$relative" in
+              src/content/posts/*/index.en.md|src/content/works/*/index.en.md|src/content/about/about.en.toml|src/content/about/news.en.toml) ;;
+              *) echo "Translation changed a disallowed path." >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/translated-paths.txt"
+
       - name: Record pre-generation checksums
         if: steps.snapshot.outputs.resumed != 'true'
         run: |
@@ -157,65 +223,6 @@ jobs:
               *) echo "Metadata generation changed a disallowed path." >&2; exit 1 ;;
             esac
           done < "$RUNNER_TEMP/generated-paths.txt"
-
-      - name: Record pre-translation checksums
-        if: steps.snapshot.outputs.resumed != 'true'
-        run: |
-          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
-            | sort -z \
-            | xargs -0 sha256sum > "$RUNNER_TEMP/pre-translation.sha256"
-
-      - name: Translate finalized Japanese source
-        if: steps.snapshot.outputs.resumed != 'true'
-        shell: bash
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          TRANSLATION_PROMPT: |
-            Read .project/translation.md and follow it exactly.
-            The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains exactly one item.
-            Translate its finalized Japanese source into the matching English source.
-            Change only index.en.md for Blog/Works, or about.en.toml and news.en.toml for About.
-            Do not change Japanese source, assets, paths, ids, configuration, or repository files.
-        run: |
-          set -euo pipefail
-          translation_prompt="${TRANSLATION_PROMPT}
-          Isolated absolute root: ${CONTENT_SNAPSHOT_ROOT}"
-          if ! npx --yes @anthropic-ai/claude-code@2.1.179 -p "$translation_prompt" \
-            --add-dir "$CONTENT_SNAPSHOT_ROOT" \
-            --max-turns 20 \
-            --allowed-tools "Read,Edit,MultiEdit,Write" \
-            --permission-mode acceptEdits \
-            > "$RUNNER_TEMP/translation.log" 2>&1; then
-            rm -f "$RUNNER_TEMP/translation.log"
-            echo "Translation provider failed; output was suppressed because it may contain source text." >&2
-            exit 1
-          fi
-          rm -f "$RUNNER_TEMP/translation.log"
-
-      - name: Validate translation output boundary
-        if: steps.snapshot.outputs.resumed != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! git diff --quiet HEAD || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
-            echo "Translation changed the repository checkout." >&2
-            exit 1
-          fi
-          find "$CONTENT_SNAPSHOT_ROOT" -type f -print0 \
-            | sort -z \
-            | xargs -0 sha256sum > "$RUNNER_TEMP/post-translation.sha256"
-          sort -k2 "$RUNNER_TEMP/pre-translation.sha256" > "$RUNNER_TEMP/pre-translation.sorted"
-          sort -k2 "$RUNNER_TEMP/post-translation.sha256" > "$RUNNER_TEMP/post-translation.sorted"
-          join -a1 -a2 -e MISSING -o 0,1.1,2.1 -1 2 -2 2 \
-            "$RUNNER_TEMP/pre-translation.sorted" "$RUNNER_TEMP/post-translation.sorted" \
-            | awk '$2 != $3 { print $1 }' > "$RUNNER_TEMP/translated-paths.txt"
-          while IFS= read -r file; do
-            relative="${file#"$CONTENT_SNAPSHOT_ROOT"/}"
-            case "$relative" in
-              src/content/posts/*/index.en.md|src/content/works/*/index.en.md|src/content/about/about.en.toml|src/content/about/news.en.toml) ;;
-              *) echo "Translation changed a disallowed path." >&2; exit 1 ;;
-            esac
-          done < "$RUNNER_TEMP/translated-paths.txt"
 
       - name: Create immutable candidate release
         id: candidate

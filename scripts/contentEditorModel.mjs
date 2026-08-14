@@ -245,10 +245,16 @@ export function serializeEditorMarkdown(kind, locale, meta, body, { validate = t
     for (const field of ["year", "stack", "thumbnail", "hero"]) delete normalized[field];
   }
 
+  // The publication translates the Japanese source into the English one, so a
+  // check that runs before publication cannot ask for English prose without
+  // blocking the run that writes it. Structure is still required of both
+  // locales — a date is not translated. Same rule as About; see
+  // serializeEditorAbout.
+  const requireText = locale === "ja";
   if (validate && kind === "post") {
-    assertValidMetadata(normalized, `${kind}/${locale}`);
+    assertValidMetadata(normalized, `${kind}/${locale}`, { requireText });
   } else if (validate && kind === "work") {
-    assertValidWorkMetadata(normalized, `${kind}/${locale}`, { locale });
+    assertValidWorkMetadata(normalized, `${kind}/${locale}`, { locale, requireText });
   } else {
     kindConfig(kind);
   }

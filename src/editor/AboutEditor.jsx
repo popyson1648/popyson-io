@@ -285,6 +285,9 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
   // While the lists have different lengths there is no counterpart to write to,
   // so the date stays on the locale being edited until the counts are fixed.
   const shareNewsDate = newsLocalesArePaired(files);
+  // English prose is written by the publication translation, so an empty field
+  // here is a normal state to publish from, not something left undone.
+  const translatedHelp = locale === "en" ? "空欄なら公開時に翻訳されます" : undefined;
   const setNewsField = (index, key, value) =>
     mutate((next) => {
       for (const fileLocale of key === "date" && shareNewsDate ? ["ja", "en"] : [locale]) {
@@ -496,12 +499,16 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
 
       <RepeatableSection
         title="News"
-        description="日付の新しい順に自動で並びます。日付は日英共通で、追加・削除は両言語へ反映します。"
+        description={
+          locale === "ja"
+            ? "日付の新しい順に自動で並びます。日付は日英共通で、追加・削除は両言語へ反映します。"
+            : "空欄のまま公開すると、公開処理が日本語から翻訳して埋めます。手を入れたいときだけ書いてください。"
+        }
         items={newsItems}
         fields={[
           { key: "date", label: "日付", type: "date", helpMessage: "日英共通" },
-          { key: "title", label: "見出し" },
-          { key: "description", label: "説明" },
+          { key: "title", label: "見出し", helpMessage: translatedHelp },
+          { key: "description", label: "説明", helpMessage: translatedHelp },
           { key: "href", label: "リンク（任意）" },
         ]}
         onField={setNewsField}

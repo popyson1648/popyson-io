@@ -92,6 +92,37 @@ describe("content editor serialization", () => {
     expect(source.news).toContain('date = "2026-08-10"');
   });
 
+  describe("About validation", () => {
+    function about(locale, title) {
+      return () =>
+        serializeEditorAbout(locale, {
+          person: { name: locale === "ja" ? "編集者" : "" },
+          newsConfig: { count: 3 },
+          newsItems: [{ date: "2026-08-10", title, description: "" }],
+        });
+    }
+
+    // Publication translates about.en.toml and news.en.toml from the Japanese,
+    // so requiring English prose before publishing blocks the run that writes
+    // it. The author writes Japanese; English arrives with the release.
+    test("asks for prose in Japanese and lets publication write the English", () => {
+      expect(about("ja", "")).toThrow(/News 1: title is required/);
+      expect(about("en", "")).not.toThrow();
+    });
+
+    test("still asks both locales for a date, which no translation supplies", () => {
+      for (const locale of ["ja", "en"]) {
+        expect(() =>
+          serializeEditorAbout(locale, {
+            person: { name: "編集者" },
+            newsConfig: { count: 3 },
+            newsItems: [{ date: "", title: "見出し" }],
+          }),
+        ).toThrow(/News 1: date must use YYYY-MM-DD/);
+      }
+    });
+  });
+
   test("round-trips valid post metadata and Markdown", () => {
     const source = serializeEditorMarkdown(
       "post",

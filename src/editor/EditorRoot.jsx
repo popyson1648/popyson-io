@@ -125,6 +125,11 @@ const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,image/heic,image
 // the same URLs on the server when it returns a freshly uploaded asset.
 const ASSET_SEGMENTS = { post: "posts", work: "works", about: "about" };
 const LOCALES = ["ja", "en"];
+// The publication job is polled at this interval. It stays short because the
+// GitHub read behind it is cached on the server (RUN_CACHE_MS in
+// scripts/githubWorkflowClient.mjs), so a fast poll costs a database read, not
+// an API call.
+const PUBLISH_POLL_MS = 900;
 const TOOLBAR_GROUPS = [
   {
     label: "見出し",
@@ -600,6 +605,98 @@ function EmptyEditor({ compact = false, onOpen }) {
   );
 }
 
+function elapsedLabel(startedAt, now) {
+  const start = Date.parse(String(startedAt || ""));
+  if (!Number.isFinite(start)) return "";
+  const seconds = Math.max(0, Math.round((now - start) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}分${String(seconds % 60).padStart(2, "0")}秒`;
+}
+
+/**
+ * What the publication is doing right now.
+ *
+ * Publishing runs a workflow that takes minutes — it generates metadata,
+ * translates the Japanese source, verifies the candidate and deploys it — and
+ * the job row alone would say "running" for all of it. The stages, the step
+ * name and the elapsed time come from the API, which reads them from the
+ * workflow run itself.
+ */
+function PublishProgressPanel({ job }) {
+  const progress = job.progress;
+  const running = job.status === "running";
+  // The clock ticks only while the job runs, so a finished publication keeps
+  // the time it took instead of counting on past its own end.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return undefined;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  const failed = job.status === "failed" || job.status === "cancelled";
+  const succeeded = job.status === "succeeded";
+  const headline = failed ? "公開に失敗しました" : succeeded ? "公開が完了しました" : "公開中";
+  const elapsed = elapsedLabel(progress?.startedAt, now);
+  const percent = Math.min(100, Math.max(0, Number(progress?.percent) || 0));
+  const stages = progress?.stages || [];
+  const stepCount =
+    progress?.totalSteps > 0 ? `${progress.completedSteps}/${progress.totalSteps} ステップ・` : "";
+
+  return (
+    <section className="editor-publish-progress" aria-label="公開の進捗">
+      <header>
+        <strong data-state={failed ? "failed" : succeeded ? "succeeded" : "running"}>
+          {headline}
+        </strong>
+        {elapsed && <span>経過 {elapsed}</span>}
+      </header>
+      {stages.length > 0 && (
+        <ol className="editor-publish-stages">
+          {stages.map((label, index) => (
+            <li
+              key={label}
+              data-state={
+                succeeded || index < progress.stageIndex
+                  ? "done"
+                  : index === progress.stageIndex
+                    ? "current"
+                    : "todo"
+              }
+            >
+              {label}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div
+        className="editor-publish-bar"
+        data-state={failed ? "failed" : succeeded ? "succeeded" : "running"}
+        role="progressbar"
+        aria-label="公開の進み具合（目安）"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </div>
+      <p className="editor-publish-step" aria-live="polite">
+        {progress?.stepLabel || job.phase || job.status}
+        <span>
+          （{stepCount}
+          {percent}%・目安）
+        </span>
+      </p>
+      {progress?.runUrl && (
+        <a href={progress.runUrl} target="_blank" rel="noreferrer">
+          GitHub Actions の実行を開く
+        </a>
+      )}
+      {job.log && <pre>{job.log}</pre>}
+    </section>
+  );
+}
+
 function App() {
   const api = useMemo(() => createEditorApi(), []);
   const [items, setItems] = useState([]);
@@ -890,7 +987,7 @@ function App() {
           }
         })
         .catch((error) => setMessage({ type: "error", text: error.message }));
-    }, 900);
+    }, PUBLISH_POLL_MS);
     return () => clearTimeout(timeout);
   }, [api, loadList, publishJob]);
 
@@ -1931,12 +2028,7 @@ function App() {
               )}
             </section>
 
-            {publishJob && (
-              <details className="editor-publish-log" open={publishJob.status !== "succeeded"}>
-                <summary>公開ログ — {publishJob.phase || publishJob.status}</summary>
-                <pre>{publishJob.log}</pre>
-              </details>
-            )}
+            {publishJob && <PublishProgressPanel job={publishJob} />}
           </main>
         )}
         {content && inspector && (

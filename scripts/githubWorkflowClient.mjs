@@ -22,9 +22,16 @@ export class GitHubWorkflowError extends Error {
   }
 }
 
+// The editor polls a running publication every couple of seconds, and every
+// poll would otherwise be a GitHub API call. One reading per this many
+// milliseconds is finer than the workflow's steps change.
+const RUN_CACHE_MS = 3000;
+
 export class GitHubWorkflowClient {
-  constructor(config = githubWorkflowConfig()) {
+  constructor(config = githubWorkflowConfig(), { now = () => Date.now() } = {}) {
     this.config = config;
+    this.now = now;
+    this.runCache = new Map();
   }
 
   async dispatchPublication(jobId) {
@@ -54,6 +61,64 @@ export class GitHubWorkflowClient {
     return {
       workflowRunId: value.workflow_run_id || null,
       runUrl: value.html_url || null,
+    };
+  }
+
+  /**
+   * The steps of a publication run, for progress display only.
+   *
+   * Progress is decoration around a job the database already tracks, so this
+   * never throws: an unreadable run leaves the editor showing what the job row
+   * alone can say.
+   *
+   * @param {string | number} runId
+   * @returns {Promise<{
+   *   runUrl: string | null,
+   *   status: string,
+   *   conclusion: string | null,
+   *   startedAt: string | null,
+   *   steps: Array<{ name: string, status: string, conclusion: string | null }>,
+   * } | null>}
+   */
+  async runProgress(runId) {
+    const id = String(runId || "");
+    if (!/^\d{1,20}$/.test(id)) return null;
+    const cached = this.runCache.get(id);
+    if (cached && this.now() - cached.at < RUN_CACHE_MS) return cached.value;
+    const value = await this.#fetchRunProgress(id).catch(() => null);
+    this.runCache.set(id, { at: this.now(), value });
+    return value;
+  }
+
+  async #fetchRunProgress(id) {
+    const { token, repository } = this.config;
+    // The run itself carries no step list; its single job does, and that job's
+    // page is also the most useful thing to link an author to.
+    const response = await fetch(
+      `https://api.github.com/repos/${repository}/actions/runs/${id}/jobs?per_page=1`,
+      {
+        headers: {
+          accept: "application/vnd.github+json",
+          authorization: `Bearer ${token}`,
+          "x-github-api-version": "2026-03-10",
+          "user-agent": "popyson-content-editor",
+        },
+      },
+    );
+    if (!response.ok) return null;
+    const value = await response.json();
+    const job = value?.jobs?.[0];
+    if (!job) return null;
+    return {
+      runUrl: job.html_url || null,
+      status: String(job.status || ""),
+      conclusion: job.conclusion || null,
+      startedAt: job.started_at || null,
+      steps: (Array.isArray(job.steps) ? job.steps : []).map((step) => ({
+        name: String(step.name || ""),
+        status: String(step.status || ""),
+        conclusion: step.conclusion || null,
+      })),
     };
   }
 }

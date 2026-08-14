@@ -13,7 +13,10 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export default defineConfig({
   root: ROOT,
   base: "/",
-  publicDir: false,
+  // The same public/ the site build serves. About stores its avatar as a path
+  // into it (`icon = "/avator.jpg"`), so without this the editor's profile
+  // image and the preview iframe both render a broken image.
+  publicDir: resolve(ROOT, "public"),
   plugins: [
     react(),
     contentAssetsPlugin({

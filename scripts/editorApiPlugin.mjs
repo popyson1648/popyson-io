@@ -16,6 +16,7 @@ import {
 import { ContentCloudClient } from "./contentCloudClient.mjs";
 import { EditorContentError } from "./contentEditorModel.mjs";
 import { GitHubWorkflowClient } from "./githubWorkflowClient.mjs";
+import { publishProgress } from "./publishProgress.mjs";
 
 const MAX_JSON_BYTES = 15 * 1024 * 1024;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -126,7 +127,7 @@ function apiError(response, error) {
   });
 }
 
-function publicJob(job) {
+function publicJob(job, run = null) {
   const terminal = new Set(["succeeded", "failed", "cancelled"]);
   return {
     ...job,
@@ -134,6 +135,7 @@ function publicJob(job) {
     status: terminal.has(job.state) ? job.state : "running",
     phase: job.state,
     log: job.sanitizedError || "",
+    progress: publishProgress({ job, run }),
   };
 }
 
@@ -319,7 +321,10 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
   const jobMatch = /^\/api\/editor\/publish\/([a-f0-9-]+)$/.exec(pathname);
   if (request.method === "GET" && jobMatch) {
     const result = await cloud.publication(jobMatch[1]);
-    sendJson(response, 200, publicJob(result.job));
+    // The workflow records its run id on the job as its first step, so from
+    // then on the editor can show which step of the publication is running.
+    const run = result.job.githubRunId ? await workflows.runProgress(result.job.githubRunId) : null;
+    sendJson(response, 200, publicJob(result.job, run));
     return;
   }
 

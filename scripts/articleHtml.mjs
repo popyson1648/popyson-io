@@ -16,6 +16,8 @@ const EMBED_TITLES = {
   docswell: "Docswell",
   speakerdeck: "Speaker Deck",
   vimeo: "Vimeo",
+  x: "X",
+  instagram: "Instagram",
 };
 const articleProcessors = new Map();
 
@@ -87,6 +89,10 @@ function embedFrameNode(embed, title) {
       allowFullScreen: true,
       referrerPolicy: "strict-origin-when-cross-origin",
       frameBorder: "0",
+      // A post is given the height it asks for, so a scrollbar over the last
+      // pixel or two of it would be the frame's rounding rather than more post
+      // to read. X and Instagram turn scrolling off in their own embeds too.
+      scrolling: embed.scrolling,
     },
     children: [],
   };

@@ -56,9 +56,20 @@ AAA
   - Speaker Deck: the `/player/<uuid>` URL from its embed code, since the talk
     URL does not contain the player id.
   - Vimeo: `vimeo.com/<id>`.
+  - X: `x.com/<user>/status/<id>`, the same path on `twitter.com` and the
+    `mobile.` hosts, `/i/web/status/<id>`, and `/statuses/<id>`. Frames come
+    from `platform.twitter.com` with X's `dnt` flag set.
+  - Instagram: `/p/<code>`, `/reel/<code>`, and `/tv/<code>`, with or without a
+    leading `/<user>`. Public posts only; the frame shows a login prompt for
+    anything else.
 - Any other URL, or a URL that is not `http(s)`, renders as a plain link
   instead of an empty frame. Adding a service means adding one entry to
   `scripts/embedProviders.mjs`.
 
 Embeds are excluded from the search index, and their frames are lazy loaded and
 sized 16:9 by `.prose .embed-frame` in `src/app.css`.
+
+A post is as tall as its own content, so X and Instagram get a starting height
+from `.prose .embed[data-embed="…"]` instead and report their real one to the
+page. `src/embedFrames.js` listens for that message and resizes the frame, and
+points the X frame at the theme the visitor is reading in.

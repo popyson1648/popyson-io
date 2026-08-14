@@ -34,6 +34,22 @@ describe("article prose refinements", () => {
     expect(ruleBody(".prose .embed-frame iframe")).toMatch(/height:\s*100%/);
   });
 
+  test("holds a post embed at its own width and height until it measures itself", () => {
+    expect(ruleBody('.prose .embed[data-embed="x"] .embed-frame')).toMatch(/height:\s*420px/);
+    expect(ruleBody('.prose .embed[data-embed="instagram"] .embed-frame')).toMatch(
+      /height:\s*640px/,
+    );
+    expect(ruleBody('.prose .embed[data-embed="instagram"]')).toMatch(/max-width:\s*550px/);
+    expect(ruleBody('.prose .embed[data-embed="instagram"] .embed-frame')).toMatch(
+      /aspect-ratio:\s*auto/,
+    );
+  });
+
+  test("leaves a post embed the card border the service draws itself", () => {
+    expect(ruleBody('.prose .embed[data-embed="x"] .embed-frame')).toMatch(/border:\s*0/);
+    expect(ruleBody('.prose .embed[data-embed="instagram"] .embed-frame')).toMatch(/border:\s*0/);
+  });
+
   test("matches related thumbnails to the square Blog-index treatment", () => {
     expect(ruleBody("img.rel-thumb")).toMatch(
       /border:\s*var\(--line-w\) solid var\(--line-strong\)/,

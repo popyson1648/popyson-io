@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { Button } from "smarthr-ui/lib/components/Button/index";
 import { FormControl } from "smarthr-ui/lib/components/FormControl/index";
 import { FaCameraIcon, FaImageIcon, FaPlusIcon } from "smarthr-ui/lib/components/Icon/index";
 import { Input } from "smarthr-ui/lib/components/Input/index";
 import { Textarea } from "smarthr-ui/lib/components/Textarea/index";
+
+export const NEWS_PAGE_SIZE = 5;
 
 function TextField({ label, value, onChange, type = "text", helpMessage = undefined }) {
   return (
@@ -20,24 +23,28 @@ function TextField({ label, value, onChange, type = "text", helpMessage = undefi
 function ItemActions({ index, count, label, onMove, onRemove }) {
   return (
     <div className="editor-about-item-actions">
-      <Button
-        size="S"
-        variant="text"
-        disabled={index === 0}
-        aria-label={`${label} ${index + 1}を上へ移動`}
-        onClick={() => onMove(index, -1)}
-      >
-        上へ
-      </Button>
-      <Button
-        size="S"
-        variant="text"
-        disabled={index === count - 1}
-        aria-label={`${label} ${index + 1}を下へ移動`}
-        onClick={() => onMove(index, 1)}
-      >
-        下へ
-      </Button>
+      {onMove && (
+        <>
+          <Button
+            size="S"
+            variant="text"
+            disabled={index === 0}
+            aria-label={`${label} ${index + 1}を上へ移動`}
+            onClick={() => onMove(index, -1)}
+          >
+            上へ
+          </Button>
+          <Button
+            size="S"
+            variant="text"
+            disabled={index === count - 1}
+            aria-label={`${label} ${index + 1}を下へ移動`}
+            onClick={() => onMove(index, 1)}
+          >
+            下へ
+          </Button>
+        </>
+      )}
       <Button
         size="S"
         variant="text"
@@ -50,6 +57,38 @@ function ItemActions({ index, count, label, onMove, onRemove }) {
   );
 }
 
+// One page of a long list, Gmail style: the range and the total, with a step on
+// either side. `page` is zero-based and always in range because the caller
+// clamps it against the current item count.
+function Pager({ label, page, pageSize, total, onPage }) {
+  const last = Math.max(0, Math.ceil(total / pageSize) - 1);
+  return (
+    <div className="editor-about-pager">
+      <Button
+        size="S"
+        variant="text"
+        disabled={page === 0}
+        aria-label={`${label}の前のページ`}
+        onClick={() => onPage(page - 1)}
+      >
+        ‹
+      </Button>
+      <span>
+        {page * pageSize + 1}–{Math.min(total, (page + 1) * pageSize)} / {total}
+      </span>
+      <Button
+        size="S"
+        variant="text"
+        disabled={page >= last}
+        aria-label={`${label}の次のページ`}
+        onClick={() => onPage(page + 1)}
+      >
+        ›
+      </Button>
+    </div>
+  );
+}
+
 function RepeatableSection({
   title,
   description = "",
@@ -57,9 +96,15 @@ function RepeatableSection({
   fields,
   onField,
   onAdd,
-  onMove,
+  onMove = undefined,
   onRemove,
+  pageSize = 0,
+  page = 0,
+  onPage = undefined,
 }) {
+  const paged = pageSize > 0 && items.length > pageSize;
+  const offset = paged ? page * pageSize : 0;
+  const visible = paged ? items.slice(offset, offset + pageSize) : items;
   return (
     <details className="editor-about-section" open>
       <summary>
@@ -69,33 +114,45 @@ function RepeatableSection({
       <div className="editor-about-section-body">
         {description && <p className="editor-about-help">{description}</p>}
         <div className="editor-about-repeat-list">
-          {items.map((item, index) => (
-            <article className="editor-about-card" key={`${title}:${index}`}>
-              <header>
-                <strong>{index + 1}</strong>
-                <ItemActions
-                  index={index}
-                  count={items.length}
-                  label={title}
-                  onMove={onMove}
-                  onRemove={onRemove}
-                />
-              </header>
-              <div className="editor-about-grid">
-                {fields.map((field) => (
-                  <TextField
-                    key={field.key}
-                    label={field.label}
-                    type={field.type}
-                    value={item?.[field.key]}
-                    helpMessage={field.helpMessage}
-                    onChange={(value) => onField(index, field.key, value)}
+          {visible.map((item, visibleIndex) => {
+            const index = offset + visibleIndex;
+            return (
+              <article className="editor-about-card" key={`${title}:${index}`}>
+                <header>
+                  <strong>{index + 1}</strong>
+                  <ItemActions
+                    index={index}
+                    count={items.length}
+                    label={title}
+                    onMove={onMove}
+                    onRemove={onRemove}
                   />
-                ))}
-              </div>
-            </article>
-          ))}
+                </header>
+                <div className="editor-about-grid">
+                  {fields.map((field) => (
+                    <TextField
+                      key={field.key}
+                      label={field.label}
+                      type={field.type}
+                      value={item?.[field.key]}
+                      helpMessage={field.helpMessage}
+                      onChange={(value) => onField(index, field.key, value)}
+                    />
+                  ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
+        {paged && (
+          <Pager
+            label={title}
+            page={page}
+            pageSize={pageSize}
+            total={items.length}
+            onPage={onPage}
+          />
+        )}
         <Button size="S" variant="secondary" prefix={<FaPlusIcon alt="" />} onClick={onAdd}>
           {title}を追加
         </Button>
@@ -111,14 +168,72 @@ const EMPTY_ITEMS = {
   newsItems: { date: "", title: "", description: "", href: "" },
 };
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function newsItemsOf(files, locale) {
+  const items = files[locale]?.meta?.newsItems;
+  return Array.isArray(items) ? items : [];
+}
+
+/**
+ * A News date names the same event in both locales, so the two sides are kept
+ * equal and the list is ordered by it: newest first, with undated entries on top
+ * so a freshly added row stays in view until it has a date. Locales whose item
+ * counts already disagree are left alone; the parity check reports that.
+ */
+export function normalizeNewsItems(files) {
+  const ja = newsItemsOf(files, "ja");
+  const en = newsItemsOf(files, "en");
+  for (let index = 0; index < Math.min(ja.length, en.length); index += 1) {
+    const date = String(ja[index]?.date || "").trim() || String(en[index]?.date || "").trim();
+    ja[index].date = date;
+    en[index].date = date;
+  }
+  const order = ja
+    .map((item, index) => ({ index, date: String(item?.date || "").trim() }))
+    .sort((a, b) => {
+      const aDated = ISO_DATE_RE.test(a.date);
+      const bDated = ISO_DATE_RE.test(b.date);
+      if (aDated !== bDated) return aDated ? 1 : -1;
+      if (aDated && a.date !== b.date) return b.date.localeCompare(a.date);
+      return a.index - b.index;
+    })
+    .map((entry) => entry.index);
+  for (const fileLocale of ["ja", "en"]) {
+    const items = newsItemsOf(files, fileLocale);
+    if (items.length !== order.length) continue;
+    files[fileLocale].meta.newsItems = order.map((index) => items[index]);
+  }
+  return files;
+}
+
+function newsSignature(files) {
+  return JSON.stringify(["ja", "en"].map((locale) => newsItemsOf(files, locale)));
+}
+
 export default function AboutEditor({ files, locale, onChange, onChooseAvatar, onTakeAvatar }) {
   const active = files[locale].meta;
   const person = active.person || {};
+  const newsItems = active.newsItems || [];
+  const [newsPage, setNewsPage] = useState(0);
+  // Clamped on read: removing entries can leave the stored page past the end.
+  const currentNewsPage = Math.min(
+    Math.max(newsPage, 0),
+    Math.max(0, Math.ceil(newsItems.length / NEWS_PAGE_SIZE) - 1),
+  );
+
+  // Entries stored before the date was shared can be out of order or missing the
+  // English date. normalizeNewsItems is idempotent, so this repairs such content
+  // once, on the first render that sees it, and then stays quiet.
+  useEffect(() => {
+    const next = normalizeNewsItems(structuredClone(files));
+    if (newsSignature(next) !== newsSignature(files)) onChange(next);
+  }, [files, onChange]);
 
   const mutate = (callback) => {
     const next = structuredClone(files);
     callback(next);
-    onChange(next);
+    onChange(normalizeNewsItems(next));
   };
   const setPerson = (field, value) =>
     mutate((next) => {
@@ -164,28 +279,27 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
         [list[index], list[target]] = [list[target], list[index]];
       }
     });
+  // The date is one value shown twice: writing it to both locales keeps the
+  // ordering identical and stops the other locale from being left without one.
   const setNewsField = (index, key, value) =>
     mutate((next) => {
-      next[locale].meta.newsItems[index][key] = value;
+      for (const fileLocale of key === "date" ? ["ja", "en"] : [locale]) {
+        const item = next[fileLocale].meta.newsItems?.[index];
+        if (item) item[key] = value;
+      }
     });
-  const addNews = () =>
+  const addNews = () => {
+    setNewsPage(0);
     mutate((next) => {
       for (const fileLocale of ["ja", "en"]) {
         next[fileLocale].meta.newsItems ||= [];
-        next[fileLocale].meta.newsItems.push(structuredClone(EMPTY_ITEMS.newsItems));
+        next[fileLocale].meta.newsItems.unshift(structuredClone(EMPTY_ITEMS.newsItems));
       }
     });
+  };
   const removeNews = (index) =>
     mutate((next) => {
       for (const fileLocale of ["ja", "en"]) next[fileLocale].meta.newsItems.splice(index, 1);
-    });
-  const moveNews = (index, direction) =>
-    mutate((next) => {
-      const target = index + direction;
-      for (const fileLocale of ["ja", "en"]) {
-        const list = next[fileLocale].meta.newsItems;
-        [list[index], list[target]] = [list[target], list[index]];
-      }
     });
 
   return (
@@ -378,18 +492,20 @@ export default function AboutEditor({ files, locale, onChange, onChooseAvatar, o
 
       <RepeatableSection
         title="News"
-        description="日本語と英語で同じ順番になるよう、追加・移動・削除は両言語へ反映します。"
-        items={active.newsItems || []}
+        description="日付の新しい順に自動で並びます。日付は日英共通で、追加・削除は両言語へ反映します。"
+        items={newsItems}
         fields={[
-          { key: "date", label: "日付", type: "date" },
+          { key: "date", label: "日付", type: "date", helpMessage: "日英共通" },
           { key: "title", label: "見出し" },
           { key: "description", label: "説明" },
           { key: "href", label: "リンク（任意）" },
         ]}
         onField={setNewsField}
         onAdd={addNews}
-        onMove={moveNews}
         onRemove={removeNews}
+        pageSize={NEWS_PAGE_SIZE}
+        page={currentNewsPage}
+        onPage={setNewsPage}
       />
     </div>
   );

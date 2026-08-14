@@ -46,10 +46,11 @@ function RichText({ text }) {
 
 function AboutPreview({ data }) {
   const person = data.meta.person || {};
-  const news = (data.meta.newsItems || []).slice(
-    0,
-    Number(data.meta.newsConfig?.count) || Infinity,
-  );
+  // Newest first before the cap, the same order normalizeNewsEntries gives the
+  // built page, so the preview shows the entries the site would show.
+  const news = [...(data.meta.newsItems || [])]
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .slice(0, Number(data.meta.newsConfig?.count) || Infinity);
   const [openActivity, setOpenActivity] = useState(null);
   const labels = {
     news: "News",

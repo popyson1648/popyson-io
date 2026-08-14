@@ -967,6 +967,18 @@ select {
   font: 11px / 1 var(--editor-mono);
 }
 
+.editor-about-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.editor-about-pager > span {
+  color: var(--editor-text-muted);
+  font: 12px / 1 var(--editor-mono);
+}
+
 .editor-preview-pane {
   position: relative;
   display: flex;

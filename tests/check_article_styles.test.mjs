@@ -28,6 +28,12 @@ describe("article prose refinements", () => {
     expect(ruleBody(".prose li > ul")).toMatch(/margin:\s*4px 0/);
   });
 
+  test("keeps embeds on a 16:9 frame that fills the column", () => {
+    expect(ruleBody(".prose .embed-frame")).toMatch(/aspect-ratio:\s*16 \/ 9/);
+    expect(ruleBody(".prose .embed-frame iframe")).toMatch(/width:\s*100%/);
+    expect(ruleBody(".prose .embed-frame iframe")).toMatch(/height:\s*100%/);
+  });
+
   test("matches related thumbnails to the square Blog-index treatment", () => {
     expect(ruleBody("img.rel-thumb")).toMatch(
       /border:\s*var\(--line-w\) solid var\(--line-strong\)/,

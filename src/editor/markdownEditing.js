@@ -170,6 +170,10 @@ export function markdownEdit(command, value, start, end) {
       return insertBlock(value, start, end, "| 列1 | 列2 |\n| --- | --- |\n| 値1 | 値2 |");
     case "callout":
       return insertBlock(value, start, end, ":::note[補足]\n内容\n:::", "内容");
+    case "embed":
+      // The URL is selected so pasting over it is the whole interaction:
+      // YouTube, Docswell, and the rest are told apart at render time.
+      return insertBlock(value, start, end, '::embed{url="https://"}', "https://");
     default:
       return { value, selectionStart: start, selectionEnd: end };
   }

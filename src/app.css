@@ -1319,6 +1319,24 @@
   margin: 24px 0;
   border: var(--line-w) solid var(--line);
 }
+.prose .embed {
+  margin: 24px 0;
+}
+.prose .embed-frame {
+  aspect-ratio: 16 / 9;
+  border: var(--line-w) solid var(--line);
+}
+.prose .embed-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.prose .embed-caption {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
 .prose blockquote {
   margin: 24px 0;
   padding-left: 18px;

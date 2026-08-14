@@ -20,6 +20,7 @@ import {
   FaBarsIcon,
   FaCameraIcon,
   FaCircleInfoIcon,
+  FaCirclePlayIcon,
   FaCircleQuestionIcon,
   FaCodeIcon,
   FaEllipsisIcon,
@@ -157,6 +158,7 @@ const TOOLBAR_GROUPS = [
       ["code", "コードブロック"],
       ["table", "表"],
       ["callout", "補足"],
+      ["embed", "埋め込み"],
     ],
   },
 ];
@@ -174,6 +176,7 @@ const COMPACT_COMMAND_LABELS = {
   code: "{}",
   table: "▦",
   callout: "!",
+  embed: "▶",
 };
 const COMMAND_ICONS = {
   link: FaLinkIcon,
@@ -182,6 +185,7 @@ const COMMAND_ICONS = {
   code: FaCodeIcon,
   table: FaTableIcon,
   callout: FaCircleInfoIcon,
+  embed: FaCirclePlayIcon,
 };
 
 function CompactLabel({ children, compact }) {

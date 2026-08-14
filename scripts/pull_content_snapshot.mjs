@@ -10,8 +10,14 @@
  * and pulling them in would fail verification for no useful reason. Ask for
  * them with --include-private when the point is to preview one.
  *
+ * `--published` reads each item at the revision it was last published at
+ * instead, and leaves out anything never published. That is the state the site
+ * actually serves, and unlike a current revision it is known to load: nothing
+ * reaches it without passing the publication checks.
+ *
  *   npm run content:pull                      # writes .tmp/content-snapshot
  *   npm run content:pull -- --include-private # drafts too
+ *   npm run content:pull -- --published       # the state the site serves
  *   npm run content:pull -- --root /elsewhere
  */
 import { mkdirSync, rmSync } from "node:fs";
@@ -25,7 +31,7 @@ const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const DEFAULT_ROOT = resolve(ROOT, ".tmp/content-snapshot");
 
 function parseArgs(argv) {
-  const args = { root: DEFAULT_ROOT, includePrivate: false };
+  const args = { root: DEFAULT_ROOT, includePrivate: false, published: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--root") {
@@ -35,6 +41,8 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--include-private") {
       args.includePrivate = true;
+    } else if (arg === "--published") {
+      args.published = true;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -52,29 +60,34 @@ export class AuthorSnapshotClient extends ContentCloudClient {
 }
 
 /**
- * Write a snapshot of the author's current content under `root`.
+ * Write a snapshot of the author's content under `root`.
  *
  * @param {{
  *   root?: string,
  *   includePrivate?: boolean,
+ *   published?: boolean,
  *   client?: InstanceType<typeof AuthorSnapshotClient>,
  * }} [options]
  */
 export async function pullContentSnapshot({
   root = DEFAULT_ROOT,
   includePrivate = false,
+  published = false,
   client = new AuthorSnapshotClient(),
 } = {}) {
   const { items } = await client.list();
-  const wanted = items.filter(
-    (item) => !item.deletedAt && (includePrivate || item.visibility === "public"),
-  );
+  const wanted = items
+    .filter((item) => !item.deletedAt && (includePrivate || item.visibility === "public"))
+    // Never published means there is no published revision to read.
+    .filter((item) => !published || item.publishedRevisionId);
 
   const entries = [];
   for (const item of wanted) {
-    const content = await client.read(item.kind, item.id);
+    const content = published
+      ? await client.readRevision(item.kind, item.id, item.publishedRevisionId)
+      : await client.read(item.kind, item.id);
     entries.push({
-      item: { kind: content.kind, id: content.id },
+      item: { kind: item.kind, id: item.id },
       revision: content.revision,
       assets: content.assets || [],
     });

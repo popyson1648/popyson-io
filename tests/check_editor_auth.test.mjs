@@ -250,9 +250,12 @@ describe("editor server startup", () => {
 
     expect(root).toBe(EDITOR_SNAPSHOT_ROOT);
     expect(env.CONTENT_SNAPSHOT_ROOT).toBe(EDITOR_SNAPSHOT_ROOT);
-    // Published content only: the site loader validates every post it reads, so
-    // an unfinished draft in the snapshot would fail the editor's own build.
-    expect(calls).toEqual([{ root: EDITOR_SNAPSHOT_ROOT, includePrivate: false }]);
+    // Published revisions only: the site loader validates everything it reads,
+    // so unfinished work in the snapshot fails the editor's own build — and a
+    // saved revision is unfinished as readily as a private draft is. Asking for
+    // what was published is what keeps a half-written entry from locking the
+    // author out of the tool they need to finish it.
+    expect(calls).toEqual([{ root: EDITOR_SNAPSHOT_ROOT, includePrivate: false, published: true }]);
   });
 
   test("keeps a snapshot the caller already chose", async () => {

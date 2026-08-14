@@ -143,14 +143,17 @@ export function editorStartupMessages({ resolvedUrls, publicUrl, tailscaleLogin,
 export async function ensureEditorSnapshot({ env = process.env, pull = pullContentSnapshot } = {}) {
   if (String(env.CONTENT_SNAPSHOT_ROOT || "").trim()) return env.CONTENT_SNAPSHOT_ROOT;
   console.log("Pulling content from the database...");
-  // Published content only. The snapshot builds the editor's shell — the site
+  // Published revisions only. The snapshot builds the editor's shell — the site
   // theme, strings, and the works list its preview renders — while the item
-  // being edited comes from the editor's own state, drafts included. Pulling
-  // drafts in would instead fail the build, because the site loader validates
-  // every post it reads and a draft is unfinished by definition.
+  // being edited comes from the editor's own state, drafts included. Unfinished
+  // work must not reach the build: the site loader validates everything it
+  // reads, and half of what an author saves here is by definition half-written.
+  // A saved revision counts as unfinished too, not just a private draft, so the
+  // pull asks for what was published rather than what was last saved.
   const { itemCount, assetCount } = await pull({
     root: EDITOR_SNAPSHOT_ROOT,
     includePrivate: false,
+    published: true,
   });
   console.log(`Pulled ${itemCount} items and ${assetCount} assets.`);
   env.CONTENT_SNAPSHOT_ROOT = EDITOR_SNAPSHOT_ROOT;

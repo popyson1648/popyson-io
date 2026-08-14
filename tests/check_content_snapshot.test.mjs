@@ -10,6 +10,7 @@ import {
   materializeSnapshot,
   publicationInputSnapshot,
 } from "../scripts/contentSnapshotClient.mjs";
+import { pullContentSnapshot } from "../scripts/pull_content_snapshot.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const temporaryRoots = [];
@@ -125,6 +126,86 @@ describe("materializeSnapshot", () => {
         { client: { downloadAsset: async () => Buffer.from("bad") } },
       ),
     ).rejects.toThrow(/checksum verification/);
+  });
+});
+
+describe("pullContentSnapshot", () => {
+  function postSource(title, body) {
+    return `+++\ntitle = "${title}"\ndate = 2026-08-12\ntags = []\n[sumup]\nmode = "none"\n[thumbnail]\nmode = "none"\n+++\n\n${body}`;
+  }
+
+  function stubClient() {
+    return {
+      list: async () => ({
+        items: [
+          {
+            kind: "post",
+            id: "20260812-120000",
+            visibility: "public",
+            deletedAt: null,
+            currentRevisionId: "revision-current",
+            publishedRevisionId: "revision-published",
+          },
+          {
+            kind: "post",
+            id: "20260812-130000",
+            visibility: "public",
+            deletedAt: null,
+            currentRevisionId: "revision-unpublished",
+            publishedRevisionId: null,
+          },
+        ],
+      }),
+      read: async (kind, id) => ({
+        kind,
+        id,
+        revision: {
+          id: "revision-current",
+          sourceJa: postSource("保存中", "保存中の本文"),
+          sourceEn: postSource("Saving", "Body being written"),
+        },
+        assets: [],
+      }),
+      readRevision: async (kind, id, revisionId) => ({
+        item: { kind, id },
+        revision: {
+          id: revisionId,
+          sourceJa: postSource("公開済み", "公開済みの本文"),
+          sourceEn: postSource("Published", "Published body"),
+        },
+        assets: [],
+      }),
+      downloadAsset: async () => Buffer.alloc(0),
+    };
+  }
+
+  test("reads the current revision by default, saved edits and all", async () => {
+    const root = temporaryRoot();
+    const client = stubClient();
+
+    await expect(pullContentSnapshot({ root, client })).resolves.toMatchObject({ itemCount: 2 });
+    expect(
+      readFileSync(join(root, "src/content/posts/20260812-120000/index.ja.md"), "utf8"),
+    ).toContain("保存中");
+  });
+
+  // The editor pulls this way: an author's latest save is half-written by
+  // definition, and the site loader refuses to read half-written content, so
+  // building the editor's shell from it would lock the author out of the tool
+  // they need to finish the work.
+  test("reads the published revision and skips what was never published", async () => {
+    const root = temporaryRoot();
+    const client = stubClient();
+    const readCurrent = vi.spyOn(client, "read");
+
+    await expect(pullContentSnapshot({ root, client, published: true })).resolves.toMatchObject({
+      itemCount: 1,
+    });
+    expect(
+      readFileSync(join(root, "src/content/posts/20260812-120000/index.ja.md"), "utf8"),
+    ).toContain("公開済み");
+    expect(existsSync(join(root, "src/content/posts/20260812-130000"))).toBe(false);
+    expect(readCurrent).not.toHaveBeenCalled();
   });
 });
 

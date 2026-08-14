@@ -39,6 +39,8 @@ Works live in `src/content/works/<slug>/index.{ja,en}.md`.
 - Preserve TOML keys and structure.
 - Preserve code blocks exactly.
 - Preserve URLs exactly.
+- Keep a line that starts with `|` starting with `|`, since the bar is what
+  breaks the line above it. Translate the text after the bar.
 - Preserve `::embed{url="…"}` directives. Translate only the optional caption
   label in brackets, never the `url` value or the directive itself.
 - Keep Markdown and TOML syntax valid.

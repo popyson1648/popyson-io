@@ -14,6 +14,23 @@ Body text.
 
 Types: `note`, `tip`, `info`, `warning`, `danger`.
 
+## Line blocks
+
+```markdown
+AAA
+| BBB
+```
+
+- A leading `|` breaks the line before it, the way Pandoc and reStructuredText
+  line blocks keep their division into lines. The break renders as `<br>`, so
+  the two lines sit a line-height apart — the gap a wrapped line leaves, rather
+  than the paragraph gap a blank line opens.
+- The bar and one space after it are dropped; the rest of the line is ordinary
+  Markdown. `\|` writes a literal bar and leaves the lines joined.
+- Works inside paragraphs, blockquotes, list items, and callout bodies. Bars
+  that open a block still read as a table, since a table cannot start in the
+  middle of a paragraph.
+
 ## Embeds
 
 ```markdown

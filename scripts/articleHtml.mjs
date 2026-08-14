@@ -160,6 +160,51 @@ function directiveAttributes(node) {
   return `{${pairs.join(" ")}}`;
 }
 
+// A line block, as Pandoc and reStructuredText write one: a leading vertical
+// bar keeps the break between this line and the one above it. The break is a
+// `<br>`, so the two lines sit a line-height apart — the same gap a wrapped
+// line leaves — where a blank line would open a paragraph's worth of space.
+const LINE_BLOCK_SOURCE = /^[ \t>]*\|/;
+const LINE_BLOCK_VALUE = /^\|[ \t]?/;
+
+// The bar is read from the source line rather than the parsed value, because
+// the parser resolves `\|` to a bare `|`: by the time a text node carries the
+// character, an escaped bar and a marker look alike. The source still tells
+// them apart, so `\|` opens a line the way any other character does.
+function lineBlockBreaks(node, sourceLines) {
+  const startLine = node.position?.start?.line;
+  if (!startLine) return null;
+
+  const segments = node.value.split("\n");
+  const nodes = [];
+  let text = segments[0];
+  for (let index = 1; index < segments.length; index += 1) {
+    const source = sourceLines[startLine + index - 1] || "";
+    if (LINE_BLOCK_SOURCE.test(source)) {
+      nodes.push({ type: "text", value: text }, { type: "break" });
+      text = segments[index].replace(LINE_BLOCK_VALUE, "");
+      continue;
+    }
+    text += `\n${segments[index]}`;
+  }
+  if (nodes.length === 0) return null;
+  return [...nodes, { type: "text", value: text }];
+}
+
+function remarkLineBlocks() {
+  return (tree, file) => {
+    const sourceLines = String(file).split("\n");
+    visit(tree, "text", (node, index, parent) => {
+      if (!parent || typeof index !== "number") return;
+      if (!node.value.includes("\n")) return;
+      const replacement = lineBlockBreaks(node, sourceLines);
+      if (!replacement) return;
+      parent.children.splice(index, 1, ...replacement);
+      return index + replacement.length;
+    });
+  };
+}
+
 // remark-directive reads `:name` anywhere in a line, so ordinary prose like
 // "12:30", "a:b", or "容量:4" parses as a directive. Only container directives
 // carry meaning here (the callouts above); a text or leaf directive is written
@@ -418,6 +463,7 @@ function articleProcessor(copyLabel) {
         .use(remarkDirective)
         .use(remarkCallouts)
         .use(remarkEmbeds)
+        .use(remarkLineBlocks)
         .use(remarkDirectiveFallback)
         .use(remarkHeadingIds)
         .use(remarkRehype)

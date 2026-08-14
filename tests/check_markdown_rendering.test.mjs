@@ -212,6 +212,81 @@ describe("renderArticleHtml", () => {
   });
 });
 
+describe("line blocks", () => {
+  test.each([
+    ["a bar and a space", "AAA\n| BBB"],
+    ["a bar written tight against the text", "AAA\n|BBB"],
+  ])("breaks the line after %s", async (_name, markdown) => {
+    const html = await renderArticleHtml(markdown);
+
+    expect(html).toBe("<p>AAA<br>\nBBB</p>");
+  });
+
+  test("breaks every marked line and leaves the rest as one line", async () => {
+    const html = await renderArticleHtml(["AAA", "| BBB", "| CCC", "DDD"].join("\n"));
+
+    expect(html).toBe("<p>AAA<br>\nBBB<br>\nCCC\nDDD</p>");
+  });
+
+  test("keeps the inline markup that follows the marker", async () => {
+    const html = await renderArticleHtml("AAA\n| **BBB** CCC");
+
+    expect(html).toBe("<p>AAA<br>\n<strong>BBB</strong> CCC</p>");
+  });
+
+  test.each([
+    ["two trailing spaces", "AAA  \n| BBB"],
+    ["a trailing backslash", "AAA\\\n| BBB"],
+  ])("drops the bar after a line broken by %s", async (_name, markdown) => {
+    const html = await renderArticleHtml(markdown);
+
+    expect(html).toBe("<p>AAA<br>\nBBB</p>");
+  });
+
+  test.each([
+    ["a tab", "AAA\n|\tBBB"],
+    ["several spaces", "AAA\n|   BBB"],
+  ])("starts the line at its first character when the bar is followed by %s", async (_n, md) => {
+    const html = await renderArticleHtml(md);
+
+    expect(html).toBe("<p>AAA<br>\nBBB</p>");
+  });
+
+  test("writes an escaped bar as a bar on the same line", async () => {
+    const html = await renderArticleHtml("AAA\n\\| BBB");
+
+    expect(html).toBe("<p>AAA\n| BBB</p>");
+  });
+
+  test.each([
+    ["a blockquote", "> AAA\n> | BBB", "<blockquote>\n<p>AAA<br>\nBBB</p>\n</blockquote>"],
+    ["a list item", "- AAA\n  | BBB", "<ul>\n<li>AAA<br>\nBBB</li>\n</ul>"],
+  ])("breaks the line inside %s", async (_name, markdown, expected) => {
+    const html = await renderArticleHtml(markdown);
+
+    expect(html).toBe(expected);
+  });
+
+  test("breaks the line inside a callout body", async () => {
+    const html = await renderArticleHtml(":::note[題]\n本文\n| 続き\n:::");
+
+    expectMatchesAll(html, [/class="msg msg-note"/, /<p>本文<br>\n続き<\/p>/]);
+  });
+
+  test("still reads a table from bars that open a block", async () => {
+    const html = await renderArticleHtml(
+      ["段落", "", "| 列1 | 列2 |", "| --- | --- |", "| 値1 | 値2 |"].join("\n"),
+    );
+
+    expectMatchesAll(html, [/<p>段落<\/p>/, /<th>列1<\/th>/, /<td>値1<\/td>/]);
+    expect(html).not.toMatch(/<br>/);
+  });
+
+  test("leaves the marker out of the search text", () => {
+    expect(markdownToPlainText("AAA\n| BBB")).toBe("AAA BBB");
+  });
+});
+
 describe("embed directive", () => {
   test("embeds a Docswell deck from its public page URL", async () => {
     const html = await renderArticleHtml(

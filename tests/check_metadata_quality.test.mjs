@@ -208,11 +208,22 @@ describe("metadata.toml configuration", () => {
   test("keeps the thumbnail background exact and foreground colorful but harmonious", () => {
     const prompt = readFileSync(join(ROOT, config.thumbnail_generation.prompt_file), "utf8");
 
-    expect(prompt).toMatch(/Solid #F1F3EA background/);
-    expect(prompt).toMatch(/two or three distinct foreground\s+colors/);
-    expect(prompt).toMatch(/background does not count toward this three-color limit/);
-    expect(prompt).toMatch(/Any foreground hues are allowed/);
-    expect(prompt).toMatch(/tone harmonious/);
+    expect(prompt).toMatch(/solid #F1F3EA field/);
+    expect(prompt).toMatch(/Use this exact color, and no other\s+color, behind the subject/);
+    expect(prompt).toMatch(/[Tt]wo or three foreground ink colors/);
+    expect(prompt).toMatch(/harmonious in saturation and brightness/);
+    expect(prompt).toMatch(/background does not count toward that\s+limit/);
+  });
+
+  // The drawing is unattended, so the prompt is the only thing holding a
+  // thumbnail to the site's flat geometric marks rather than an organic blob.
+  test("asks for a mark built from exact geometric forms", () => {
+    const prompt = readFileSync(join(ROOT, config.thumbnail_generation.prompt_file), "utf8");
+
+    expect(prompt).toMatch(/compass and straightedge/);
+    expect(prompt).toMatch(/arc of a circle drawn at a constant radius/);
+    expect(prompt).toMatch(/A circle is a full circle rather than a rounded blob/);
+    expect(prompt).toMatch(/legible as a fingernail-sized thumbnail/);
   });
 });
 

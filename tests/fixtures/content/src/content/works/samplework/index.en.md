@@ -1,5 +1,5 @@
 +++
-title = "Sample Work"
+title = "R&D <Tool>"
 tagline = "A work entry used by the tests"
 summary = "An entry that exists so the tests can load and render a work page."
 year = 2026

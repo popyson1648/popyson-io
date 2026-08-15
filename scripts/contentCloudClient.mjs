@@ -165,6 +165,14 @@ export class ContentCloudClient {
     });
   }
 
+  publicationPreflight() {
+    return this.request("/v1/author/publication/preflight");
+  }
+
+  createBatchPublication(value) {
+    return this.request("/v1/author/publication", { method: "POST", json: value });
+  }
+
   publication(jobId) {
     return this.request(`/v1/author/publish/${encodeURIComponent(jobId)}`);
   }

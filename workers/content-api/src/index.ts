@@ -4,12 +4,14 @@ import { errorResponse, HttpError, json, readJson } from "./http";
 import {
   activeReleaseSnapshot,
   createCandidateRelease,
+  createBatchPublishJob,
   createPublishJob,
   failPublication,
   finalizePublication,
   markJobRunning,
   markReleaseDeploying,
   pendingReleases,
+  publicationPreflight,
   publicationJobSnapshot,
   readPublishJob,
   reconcileRelease,
@@ -79,6 +81,17 @@ async function route(request: Request, env: RuntimeEnv, url: URL): Promise<Respo
       await createContent(env, body.kind, body.id, body.visibility || "private", body),
       201,
     );
+  }
+
+  if (request.method === "GET" && url.pathname === "/v1/author/publication/preflight") {
+    return json(await publicationPreflight(env));
+  }
+  if (request.method === "POST" && url.pathname === "/v1/author/publication") {
+    const body = await readJson<{ intentChecksum?: string; idempotencyKey?: string }>(
+      request,
+      maximumJsonBytes,
+    );
+    return json(await createBatchPublishJob(env, body), 201);
   }
 
   const revision =

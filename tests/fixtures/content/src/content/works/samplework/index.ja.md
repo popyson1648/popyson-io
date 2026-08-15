@@ -1,5 +1,5 @@
 +++
-title = "Sample Work"
+title = "R&D <Tool>"
 tagline = "検証用の作品エントリ"
 summary = "テストが作品ページの読み込みと描画を確かめるためだけに存在するエントリ。"
 year = 2026

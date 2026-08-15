@@ -109,6 +109,8 @@ jobs:
           {
             echo "kind=$(jq -r '.kind' "$RUNNER_TEMP/job-snapshot.json")"
             echo "database_date=$(jq -r '.databaseDate' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "public_item_count=$(jq -r '.publicItemCount' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "has_posts=$(jq -r '.hasPosts' "$RUNNER_TEMP/job-snapshot.json")"
             echo "resumed=$(jq -r '.resumed' "$RUNNER_TEMP/job-snapshot.json")"
             code_sha="$(jq -r '.codeSha' "$RUNNER_TEMP/job-snapshot.json")"
             echo "code_sha=${code_sha:-$GITHUB_SHA}"
@@ -126,7 +128,7 @@ jobs:
       # is given, per locale. The author writes Japanese only, so English has to
       # exist by the time that step reads it.
       - name: Translate the Japanese source
-        if: steps.snapshot.outputs.resumed != 'true'
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.public_item_count != '0'
         shell: bash
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -134,8 +136,8 @@ jobs:
           OPENAI_TRANSLATION_MODEL: gpt-5.6-terra
           TRANSLATION_PROMPT: |
             Read .project/translation.md and follow it exactly.
-            The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains exactly one item.
-            Translate its Japanese source into the matching English source.
+            The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains the public items in one publication batch.
+            Translate every Japanese source into its matching English source.
             Metadata still marked for generation — auto_tags, date = "auto", [sumup] mode = "auto",
             [thumbnail] mode = "auto" — is resolved by a later step. Copy those tables across
             unchanged rather than filling them in.
@@ -196,7 +198,7 @@ jobs:
             | xargs -0 sha256sum > "$RUNNER_TEMP/pre-generation.sha256"
 
       - name: Generate post metadata
-        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.kind == 'post'
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.has_posts == 'true'
         env:
           CONTENT_DATABASE_DATE: ${{ steps.snapshot.outputs.database_date }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -212,7 +214,7 @@ jobs:
           rm -f "$RUNNER_TEMP/metadata.log"
 
       - name: Validate metadata output boundary
-        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.kind == 'post'
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.has_posts == 'true'
         shell: bash
         run: |
           set -euo pipefail

@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
+import { Window } from "happy-dom";
 
 import { allRoutes, configureMetaData } from "../src/meta.js";
 import { loadSiteContent } from "../scripts/content_loader.mjs";
@@ -34,6 +35,12 @@ function read(dir) {
   const file = join(dir ? join(DIST, dir) : DIST, "index.html");
   expect(existsSync(file), `missing prerendered file for "${dir || "/"}"`).toBe(true);
   return readFileSync(file, "utf8");
+}
+
+function parse(html) {
+  const document = new Window().document;
+  document.write(html);
+  return document;
 }
 
 // Per route, a class marker proving the component rendered plus a concrete piece
@@ -85,9 +92,26 @@ describe("prerendered routes", () => {
       const expectations = expectationsFor(route, lang);
       expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
       const html = read(dir);
+      const document = parse(html);
       for (const needle of expectations) {
-        expect(html).toContain(needle);
+        if (needle.startsWith("class=")) {
+          expect(html).toContain(needle);
+        } else if (route.name === "app") {
+          expect(
+            [...document.querySelectorAll(".acard-title")].some(
+              (element) => element.textContent === needle,
+            ),
+          ).toBe(true);
+        } else if (route.name === "appDetail" && needle.startsWith("<h1>")) {
+          expect(document.querySelector(".adetail h1")?.textContent).toBe(appTitle(route, lang));
+        } else {
+          expect(html).toContain(needle);
+        }
       }
     },
   );
+
+  function appTitle(route, lang) {
+    return APPS.find((app) => app.id === route.id)?.title[lang];
+  }
 });

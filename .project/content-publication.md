@@ -40,22 +40,27 @@ The Worker must provide these idempotent routes:
 - `GET /v1/ci/releases/pending`
 - `POST /v1/ci/releases/reconcile`
 
-A job snapshot has `{ job, item, revision, assets }`. A release snapshot has
+A batch job snapshot has `{ job, items: [{ item, revision, assets }] }`.
+Legacy single-item jobs retain `{ job, item, revision, assets }`. A release snapshot has
 `{ release, items: [{ item, revision, assets }] }`. Each asset descriptor has
 `id`, `mediaType`, `sizeBytes`, `logicalPath`, and `role`; bytes are downloaded
 separately and accepted only when both the declared size and SHA-256 match.
 Logical paths must be relative, traversal-free output paths.
 
-The author API creates a pinned job with
-`POST /v1/author/content/:kind/:id/publish` and reads status with
-`GET /v1/author/publish/:jobId`. GitHub receives only the opaque `job_id` as a
-workflow input.
+The editor reads the complete pending set from
+`GET /v1/author/publication/preflight` and creates one pinned job with
+`POST /v1/author/publication`. The intent checksum rejects a stale preflight.
+Pending public revisions are additions or updates; private/deleted items are
+included only when the active release still contains them. Existing
+`POST /v1/author/content/:kind/:id/publish` jobs remain supported for rollout
+and retry compatibility. Status is read with `GET /v1/author/publish/:jobId`.
+GitHub receives only the opaque `job_id` as workflow input.
 
 ## Workflow order
 
 `.github/workflows/content-publish.yml` acquires the shared
 `cloudflare-deploy` queue, reconciles an interrupted deployment, downloads the
-pinned job, translates before post metadata generation, validates an
+pinned batch, translates every public item before post metadata generation, validates an
 exact changed-file allowlist, uploads a candidate revision, then downloads and
 verifies the immutable candidate release before deploying it. The Pages commit
 message carries `content-release:<release-id>` so a later run can reconcile a

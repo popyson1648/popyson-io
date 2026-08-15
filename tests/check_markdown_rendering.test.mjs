@@ -4,6 +4,7 @@ import { markdownToPlainText, renderArticleHtml } from "../scripts/articleHtml.m
 import { sectionId, slugifyHeading } from "../src/headingSlug.js";
 import {
   calloutMarkdownFixture,
+  detailsMarkdownFixture,
   malformedMarkdownFixture,
   unsafeMarkdownFixture,
   validMarkdownFixture,
@@ -131,6 +132,32 @@ describe("renderArticleHtml", () => {
       /class="msg msg-note"/,
       /<div class="msg-title">From attribute<\/div>/,
       /<p>Content\.<\/p>/,
+    ]);
+  });
+
+  test("renders details directives with labels, attributes, and rich bodies", async () => {
+    const html = await renderArticleHtml(detailsMarkdownFixture);
+
+    expectMatchesAll(html, [
+      /<details class="details">/,
+      /<summary class="details-summary">Label title<\/summary>/,
+      /<div class="details-body">\s*<ul>/,
+      /<code>code<\/code>/,
+      /<details class="details" open>/,
+      /<summary class="details-summary">Attribute title<\/summary>/,
+      /<p>Visible body\.<\/p>/,
+    ]);
+  });
+
+  test("uses the localized default title for a details directive", async () => {
+    const html = await renderArticleHtml(":::details\n本文。\n:::", {
+      detailsLabel: "詳細",
+    });
+
+    expectMatchesAll(html, [
+      /<details class="details">/,
+      /<summary class="details-summary">詳細<\/summary>/,
+      /<div class="details-body">\s*<p>本文。<\/p>/,
     ]);
   });
 

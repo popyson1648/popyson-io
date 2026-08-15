@@ -57,6 +57,17 @@ Danger body
 :::
 `;
 
+export const detailsMarkdownFixture = `
+:::details[Label title]
+- List item
+- Inline \`code\`
+:::
+
+:::details{title="Attribute title" open}
+Visible body.
+:::
+`;
+
 export const malformedMarkdownFixture = `
 Paragraph with [broken link](https://example.com
 

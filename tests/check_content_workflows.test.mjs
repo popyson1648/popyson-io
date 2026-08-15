@@ -55,6 +55,19 @@ describe("database content workflows", () => {
     expect(publication.indexOf("name: Record pre-generation checksums")).toBeLessThan(metadata);
   });
 
+  test("falls back from Claude to GPT-5.6 Terra inside the translation boundary", () => {
+    const primary = publication.indexOf("@anthropic-ai/claude-code@2.1.179");
+    const fallback = publication.indexOf("node scripts/translate_with_openai.mjs");
+    const boundary = publication.indexOf("name: Validate translation output boundary");
+    expect(primary).toBeGreaterThan(-1);
+    expect(fallback).toBeGreaterThan(primary);
+    expect(boundary).toBeGreaterThan(fallback);
+    expect(publication).toContain("OPENAI_TRANSLATION_MODEL: gpt-5.6-terra");
+    expect(publication).toContain("OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}");
+    expect(publication).toMatch(/if ! npx[\s\S]+if ! node scripts\/translate_with_openai\.mjs/);
+    expect(publication).toContain("OpenAI translation fallback failed");
+  });
+
   test("shares the queued deploy lock and never persists content as an artifact or cache", () => {
     expect(publication).toMatch(/group: cloudflare-deploy\n\s+cancel-in-progress: false/);
     expect(publication).not.toMatch(/actions\/(?:upload-artifact|cache)@/);

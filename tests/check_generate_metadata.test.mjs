@@ -372,7 +372,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
 
       expect(result.changed).toBe(true);
       expect(conceptCalls).toHaveLength(1);
-      expect(conceptCalls[0].prompt).toMatch(/型でCLIコマンドを表現する設計の記事。/);
+      expect(conceptCalls[0].prompt).toMatch(/サムネ記事/);
       expect(imageCalls).toHaveLength(1);
       expect(imageCalls[0].model).toBe("gpt-image-2");
       expect(imageCalls[0].size).toBe("1024x1024");
@@ -408,7 +408,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
     }
   });
 
-  test("summarizes the body for the concept when the post shows no summary", async () => {
+  test("draws from the title without writing a summary the post does not show", async () => {
     const postId = "29991231-0badc0de";
     const dir = join(tempDir, postId);
     mkdirSync(dir, { recursive: true });
@@ -416,7 +416,7 @@ describe("resolveMetadata auto thumbnail generation", () => {
     const generatedPath = join(CONTENT_ROOT, "public", "thumbnails", `${postId}.png`);
     const source = [
       "+++",
-      'title = "概要なしの記事"',
+      'title = "Wezterm起動時にwslを自動的に起動させる"',
       'date = "2026-06-22"',
       'tags = ["js"]',
       "",
@@ -442,20 +442,17 @@ describe("resolveMetadata auto thumbnail generation", () => {
         config,
         provider: async (request) => {
           requests.push(request);
-          // The summary request comes first, then the concept request built
-          // from its output.
-          if (request.schema.required.includes("summary")) {
-            return { summary: "シェルを自動起動する設定。" };
-          }
-          expect(request.prompt).toMatch(/シェルを自動起動する設定。/);
-          return { concept: "a terminal window" };
+          expect(request.schema.required).toContain("concept");
+          expect(request.prompt).toMatch(/Wezterm起動時にwslを自動的に起動させる/);
+          return { concept: "a terminal" };
         },
         imageProvider: async () => Buffer.from("fake-png-bytes"),
       });
 
-      expect(requests).toHaveLength(2);
+      // One request: the concept. A post that shows no summary is not worth
+      // writing one for, and the title says what to draw.
+      expect(requests).toHaveLength(1);
       expect(existsSync(generatedPath)).toBe(true);
-      // The generated summary is for the image only; the post still shows none.
       expect(result.meta.sumup).toEqual({ mode: "none", text: "" });
       expect(result.meta.thumbnail).toEqual({
         mode: "file",

@@ -515,8 +515,8 @@ function conceptSchema() {
   };
 }
 
-function buildConceptPrompt({ summary }) {
-  return ["Article summary:", summary].join("\n");
+function buildConceptPrompt({ title }) {
+  return ["Article title:", title].join("\n");
 }
 
 // The concept is written from the summary, so it goes to whichever model wrote
@@ -529,13 +529,13 @@ function conceptModel(config) {
   return config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash";
 }
 
-function conceptGenerationRequest({ config, summary }) {
+function conceptGenerationRequest({ config, title }) {
   return {
     provider: conceptProvider(config),
     model: conceptModel(config),
     systemInstruction: readPromptFile(config.thumbnail_generation?.concept_prompt_file),
     schema: conceptSchema(),
-    prompt: buildConceptPrompt({ summary }),
+    prompt: buildConceptPrompt({ title }),
   };
 }
 
@@ -635,40 +635,21 @@ function postIdFromPath(filePath) {
 }
 
 /**
- * The thumbnail concept always derives from the Japanese summary so a post gets
- * one deterministic image shared by both locales. When the current file is the
- * Japanese sibling its resolved in-memory summary is used; otherwise the
- * already-resolved ja file is read from disk.
+ * The thumbnail concept always derives from the Japanese title, so a post gets
+ * one image shared by both locales. The title is the author's own words and is
+ * always there — a post may be published with no summary at all — and it
+ * carries the particular thing the post is about, which is what the drawing
+ * wants. When the current file is the Japanese sibling its title is already in
+ * memory; otherwise the ja file is read from disk.
  */
-function readJaSummary(filePath, meta) {
+function readJaTitle(filePath, meta) {
   const jaPath = join(dirname(filePath), "index.ja.md");
   let jaMeta = meta;
   if (filePath !== jaPath) {
     if (!existsSync(jaPath)) return "";
     jaMeta = parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath).meta;
   }
-  return jaMeta.sumup?.mode === "text" ? String(jaMeta.sumup.text || "").trim() : "";
-}
-
-// The Japanese body, from memory when this is the Japanese file and from disk
-// when it is the English one.
-function readJaBody(filePath, body) {
-  const jaPath = join(dirname(filePath), "index.ja.md");
-  if (filePath === jaPath) return body;
-  if (!existsSync(jaPath)) return "";
-  return parseMarkdownFrontmatter(readFileSync(jaPath, "utf8"), jaPath).body;
-}
-
-/**
- * A summary written only to derive the image subject. `[sumup] mode = "none"`
- * says the post shows no summary, not that the post cannot be drawn, so one is
- * generated here and discarded rather than written back to the front matter.
- */
-async function summaryForConcept(meta, { filePath, body, config, provider }) {
-  const jaBody = readJaBody(filePath, body);
-  if (!jaBody.trim()) return "";
-  const result = await provider(summaryGenerationRequest({ filePath, meta, body: jaBody, config }));
-  return String(result.summary || "").trim();
+  return String(jaMeta.title || "").trim();
 }
 
 async function resolveThumbnailConcept(meta, context) {
@@ -676,13 +657,13 @@ async function resolveThumbnailConcept(meta, context) {
   const explicit = typeof meta.thumbnail?.concept === "string" ? meta.thumbnail.concept.trim() : "";
   if (explicit) return explicit;
 
-  const summary = readJaSummary(filePath, meta) || (await summaryForConcept(meta, context));
-  if (!summary) {
+  const title = readJaTitle(filePath, meta);
+  if (!title) {
     throw new Error(
-      `${filePath}: thumbnail concept needs a Japanese body, a resolved summary, or an explicit [thumbnail].concept`,
+      `${filePath}: thumbnail concept needs a Japanese title or an explicit [thumbnail].concept`,
     );
   }
-  const result = await provider(conceptGenerationRequest({ config, summary }));
+  const result = await provider(conceptGenerationRequest({ config, title }));
   const concept = String(result.concept || "").trim();
   if (!concept)
     throw new Error(`${filePath}: thumbnail concept generation returned an empty concept`);
@@ -787,15 +768,14 @@ export function previewPrompts({ filePath, source, config, knownTags = [] }) {
     const explicit =
       typeof parsed.meta.thumbnail.concept === "string" ? parsed.meta.thumbnail.concept.trim() : "";
     if (!explicit) {
-      const summary =
-        parsed.meta.sumup?.mode === "text"
-          ? String(parsed.meta.sumup.text || "").trim()
-          : "{resolved Japanese summary}";
       previews.push(
         previewItemFromRequest({
           filePath,
           kind: "thumbnail-concept",
-          request: conceptGenerationRequest({ config, summary }),
+          request: conceptGenerationRequest({
+            config,
+            title: readJaTitle(filePath, parsed.meta) || "{Japanese title}",
+          }),
         }),
       );
     }

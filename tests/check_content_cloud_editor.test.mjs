@@ -215,6 +215,34 @@ describe("server-only authenticated clients", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("https://content.invalid/v1/author/publish/job-1");
   });
 
+  test("asks the API to drop a stored thumbnail by its logical path", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => cloudValue(),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ContentCloudClient({
+      baseUrl: "https://content.invalid",
+      clientId: "access-id",
+      clientSecret: "access-secret",
+    });
+
+    await client.detachAsset(
+      "post",
+      "20260812-120000",
+      "thumbnails/20260812-120000.png",
+      "revision-1",
+    );
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      "https://content.invalid/v1/author/content/post/20260812-120000/assets" +
+        "?logicalPath=thumbnails%2F20260812-120000.png&expectedRevisionId=revision-1",
+    );
+    expect(init.method).toBe("DELETE");
+  });
+
   test("dispatches only the opaque publication job id to GitHub", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

@@ -287,6 +287,27 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
     return;
   }
 
+  // Generation writes the image once and reuses the file on every later run,
+  // which is what keeps a publication from paying for a picture it already has.
+  // Asking again therefore means taking the stored one away: the asset goes,
+  // the mode returns to "auto", and the next publication draws.
+  const thumbnailMatch = /^\/api\/editor\/content\/(post|work)\/([^/]+)\/thumbnail$/.exec(pathname);
+  if (request.method === "DELETE" && thumbnailMatch) {
+    const kind = thumbnailMatch[1];
+    const id = decodeURIComponent(thumbnailMatch[2]);
+    const current = await cloud.read(kind, id);
+    const stored = (current.assets || []).find((asset) => asset.role === "thumbnail");
+    const detached = stored
+      ? await cloud.detachAsset(kind, id, stored.logicalPath, current.currentRevisionId)
+      : current;
+    const content = fromCloudContent(detached);
+    for (const locale of ["ja", "en"]) {
+      content.files[locale].meta.thumbnail = { mode: "auto" };
+    }
+    sendJson(response, 200, fromCloudContent(await cloud.save(kind, id, toCloudRevision(content))));
+    return;
+  }
+
   const publishMatch = /^\/api\/editor\/content\/(post|work|about)\/([^/]+)\/publish$/.exec(
     pathname,
   );

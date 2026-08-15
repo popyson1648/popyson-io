@@ -98,6 +98,10 @@ export function createEditorApi() {
         };
         reader.readAsDataURL(file);
       }),
+    regenerateThumbnail: (kind, id) =>
+      request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/thumbnail`, {
+        method: "DELETE",
+      }),
     publish: (kind, id) =>
       request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/publish`, {
         method: "POST",

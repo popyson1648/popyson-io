@@ -129,6 +129,14 @@ export class ContentCloudClient {
     });
   }
 
+  detachAsset(kind, id, logicalPath, expectedRevisionId) {
+    const query = new URLSearchParams({ logicalPath });
+    if (expectedRevisionId) query.set("expectedRevisionId", expectedRevisionId);
+    return this.request(`/v1/author/content/${kind}/${encodeURIComponent(id)}/assets?${query}`, {
+      method: "DELETE",
+    });
+  }
+
   getAsset(assetId) {
     return this.requestRaw(`/v1/author/assets/${encodeURIComponent(assetId)}`);
   }

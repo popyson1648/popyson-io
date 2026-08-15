@@ -408,6 +408,94 @@ describe("content editor shell", () => {
     expect(screen.queryByRole("button", { name: "自動生成の画像に戻す" })).not.toBeInTheDocument();
   });
 
+  test("asks the API to drop the stored thumbnail so the next publication draws", async () => {
+    const generated = "/thumbnails/20260804-123456.png";
+    const meta = (title) => ({
+      title,
+      date: "2026-08-04",
+      tags: [],
+      sumup: { mode: "none" },
+      thumbnail: { mode: "file", path: generated, generated: true },
+    });
+    const content = {
+      kind: "post",
+      id: "20260804-123456",
+      currentRevisionId: "revision-0",
+      visibility: "private",
+      deletedAt: null,
+      assets: [{ logicalPath: "thumbnails/20260804-123456.png", role: "thumbnail" }],
+      files: {
+        ja: { meta: meta("サムネイル"), body: "本文", revision: "ja-revision" },
+        en: { meta: meta("Thumbnail"), body: "Body", revision: "en-revision" },
+      },
+    };
+    const redrawn = {
+      ...content,
+      currentRevisionId: "revision-1",
+      assets: [],
+      files: {
+        ja: {
+          ...content.files.ja,
+          meta: { ...content.files.ja.meta, thumbnail: { mode: "auto" } },
+        },
+        en: {
+          ...content.files.en,
+          meta: { ...content.files.en.meta, thumbnail: { mode: "auto" } },
+        },
+      },
+    };
+    const fetchMock = vi.fn(async (path, init) => {
+      let payload;
+      if (path === "/api/editor/content") {
+        payload = {
+          items: [
+            {
+              kind: "post",
+              id: content.id,
+              title: { ja: "サムネイル", en: "Thumbnail" },
+              updatedAt: "2026-08-04T00:00:00.000Z",
+            },
+          ],
+        };
+      } else if (path === "/api/editor/preview") {
+        payload = { html: "" };
+      } else if (init?.method === "DELETE") {
+        payload = redrawn;
+      } else {
+        payload = content;
+      }
+      return { ok: true, json: async () => payload };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByRole("button", { name: /サムネイル/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "自動生成の画像を描き直す" }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([path, init]) =>
+            path === "/api/editor/content/post/20260804-123456/thumbnail" &&
+            init?.method === "DELETE",
+        ),
+      ).toBe(true),
+    );
+    // The stored image is gone, so there is nothing left to offer a redraw of.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "自動生成の画像を描き直す" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
   test("removes split mode from phone-width layouts", async () => {
     vi.stubGlobal("matchMedia", (query) => ({
       matches: query === "(max-width: 900px)",

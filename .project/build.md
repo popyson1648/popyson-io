@@ -54,9 +54,10 @@ New posts may contain `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, or
 npm run metadata:generate:op
 ```
 
-This command reads `GEMINI_API_KEY` (tags, summary, thumbnail concept) and
-`OPENAI_API_KEY` (thumbnail image) from `.op.env` through 1Password when AI
-generation is needed. `OPENAI_API_KEY` must be billing-enabled. CI runs `node
+This command reads `OPENAI_API_KEY` (tags, summary, thumbnail concept, and the
+thumbnail image) from `.op.env` through 1Password when AI generation is needed,
+and `GEMINI_API_KEY` for whichever section of `src/content/metadata.toml` names
+`provider = "gemini"`. `OPENAI_API_KEY` must be billing-enabled. CI runs `node
 scripts/generate_metadata.mjs --check`, which is a static check and does not call
 any AI provider.
 
@@ -227,7 +228,7 @@ See `.decisions/instapaper-reading-list.md` and
 ## Common Failures
 
 - If dependency commands fail before installing packages, run `npm ci`.
-- If metadata generation fails with `GEMINI_API_KEY is required` or
-  `OPENAI_API_KEY is required`, add the key to `.op.env` locally or to the
+- If metadata generation fails with `OPENAI_API_KEY is required` or
+  `GEMINI_API_KEY is required`, add the key to `.op.env` locally or to the
   matching GitHub Actions secret for generation workflows.
 - Lighthouse uses a local static server through LHCI and requires Chrome/Chromium.

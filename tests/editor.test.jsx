@@ -36,7 +36,7 @@ describe("content editor shell", () => {
     expect(await screen.findByText("まだありません。")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "新規" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "下書きを保存" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "公開" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^変更をまとめて公開/ })).toBeInTheDocument();
     const sidebar = container.querySelector(".editor-sidebar");
     expect(screen.getByRole("button", { name: "コンテンツ一覧を閉じる" })).toHaveAttribute(
       "aria-expanded",
@@ -576,7 +576,7 @@ describe("content editor shell", () => {
         },
       },
     };
-    const publishPath = `/api/editor/content/post/${content.id}/publish`;
+    const publishPath = "/api/editor/publication";
     const contentPath = `/api/editor/content/post/${content.id}`;
     const fetchMock = vi.fn(async (path, options = {}) => {
       let payload;
@@ -604,7 +604,21 @@ describe("content editor shell", () => {
           phase: "queued",
         };
       } else if (path === publishPath) {
-        payload = { valid: true, issues: [], visibility: "public", deletedAt: null };
+        payload = {
+          valid: true,
+          pendingCount: 1,
+          intentChecksum: "a".repeat(64),
+          items: [
+            {
+              ...content,
+              itemId: "item-1",
+              title: "公開ジョブ",
+              action: "update",
+              valid: true,
+              issues: [],
+            },
+          ],
+        };
       } else if (path === "/api/editor/publish/00000000-0000-4000-8000-000000000001") {
         payload = { id: "00000000-0000-4000-8000-000000000001", status: "succeeded" };
       } else if (path === contentPath) {
@@ -619,7 +633,7 @@ describe("content editor shell", () => {
     const { container } = render(<EditorRoot />);
     fireEvent.click(await screen.findByRole("button", { name: /公開ジョブ/ }));
     await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "公開" }));
+    fireEvent.click(screen.getByRole("button", { name: /^変更をまとめて公開/ }));
     fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
 
     await waitFor(
@@ -666,7 +680,7 @@ describe("content editor shell", () => {
         },
       },
     };
-    const publishPath = `/api/editor/content/post/${content.id}/publish`;
+    const publishPath = "/api/editor/publication";
     const progress = {
       state: "running",
       stages: [
@@ -715,7 +729,21 @@ describe("content editor shell", () => {
           progress,
         };
       } else if (path === publishPath) {
-        payload = { valid: true, issues: [], visibility: "public", deletedAt: null };
+        payload = {
+          valid: true,
+          pendingCount: 1,
+          intentChecksum: "b".repeat(64),
+          items: [
+            {
+              ...content,
+              itemId: "item-2",
+              title: "進捗",
+              action: "update",
+              valid: true,
+              issues: [],
+            },
+          ],
+        };
       } else if (path.startsWith("/api/editor/publish/")) {
         payload = { id: "00000000-0000-4000-8000-000000000002", status: "running", progress };
       } else {
@@ -728,7 +756,7 @@ describe("content editor shell", () => {
     const { container } = render(<EditorRoot />);
     fireEvent.click(await screen.findByRole("button", { name: /進捗/ }));
     await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "公開" }));
+    fireEvent.click(screen.getByRole("button", { name: /^変更をまとめて公開/ }));
     fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
 
     const panel = await screen.findByRole("region", { name: "公開の進捗" });

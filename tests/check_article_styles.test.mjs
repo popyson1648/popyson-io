@@ -24,8 +24,17 @@ describe("article prose refinements", () => {
   });
 
   test("keeps list rows and nested groups compact", () => {
-    expect(ruleBody(".prose ul li")).toMatch(/margin:\s*4px 0/);
-    expect(ruleBody(".prose li > ul")).toMatch(/margin:\s*4px 0/);
+    expect(ruleBody(".prose li")).toMatch(/margin:\s*4px 0/);
+    expect(ruleBody(".prose li > :is(ul, ol)")).toMatch(/margin:\s*4px 0/);
+  });
+
+  test("uses one compact logical indentation system for all list kinds", () => {
+    expect(ruleBody(".prose ul,\n.prose ol")).toMatch(/padding-inline-start:\s*1\.5em/);
+    expect(ruleBody(".prose :is(ul, ol) :is(ul, ol)")).toMatch(/padding-inline-start:\s*0\.5em/);
+    expect(ruleBody(".prose li")).toMatch(/padding-inline-start:\s*0\.25em/);
+    expect(css).toMatch(/\.prose ol\s*\{[^}]*list-style-type:\s*decimal/s);
+    expect(ruleBody(".prose ol li::marker")).toMatch(/font-variant-numeric:\s*tabular-nums/);
+    expect(css).not.toMatch(/counter-increment:\s*li/);
   });
 
   test("keeps embeds on a 16:9 frame that fills the column", () => {

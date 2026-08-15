@@ -861,6 +861,10 @@ function App() {
   const loadList = useCallback(async () => {
     const result = await api.list();
     setItems(result.items);
+    api
+      .globalPublishPreflight()
+      .then(setPublishPreflight)
+      .catch(() => {});
   }, [api]);
 
   useEffect(() => {
@@ -873,6 +877,12 @@ function App() {
       .catch((error) => {
         if (!cancelled) setMessage({ type: "error", text: error.message });
       });
+    api
+      .globalPublishPreflight()
+      .then((preflight) => {
+        if (!cancelled) setPublishPreflight(preflight);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -1037,13 +1047,15 @@ function App() {
               text: "コンテンツの公開処理が完了しました。",
             });
             loadList();
-            api
-              .read(nextJob.kind, nextJob.contentId)
-              .then((result) => {
-                setContent(cloneContent(result));
-                setSavedAt(new Date());
-              })
-              .catch((error) => setMessage({ type: "error", text: error.message }));
+            if (content) {
+              api
+                .read(content.kind, content.id)
+                .then((result) => {
+                  setContent(cloneContent(result));
+                  setSavedAt(new Date());
+                })
+                .catch((error) => setMessage({ type: "error", text: error.message }));
+            }
           } else if (nextJob.status === "failed") {
             setMessage({ type: "error", text: "公開に失敗しました。ログを確認してください。" });
           }
@@ -1051,7 +1063,7 @@ function App() {
         .catch((error) => setMessage({ type: "error", text: error.message }));
     }, PUBLISH_POLL_MS);
     return () => clearTimeout(timeout);
-  }, [api, loadList, publishJob]);
+  }, [api, content, loadList, publishJob]);
 
   const openItem = async (item) => {
     if (openInFlightRef.current) return;
@@ -1493,10 +1505,12 @@ function App() {
   const startPublish = async (_event, helpers) => {
     helpers.close();
     setPublishOpen(false);
-    const saved = dirty ? await save() : content;
-    if (!saved) return;
     try {
-      const job = await api.publish(saved.kind, saved.id);
+      const job = await api.globalPublish(publishPreflight.intentChecksum);
+      if (job.noChanges) {
+        setMessage({ type: "info", text: "公開待ちの変更はありません。" });
+        return;
+      }
       // The attempt count as it stood when this run was dispatched. The run
       // increments it when it starts, which is what tells the outcome of this
       // attempt apart from the one already recorded on the row.
@@ -1508,12 +1522,10 @@ function App() {
   };
 
   const openPublish = async () => {
-    if (!content) return;
-    const saved = dirty ? await save() : content;
-    if (!saved) return;
+    if (dirty && !(await save())) return;
     setBusy(true);
     try {
-      const result = await api.publishPreflight(saved.kind, saved.id);
+      const result = await api.globalPublishPreflight();
       setPublishPreflight(result);
       setPublishOpen(true);
     } catch (error) {
@@ -1674,10 +1686,11 @@ function App() {
             // Covers the window where a retry has been dispatched but the job
             // row still reads as the previous attempt's failure; publishing
             // again there would put a second run on the same job.
-            disabled={!content || busy || saving || publicationIsLive(publishJob)}
+            disabled={busy || saving || publicationIsLive(publishJob)}
             onClick={openPublish}
           >
-            公開
+            変更をまとめて公開
+            {publishPreflight?.pendingCount > 0 ? ` (${publishPreflight.pendingCount})` : ""}
           </Button>
         </div>
       </header>
@@ -2356,11 +2369,11 @@ function App() {
       <ControlledActionDialog
         isOpen={publishOpen}
         size="S"
-        heading="下書きを公開しますか？"
+        heading="変更をまとめて公開しますか？"
         actionButton={{
           text: "公開処理を開始",
           theme: "primary",
-          disabled: busy || !publishPreflight?.valid,
+          disabled: busy || !publishPreflight?.valid || !publishPreflight?.pendingCount,
         }}
         closeButton="キャンセル"
         onClickAction={startPublish}
@@ -2368,53 +2381,42 @@ function App() {
         onPressEscape={() => setPublishOpen(false)}
       >
         <div className="editor-publish-summary">
-          <p>
-            <strong>
-              {content?.kind === "about"
-                ? activeFile?.meta?.person?.name || "About"
-                : activeFile?.meta?.title || "無題"}
-            </strong>
-          </p>
-          <dl>
-            <div>
-              <dt>コンテンツ</dt>
-              <dd>
-                {content?.kind} / {content?.id}
-              </dd>
-            </div>
-            <div>
-              <dt>公開範囲</dt>
-              <dd>
-                {publishPreflight?.deletedAt
-                  ? "削除済み"
-                  : publishPreflight?.visibility === "public"
-                    ? "公開"
-                    : "非公開"}
-              </dd>
-            </div>
-            {content?.kind === "about" ? (
-              <div>
-                <dt>News</dt>
-                <dd>{(content?.files?.ja?.meta?.newsItems || []).length}件</dd>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <dt>日本語本文</dt>
-                  <dd>{content?.files.ja.body.trim() ? "入力済み" : "未入力"}</dd>
-                </div>
-                <div>
-                  <dt>英語本文</dt>
-                  <dd>{content?.files.en.body.trim() ? "入力済み" : "未入力"}</dd>
-                </div>
-              </>
-            )}
-          </dl>
-          {publishPreflight?.issues?.map((issue) => (
-            <p key={`${issue.locale}:${issue.field}`} className="editor-validation-error">
-              {issue.locale.toUpperCase()}: {issue.message}
-            </p>
-          ))}
+          {publishPreflight?.items?.length ? (
+            ["post", "work", "about"].map((group) => {
+              const entries = publishPreflight.items.filter((item) => item.kind === group);
+              return entries.length ? (
+                <section key={group}>
+                  <strong>
+                    {group === "post" ? "Blog" : group === "work" ? "Works" : "About"}
+                  </strong>
+                  <ul>
+                    {entries.map((item) => (
+                      <li key={item.itemId}>
+                        {item.title} —{" "}
+                        {item.action === "add"
+                          ? "追加"
+                          : item.action === "update"
+                            ? "更新"
+                            : item.action === "delete"
+                              ? "削除"
+                              : "非公開へ移動"}
+                        {item.issues?.map((issue) => (
+                          <p
+                            key={`${issue.locale}:${issue.field}`}
+                            className="editor-validation-error"
+                          >
+                            {issue.locale.toUpperCase()}: {issue.message}
+                          </p>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null;
+            })
+          ) : (
+            <p>公開待ちの変更はありません。</p>
+          )}
           <p>
             現在のデータベース版を固定して公開ジョブを作成し、ジョブIDだけをGitHub
             Actionsへ送ります。本文や画像はdispatch入力へ含めません。

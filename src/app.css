@@ -1369,19 +1369,16 @@
 .prose ul,
 .prose ol {
   margin: 0 0 20px;
-  padding-left: 0;
-  list-style: none;
+  padding-inline-start: 1.5em;
 }
 .prose ul {
-  padding-left: 1.5em;
   list-style-type: disc;
 }
-.prose ul ul {
-  padding-left: 1em;
-  list-style-type: circle;
+.prose :is(ul, ol) :is(ul, ol) {
+  padding-inline-start: 0.5em;
 }
-.prose ol ul {
-  padding-left: 1em;
+.prose ul ul {
+  list-style-type: circle;
 }
 .prose ul ul ul {
   list-style-type: square;
@@ -1395,50 +1392,31 @@
 .prose ul ul ul ul ul ul {
   list-style-type: square;
 }
-.prose ul li {
-  padding-left: 0.25em;
+.prose li {
+  padding-inline-start: 0.25em;
   margin: 4px 0;
 }
-.prose li > ul {
+.prose li > :is(ul, ol) {
   margin: 4px 0;
 }
 .prose ul li::marker {
   color: var(--text-muted);
   font-size: 1.2em;
 }
-.prose ol li {
-  position: relative;
-  padding-left: 28px;
-  margin: 8px 0;
-}
-.prose ul ol > li,
-.prose ol ol > li {
-  padding-left: 22px;
-}
 .prose ul li::before {
   content: none;
 }
 .prose ol {
-  counter-reset: li;
+  list-style-type: decimal;
 }
-.prose ol li {
-  counter-increment: li;
-}
-.prose ol li::before {
-  content: counter(li) ".";
-  position: absolute;
-  left: 0;
-  top: 0;
+.prose ol li::marker {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-size: 14px;
   color: var(--text-muted);
-  border: none;
-  width: auto;
-  height: auto;
-  display: block;
 }
 .prose .task-list-item {
+  position: relative;
   padding-left: 28px;
 }
 .prose ul.contains-task-list {

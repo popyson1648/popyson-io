@@ -122,6 +122,14 @@ export async function publicationInputSnapshot(jobSnapshot, client = new Content
   if (!releaseId) {
     return { snapshot: jobSnapshot, resumed: false, codeSha: "" };
   }
+  if (Array.isArray(jobSnapshot.items)) {
+    const releaseSnapshot = await client.releaseSnapshot(releaseId);
+    return {
+      snapshot: releaseSnapshot,
+      resumed: true,
+      codeSha: String(releaseSnapshot.release?.codeSha || ""),
+    };
+  }
   if (jobSnapshot.candidate?.revision) {
     const releaseSnapshot = await client.releaseSnapshot(releaseId);
     return {
@@ -241,7 +249,9 @@ export class ContentCiClient extends ContentCloudClient {
  */
 export async function materializeSnapshot(snapshot, root, { client = new ContentCiClient() } = {}) {
   const snapshotRoot = requireAbsoluteRoot(root);
-  const entries = snapshotEntries(snapshot);
+  const entries = snapshotEntries(snapshot).filter(
+    (entry) => entry.item.visibility !== "private" && !entry.item.deletedAt,
+  );
   const destinations = new Set();
   let assetCount = 0;
   for (const entry of entries) {
@@ -268,11 +278,7 @@ export async function materializeSnapshot(snapshot, root, { client = new Content
   return { itemCount: entries.length, assetCount };
 }
 
-function revisionFromRoot(root, snapshot) {
-  const [entry] = snapshotEntries(snapshot);
-  if (!entry || snapshotEntries(snapshot).length !== 1) {
-    throw new Error("A publication candidate must contain exactly one pinned item");
-  }
+function revisionFromRoot(root, entry) {
   const target = itemDirectory(root, entry.item);
   const files = {};
   let sourceJa;
@@ -348,10 +354,11 @@ function candidateAssetFiles(root, entry) {
     });
     logicalPaths.add(logicalPath);
   }
-  const visit = (directory, logicalPrefix, role) => {
+  const visit = (directory, logicalPrefix, role, include = (_name) => true) => {
     if (!existsSync(directory)) return;
     for (const child of readdirSync(directory, { withFileTypes: true })) {
       if (!child.isFile()) continue;
+      if (!include(child.name)) continue;
       const mediaType = MEDIA_TYPES.get(fileExtension(child.name));
       if (!mediaType) throw new Error("Candidate contains an unsupported asset type");
       const logicalPath = `${logicalPrefix}${child.name}`;
@@ -365,7 +372,12 @@ function candidateAssetFiles(root, entry) {
       logicalPaths.add(logicalPath);
     }
   };
-  visit(join(root, "public/thumbnails"), "thumbnails/", "thumbnail");
+  visit(
+    join(root, "public/thumbnails"),
+    "thumbnails/",
+    "thumbnail",
+    (name) => entry.item.kind === "post" && name === `${entry.item.id}.png`,
+  );
   return files;
 }
 
@@ -377,25 +389,44 @@ export async function createCandidate(
 ) {
   const snapshotRoot = requireAbsoluteRoot(root);
   const snapshot = await client.jobSnapshot(jobId);
-  const { entry, revision } = revisionFromRoot(snapshotRoot, snapshot);
-  const assets = [];
-  for (const asset of candidateAssetFiles(snapshotRoot, entry)) {
-    const bytes = readFileSync(asset.filePath);
-    const assetId = checksum(bytes);
-    await client.uploadAsset(assetId, bytes, asset.mediaType);
-    assets.push({ assetId, logicalPath: asset.logicalPath, role: asset.role });
+  const entries = snapshotEntries(snapshot).filter(
+    (entry) => entry.item.visibility !== "private" && !entry.item.deletedAt,
+  );
+  const items = [];
+  for (const entry of entries) {
+    const { revision } = revisionFromRoot(snapshotRoot, entry);
+    const assets = [];
+    for (const asset of candidateAssetFiles(snapshotRoot, entry)) {
+      const bytes = readFileSync(asset.filePath);
+      const assetId = checksum(bytes);
+      await client.uploadAsset(assetId, bytes, asset.mediaType);
+      assets.push({ assetId, logicalPath: asset.logicalPath, role: asset.role });
+    }
+    items.push({ itemId: entry.item.itemId, revision, assets });
   }
-  return client.candidate(jobId, { codeSha, revision, assets });
+  if (snapshot.item && items.length === 1) {
+    return client.candidate(jobId, {
+      codeSha,
+      revision: items[0].revision,
+      assets: items[0].assets,
+    });
+  }
+  return client.candidate(jobId, { codeSha, items });
 }
 
 export function sanitizedSnapshotMetadata(snapshot, { resumed = false, codeSha = "" } = {}) {
   const entries = snapshotEntries(snapshot);
+  const publicEntries = entries.filter(
+    (entry) => entry.item.visibility !== "private" && !entry.item.deletedAt,
+  );
   return {
     jobId: String(snapshot.job?.id || ""),
     releaseId: String(snapshot.release?.id || snapshot.job?.releaseId || ""),
     resumed,
     codeSha,
     itemCount: entries.length,
+    publicItemCount: publicEntries.length,
+    hasPosts: publicEntries.some((entry) => entry.item.kind === "post"),
     kind: entries.length === 1 ? String(entries[0].item.kind || "") : "",
     databaseDate: entries.length === 1 ? String(entries[0].item.createdAt || "").slice(0, 10) : "",
   };

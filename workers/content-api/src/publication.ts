@@ -30,9 +30,22 @@ interface PublishJobRow {
   candidate_revision_id: string | null;
   candidate_checksum: string | null;
   release_id: string | null;
+  expected_base_release_id: string | null;
+  batch_mode: number;
   sanitized_error: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface PublishJobItemRow {
+  job_id: string;
+  item_id: string;
+  revision_id: string;
+  expected_revision_id: string;
+  target_visibility: Visibility;
+  target_deleted_at: string | null;
+  candidate_revision_id: string | null;
+  candidate_checksum: string | null;
 }
 
 interface ReleaseRow {
@@ -55,6 +68,11 @@ export interface CandidateInput {
   codeSha?: string;
   revision?: RevisionInput;
   assets?: Array<{ assetId?: string; logicalPath?: string; role?: string }>;
+  items?: Array<{
+    itemId?: string;
+    revision?: RevisionInput;
+    assets?: Array<{ assetId?: string; logicalPath?: string; role?: string }>;
+  }>;
 }
 
 function jobJson(row: PublishJobRow) {
@@ -109,6 +127,15 @@ async function getJob(env: RuntimeEnv, jobId: string): Promise<PublishJobRow> {
     .first<PublishJobRow>();
   if (!job) throw new HttpError(404, "not_found", "Publication job was not found");
   return job;
+}
+
+async function getJobItems(env: RuntimeEnv, jobId: string): Promise<PublishJobItemRow[]> {
+  const rows = await env.CONTENT_DB.prepare(
+    "SELECT * FROM publish_job_items WHERE job_id = ?1 ORDER BY item_id",
+  )
+    .bind(jobId)
+    .all<PublishJobItemRow>();
+  return rows.results;
 }
 
 async function getItemById(env: RuntimeEnv, itemId: string): Promise<ItemRow> {
@@ -188,6 +215,13 @@ export async function createPublishJob(
     if (created.meta.changes !== 1) {
       throw new HttpError(409, "revision_conflict", "Content changed before publication started");
     }
+    await env.CONTENT_DB.prepare(
+      `INSERT INTO publish_job_items
+        (job_id, item_id, revision_id, expected_revision_id, target_visibility, target_deleted_at)
+       VALUES (?1, ?2, ?3, ?3, ?4, ?5)`,
+    )
+      .bind(id, item.id, revisionId, item.visibility, item.deleted_at)
+      .run();
   } catch (error) {
     if (error instanceof HttpError) throw error;
     if (String(error).includes("UNIQUE")) {
@@ -196,6 +230,140 @@ export async function createPublishJob(
     throw error;
   }
   return { job: jobJson(await getJob(env, id)) };
+}
+
+interface PendingRow extends ItemRow {
+  release_revision_id: string | null;
+  metadata_json: string;
+}
+
+async function pendingRows(
+  env: RuntimeEnv,
+): Promise<{ releaseId: string | null; rows: PendingRow[] }> {
+  const release = await activeRelease(env);
+  const result = await env.CONTENT_DB.prepare(
+    `SELECT i.id, i.kind, i.slug, i.visibility, i.deleted_at, i.current_revision_id,
+            i.published_revision_id, i.created_at, i.updated_at,
+            ri.revision_id AS release_revision_id, r.metadata_json
+       FROM content_items i
+       JOIN content_revisions r ON r.id = i.current_revision_id
+       LEFT JOIN release_items ri ON ri.item_id = i.id AND ri.release_id IS ?1
+      WHERE (i.visibility = 'public' AND i.deleted_at IS NULL
+             AND (ri.revision_id IS NULL OR ri.revision_id != i.current_revision_id))
+         OR ((i.visibility = 'private' OR i.deleted_at IS NOT NULL) AND ri.revision_id IS NOT NULL)
+      ORDER BY i.kind, i.slug`,
+  )
+    .bind(release?.id ?? null)
+    .all<PendingRow>();
+  return { releaseId: release?.id ?? null, rows: result.results };
+}
+
+function displayTitle(row: PendingRow): string {
+  try {
+    const metadata = JSON.parse(row.metadata_json) as Record<string, unknown>;
+    const files = (metadata.documents as Record<string, unknown> | undefined)?.files;
+    void files;
+  } catch {
+    // Slug remains a safe, non-source fallback.
+  }
+  return row.kind === "about" ? "About" : row.slug;
+}
+
+async function intentChecksum(releaseId: string | null, rows: PendingRow[]): Promise<string> {
+  return sha256(
+    canonicalJson({
+      releaseId,
+      items: rows.map((row) => [
+        row.id,
+        row.current_revision_id,
+        row.visibility,
+        row.deleted_at,
+        row.release_revision_id,
+      ]),
+    }),
+  );
+}
+
+export async function publicationPreflight(env: RuntimeEnv) {
+  const { releaseId, rows } = await pendingRows(env);
+  return {
+    releaseId,
+    intentChecksum: await intentChecksum(releaseId, rows),
+    items: rows.map((row) => ({
+      ...itemJson(row),
+      title: displayTitle(row),
+      action:
+        row.visibility !== "public" || row.deleted_at
+          ? row.deleted_at
+            ? "delete"
+            : "make_private"
+          : row.release_revision_id
+            ? "update"
+            : "add",
+      valid: Boolean(row.current_revision_id),
+    })),
+  };
+}
+
+export async function createBatchPublishJob(
+  env: RuntimeEnv,
+  input: { intentChecksum?: string; idempotencyKey?: string },
+) {
+  const expected = String(input.intentChecksum || "");
+  const idempotencyKey = String(input.idempotencyKey || "");
+  if (!/^[a-f0-9]{64}$/.test(expected)) {
+    throw new HttpError(400, "invalid_intent_checksum", "Publication preflight is invalid");
+  }
+  if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
+    throw new HttpError(400, "invalid_idempotency_key", "Idempotency key is invalid");
+  }
+  const existing = await env.CONTENT_DB.prepare(
+    "SELECT * FROM publish_jobs WHERE idempotency_key = ?1",
+  )
+    .bind(idempotencyKey)
+    .first<PublishJobRow>();
+  if (existing) return { job: jobJson(existing) };
+  const { releaseId, rows } = await pendingRows(env);
+  if ((await intentChecksum(releaseId, rows)) !== expected) {
+    throw new HttpError(409, "preflight_conflict", "Saved content changed; refresh publication");
+  }
+  if (rows.length === 0) return { job: null, noChanges: true };
+  const anchor = rows[0];
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  const statements = [
+    env.CONTENT_DB.prepare(
+      `INSERT INTO publish_jobs
+        (id, item_id, revision_id, expected_revision_id, target_visibility,
+         target_deleted_at, idempotency_key, state, expected_base_release_id,
+         batch_mode, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, 'queued', ?7, 1, ?8, ?8)`,
+    ).bind(
+      id,
+      anchor.id,
+      anchor.current_revision_id,
+      anchor.visibility,
+      anchor.deleted_at,
+      idempotencyKey,
+      releaseId,
+      now,
+    ),
+    ...rows.map((row) =>
+      env.CONTENT_DB.prepare(
+        `INSERT INTO publish_job_items
+          (job_id, item_id, revision_id, expected_revision_id, target_visibility, target_deleted_at)
+         SELECT ?1, id, current_revision_id, current_revision_id, visibility, deleted_at
+           FROM content_items
+          WHERE id = ?2 AND current_revision_id = ?3 AND visibility = ?4
+            AND deleted_at IS ?5`,
+      ).bind(id, row.id, row.current_revision_id, row.visibility, row.deleted_at),
+    ),
+  ];
+  const results = await env.CONTENT_DB.batch(statements);
+  if (results.some((result) => result.meta.changes !== 1)) {
+    throw new HttpError(409, "preflight_conflict", "Saved content changed; refresh publication");
+  }
+  return { job: jobJson(await getJob(env, id)), noChanges: false };
 }
 
 export async function readPublishJob(env: RuntimeEnv, jobId: string) {
@@ -238,26 +406,37 @@ export async function markJobRunning(
 
 export async function publicationJobSnapshot(env: RuntimeEnv, jobId: string) {
   const job = await getJob(env, jobId);
-  const item = await getItemById(env, job.item_id);
-  const revision = await getRevision(env, job.revision_id, item.id);
-  const candidateRevision = job.candidate_revision_id
-    ? await getRevision(env, job.candidate_revision_id, item.id)
-    : null;
+  const jobItems = await getJobItems(env, job.id);
+  const entries = [];
+  for (const pinned of jobItems) {
+    const item = await getItemById(env, pinned.item_id);
+    const revision = await getRevision(env, pinned.revision_id, item.id);
+    const candidateRevisionId =
+      pinned.candidate_revision_id || (jobItems.length === 1 ? job.candidate_revision_id : null);
+    const candidateRevision = candidateRevisionId
+      ? await getRevision(env, candidateRevisionId, item.id)
+      : null;
+    entries.push({
+      item: {
+        ...itemJson(item),
+        visibility: pinned.target_visibility,
+        deletedAt: pinned.target_deleted_at,
+      },
+      revision: revisionJson(revision),
+      assets: await getRevisionAssets(env, revision.id),
+      candidate: candidateRevision
+        ? {
+            revision: revisionJson(candidateRevision),
+            assets: await getRevisionAssets(env, candidateRevision.id),
+          }
+        : undefined,
+    });
+  }
+  if (entries.length !== 1) return { job: jobJson(job), items: entries };
+  const [entry] = entries;
   return {
     job: jobJson(job),
-    item: {
-      ...itemJson(item),
-      visibility: job.target_visibility,
-      deletedAt: job.target_deleted_at,
-    },
-    revision: revisionJson(revision),
-    assets: await getRevisionAssets(env, revision.id),
-    candidate: candidateRevision
-      ? {
-          revision: revisionJson(candidateRevision),
-          assets: await getRevisionAssets(env, candidateRevision.id),
-        }
-      : undefined,
+    ...entry,
   };
 }
 
@@ -334,8 +513,13 @@ async function ensureCandidateRevision(
 async function releaseManifest(
   env: RuntimeEnv,
   base: ReleaseRow | null,
-  job: PublishJobRow,
-  candidateRevisionId: string,
+  changes: Array<{
+    itemId: string;
+    visibility: Visibility;
+    deletedAt: string | null;
+    revisionId: string;
+  }>,
+  seedCurrentWhenNoBase: boolean,
 ): Promise<Map<string, string>> {
   const manifest = new Map<string, string>();
   if (base) {
@@ -345,7 +529,7 @@ async function releaseManifest(
       .bind(base.id)
       .all<{ item_id: string; revision_id: string }>();
     for (const row of rows.results) manifest.set(row.item_id, row.revision_id);
-  } else {
+  } else if (seedCurrentWhenNoBase) {
     const rows = await env.CONTENT_DB.prepare(
       `SELECT id AS item_id, current_revision_id AS revision_id
          FROM content_items
@@ -354,10 +538,12 @@ async function releaseManifest(
     ).all<{ item_id: string; revision_id: string }>();
     for (const row of rows.results) manifest.set(row.item_id, row.revision_id);
   }
-  if (job.target_visibility === "public" && job.target_deleted_at === null) {
-    manifest.set(job.item_id, candidateRevisionId);
-  } else {
-    manifest.delete(job.item_id);
+  for (const change of changes) {
+    if (change.visibility === "public" && change.deletedAt === null) {
+      manifest.set(change.itemId, change.revisionId);
+    } else {
+      manifest.delete(change.itemId);
+    }
   }
   return manifest;
 }
@@ -383,20 +569,106 @@ export async function createCandidateRelease(
         String(left.logicalPath || "").localeCompare(String(right.logicalPath || "")),
       )
     : undefined;
-  const normalizedInput = { ...input, assets: orderedAssets };
+  const orderedItems = input.items
+    ? input.items
+        .map((entry) => ({
+          ...entry,
+          assets: entry.assets
+            ? [...entry.assets].sort((left, right) =>
+                String(left.logicalPath || "").localeCompare(String(right.logicalPath || "")),
+              )
+            : undefined,
+        }))
+        .sort((left, right) => String(left.itemId || "").localeCompare(String(right.itemId || "")))
+    : undefined;
+  const normalizedInput = { ...input, assets: orderedAssets, items: orderedItems };
   const candidateChecksum = await sha256(
-    canonicalJson({ codeSha, revision: input.revision ?? null, assets: orderedAssets ?? null }),
+    canonicalJson({
+      codeSha,
+      revision: input.revision ?? null,
+      assets: orderedAssets ?? null,
+      items: orderedItems ?? null,
+    }),
   );
-  const item = await getItemById(env, job.item_id);
-  const candidateRevisionId = await ensureCandidateRevision(
-    env,
-    job,
-    item,
-    normalizedInput,
-    candidateChecksum,
-  );
+  const pinnedItems = await getJobItems(env, job.id);
+  const changes: Array<{
+    itemId: string;
+    visibility: Visibility;
+    deletedAt: string | null;
+    revisionId: string;
+  }> = [];
+  if (pinnedItems.length === 1 && !input.items) {
+    const item = await getItemById(env, job.item_id);
+    const candidateRevisionId = await ensureCandidateRevision(
+      env,
+      job,
+      item,
+      normalizedInput,
+      candidateChecksum,
+    );
+    changes.push({
+      itemId: job.item_id,
+      visibility: job.target_visibility as Visibility,
+      deletedAt: job.target_deleted_at,
+      revisionId: candidateRevisionId,
+    });
+  } else {
+    const candidates = new Map(
+      (orderedItems || []).map((entry) => [String(entry.itemId || ""), entry]),
+    );
+    for (const pinned of pinnedItems) {
+      const item = await getItemById(env, pinned.item_id);
+      let revisionId = pinned.candidate_revision_id || pinned.revision_id;
+      if (pinned.target_visibility === "public" && pinned.target_deleted_at === null) {
+        const candidate = candidates.get(pinned.item_id);
+        if (!candidate)
+          throw new HttpError(400, "missing_candidate", "Public batch item candidate is missing");
+        if (!pinned.candidate_revision_id) {
+          revisionId = await createPublicationRevision(
+            env,
+            item,
+            pinned.revision_id,
+            candidate.revision || {
+              sourceJa: (await getRevision(env, pinned.revision_id, item.id)).source_ja,
+              sourceEn: (await getRevision(env, pinned.revision_id, item.id)).source_en,
+              documents: JSON.parse(
+                (await getRevision(env, pinned.revision_id, item.id)).documents_json,
+              ),
+              expectedRevisionId: pinned.revision_id,
+            },
+            candidate.assets,
+          );
+          await env.CONTENT_DB.prepare(
+            `UPDATE publish_job_items SET candidate_revision_id = ?1, candidate_checksum = ?2
+              WHERE job_id = ?3 AND item_id = ?4 AND candidate_revision_id IS NULL`,
+          )
+            .bind(revisionId, candidateChecksum, job.id, pinned.item_id)
+            .run();
+        }
+      }
+      changes.push({
+        itemId: pinned.item_id,
+        visibility: pinned.target_visibility,
+        deletedAt: pinned.target_deleted_at,
+        revisionId,
+      });
+    }
+    await env.CONTENT_DB.prepare(
+      `UPDATE publish_jobs SET candidate_checksum = ?1, updated_at = ?2
+        WHERE id = ?3 AND state = 'running' AND candidate_checksum IS NULL`,
+    )
+      .bind(candidateChecksum, new Date().toISOString(), job.id)
+      .run();
+    job = await getJob(env, job.id);
+    if (job.candidate_checksum !== candidateChecksum) {
+      throw new HttpError(409, "candidate_conflict", "Candidate payload changed");
+    }
+  }
   job = await getJob(env, job.id);
   const base = await activeRelease(env);
+  if (job.batch_mode === 1 && job.expected_base_release_id !== (base?.id ?? null)) {
+    throw new HttpError(409, "release_stale", "Active release changed after publication preflight");
+  }
   if (job.release_id) {
     const existing = await getRelease(env, job.release_id);
     if (existing.state === "active") {
@@ -415,7 +687,7 @@ export async function createCandidateRelease(
       .bind(existing.id)
       .run();
   }
-  const manifest = await releaseManifest(env, base, job, candidateRevisionId);
+  const manifest = await releaseManifest(env, base, changes, job.batch_mode !== 1);
   const entries = [...manifest.entries()].sort(([left], [right]) => left.localeCompare(right));
   const manifestChecksum = await sha256(canonicalJson(entries));
   const releaseId = crypto.randomUUID();

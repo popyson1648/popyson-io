@@ -39,6 +39,7 @@ async function clearDatabase() {
     env.CONTENT_DB.prepare("UPDATE publish_jobs SET release_id = NULL"),
     env.CONTENT_DB.prepare("UPDATE releases SET base_release_id = NULL"),
     env.CONTENT_DB.prepare("DELETE FROM releases"),
+    env.CONTENT_DB.prepare("DELETE FROM publish_job_items"),
     env.CONTENT_DB.prepare("DELETE FROM publish_jobs"),
     env.CONTENT_DB.prepare("DELETE FROM revision_assets"),
     env.CONTENT_DB.prepare("DELETE FROM assets"),
@@ -422,6 +423,60 @@ describe("content API", () => {
     }>(await request("/v1/ci/releases/active/snapshot", { role: "ci" }));
     expect(active.items).toHaveLength(1);
     expect(active.items[0].revision.sourceJa).toBe("Generated publication");
+  });
+
+  it("pins and activates every pending item in one batch publication", async () => {
+    const first = await createValue("first-work", "public", "First batch item");
+    const second = await createValue("second-work", "public", "Second batch item");
+    const preflight = await body<{
+      intentChecksum: string;
+      items: Array<{ itemId: string; id: string }>;
+    }>(await request("/v1/author/publication/preflight", { role: "author" }));
+    expect(preflight.items.map((item) => item.id)).toEqual(["first-work", "second-work"]);
+
+    const created = await body<JobValue & { noChanges: boolean }>(
+      await request("/v1/author/publication", {
+        role: "author",
+        method: "POST",
+        body: { intentChecksum: preflight.intentChecksum, idempotencyKey: "batch:0001" },
+      }),
+    );
+    expect(created.noChanges).toBe(false);
+    await markRunning(created.job.id);
+    const snapshot = await body<{ items: Array<{ item: { itemId: string } }> }>(
+      await request(`/v1/ci/jobs/${created.job.id}/snapshot`, { role: "ci" }),
+    );
+    expect(snapshot.items).toHaveLength(2);
+
+    const revisions = new Map([
+      [first.itemId, first],
+      [second.itemId, second],
+    ]);
+    const release = await candidate(created.job.id, {
+      items: snapshot.items.map(({ item }) => {
+        const value = revisions.get(item.itemId)!;
+        return {
+          itemId: item.itemId,
+          revision: {
+            sourceJa: value.revision.sourceJa,
+            sourceEn: value.revision.sourceEn,
+            documents: { files: {} },
+            expectedRevisionId: value.currentRevisionId,
+          },
+          assets: [],
+        };
+      }),
+    });
+    await finalize(created.job.id, release.release.id);
+    const active = await body<{ items: Array<{ item: { id: string } }> }>(
+      await request("/v1/ci/releases/active/snapshot", { role: "ci" }),
+    );
+    expect(active.items.map(({ item }) => item.id)).toEqual(["first-work", "second-work"]);
+
+    const empty = await body<{ items: unknown[] }>(
+      await request("/v1/author/publication/preflight", { role: "author" }),
+    );
+    expect(empty.items).toEqual([]);
   });
 
   it("publishes private and deleted state by removing content from the active release", async () => {

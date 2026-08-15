@@ -188,6 +188,51 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
     return;
   }
 
+  if (pathname === "/api/editor/publication" && request.method === "GET") {
+    const preflight = await cloud.publicationPreflight();
+    const items = await Promise.all(
+      preflight.items.map(async (pending) => {
+        const content = await readCloudEditorContent(cloud, pending.kind, pending.id);
+        const validation =
+          pending.visibility === "public" && !pending.deletedAt
+            ? validateCloudContent(content)
+            : { valid: true, issues: [] };
+        return {
+          ...pending,
+          title:
+            content.kind === "about"
+              ? content.files.ja.meta?.person?.name || "About"
+              : content.files.ja.meta?.title || content.id,
+          valid: validation.valid,
+          issues: validation.issues || [],
+        };
+      }),
+    );
+    sendJson(response, 200, {
+      ...preflight,
+      items,
+      valid: items.every((item) => item.valid),
+      pendingCount: items.length,
+    });
+    return;
+  }
+  if (pathname === "/api/editor/publication" && request.method === "POST") {
+    const body = await readJson(request);
+    const result = await cloud.createBatchPublication({
+      intentChecksum: body.intentChecksum,
+      idempotencyKey: createHash("sha256")
+        .update(`batch\0${String(body.intentChecksum || "")}`)
+        .digest("hex"),
+    });
+    if (result.noChanges || !result.job) {
+      sendJson(response, 200, { noChanges: true });
+      return;
+    }
+    const dispatch = await workflows.dispatchPublication(result.job.id);
+    sendJson(response, 202, publicJob({ ...result.job, ...dispatch }));
+    return;
+  }
+
   const contentMatch = /^\/api\/editor\/content\/(post|work|about)(?:\/([^/]+))?$/.exec(pathname);
   if (contentMatch) {
     const kind = /** @type {"post" | "work" | "about"} */ (contentMatch[1]);

@@ -34,7 +34,12 @@ function postMarkdownFiles() {
 function firstAddedGitDate(filePath) {
   const databaseDate = String(process.env.CONTENT_DATABASE_DATE || "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(databaseDate)) return databaseDate;
-  if (CONTENT_ROOT !== ROOT) return "";
+  if (CONTENT_ROOT !== ROOT) {
+    const encoded = basename(dirname(filePath)).slice(0, 8);
+    return /^\d{8}$/.test(encoded)
+      ? `${encoded.slice(0, 4)}-${encoded.slice(4, 6)}-${encoded.slice(6, 8)}`
+      : "";
+  }
   const relPath = relative(ROOT, filePath);
   try {
     const output = execFileSync(

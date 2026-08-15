@@ -47,8 +47,8 @@ function apps() {
 // Generic, concise per-page descriptions (overridden by article / work copy).
 const PAGE_DESC = {
   about: {
-    ja: "分散システム、開発者ツール、設計について書く個人ブログ。",
-    en: "A personal site on distributed systems, developer tools and design.",
+    ja: "popyson の個人サイト、ブログ、ポートフォリオ。",
+    en: "popyson's personal site, blog and portfolio.",
   },
   blog: { ja: "書いたものの一覧。", en: "Things I've written." },
   app: { ja: "作ったものの一覧。", en: "Things I've built." },

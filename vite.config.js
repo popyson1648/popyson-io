@@ -13,7 +13,7 @@ import {
 
 const SITE_URL = "https://popyson.com";
 const SITE_TITLE = "popyson.com";
-const SITE_DESC = "分散システム、開発者ツール、設計について書く個人ブログ。";
+const SITE_DESC = "popyson の個人サイト、ブログ、ポートフォリオ。";
 
 function escapeXml(value) {
   return String(value)

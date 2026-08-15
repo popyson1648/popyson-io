@@ -578,7 +578,17 @@ describe("content API", () => {
     });
     const retried = await markRunning(publication.job.id, "2002");
     expect(retried.job.attempts).toBe(2);
-    const repeated = await candidate(publication.job.id);
+    const repeated = await candidate(publication.job.id, {
+      // A resumed workflow reconstructs input files from the immutable release.
+      // Serialization may differ from the first attempt, but it must reuse the
+      // already-created candidate rather than reject or replace it.
+      revision: {
+        sourceJa: "Reconstructed retry payload",
+        sourceEn: "Reconstructed retry payload EN",
+        documents: { files: {} },
+        expectedRevisionId: initial.currentRevisionId,
+      },
+    });
     expect(repeated.release.id).toBe(release.release.id);
     await finalize(publication.job.id, release.release.id, "pages-retry");
   });

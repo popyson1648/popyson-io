@@ -561,6 +561,18 @@ export async function createCandidateRelease(
   if (!/^[a-f0-9]{40,64}$/.test(codeSha)) {
     throw new HttpError(400, "invalid_code_sha", "Code SHA is invalid");
   }
+  const base = await activeRelease(env);
+  if (job.attempts > 1 && job.release_id && job.candidate_checksum) {
+    const existing = await getRelease(env, job.release_id);
+    if (
+      existing.code_sha === codeSha &&
+      (existing.state === "active" ||
+        ((existing.state === "candidate" || existing.state === "deploying") &&
+          existing.base_release_id === (base?.id ?? null)))
+    ) {
+      return { job: jobJson(job), release: releaseJson(existing) };
+    }
+  }
   if (input.assets !== undefined && !Array.isArray(input.assets)) {
     throw new HttpError(400, "invalid_assets", "Candidate assets must be an array");
   }
@@ -665,7 +677,6 @@ export async function createCandidateRelease(
     }
   }
   job = await getJob(env, job.id);
-  const base = await activeRelease(env);
   if (job.batch_mode === 1 && job.expected_base_release_id !== (base?.id ?? null)) {
     throw new HttpError(409, "release_stale", "Active release changed after publication preflight");
   }

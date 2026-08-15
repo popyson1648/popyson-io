@@ -281,6 +281,15 @@ jobs:
             # "[verify]" and never puts command output on them, so echoing only
             # those lines names the failing phase without exposing source text.
             grep '^\[verify\] ' "$RUNNER_TEMP/verification.log" >&2 || true
+            if grep -q '^\[verify\] failed: test_integration' "$RUNNER_TEMP/verification.log"; then
+              for test_file in tests/*.integration.test.mjs; do
+                if ! npx vitest run --project integration "$test_file" \
+                  > "$RUNNER_TEMP/integration-diagnostic.log" 2>&1; then
+                  echo "[verify] failing integration file: $(basename "$test_file")" >&2
+                fi
+              done
+              rm -f "$RUNNER_TEMP/integration-diagnostic.log"
+            fi
             rm -f "$RUNNER_TEMP/verification.log"
             echo "Candidate verification failed; command output was suppressed because it may contain source text." >&2
             exit 1

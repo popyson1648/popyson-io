@@ -185,6 +185,10 @@ describe("headModel", () => {
     ]);
     expect(model.og.locale).toBe("en_US");
     expect(model.og.localeAlternate).toBe("ja_JP");
+    expect(model.og.image).toMatch(
+      /^https:\/\/popyson\.com\/ogp\/blog\/post-id-en-[a-f0-9]{8}\.png$/,
+    );
+    expect(model.twitter.image).toBe(model.og.image);
   });
 
   test("falls back to About metadata when the article is missing", () => {
@@ -193,6 +197,7 @@ describe("headModel", () => {
     expect(model.title).toBe(`About | ${SITE.name}`);
     expect(model.canonical).toBe(`${SITE.url}/blog/missing`);
     expect(model.og.locale).toBe("ja_JP");
+    expect(model.og.image).toBe(SITE.image);
   });
 });
 

@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import { createRunnableDevEnvironment, createServer, DevEnvironment } from "vite";
 
 import { loadSiteContent, renderArticleBodies } from "./content_loader.mjs";
+import { generateArticleOgpImages } from "./generateOgpImages.mjs";
 import { SITE, allRoutes, configureMetaData, headModel } from "../src/meta.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -173,6 +174,8 @@ async function main() {
   const models = [];
   let count = 0;
 
+  const generatedOgpImages = await generateArticleOgpImages(content.POSTS, DIST);
+
   await withRouteRenderer(async (renderRouteRoot) => {
     for (const { dir, route, lang } of routes) {
       const m = headModel(route, lang);
@@ -192,7 +195,9 @@ async function main() {
   writeFileSync(join(DIST, "sitemap.xml"), buildSitemap(models));
   writeFileSync(join(DIST, "robots.txt"), buildRobots());
 
-  console.log(`[prerender] wrote ${count} HTML files + sitemap.xml + robots.txt`);
+  console.log(
+    `[prerender] wrote ${count} HTML files + ${generatedOgpImages.length} OGP images + sitemap.xml + robots.txt`,
+  );
 }
 
 main();

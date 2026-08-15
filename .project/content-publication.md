@@ -55,16 +55,23 @@ workflow input.
 
 `.github/workflows/content-publish.yml` acquires the shared
 `cloudflare-deploy` queue, reconciles an interrupted deployment, downloads the
-pinned job, runs post metadata generation before translation, validates an
+pinned job, translates before post metadata generation, validates an
 exact changed-file allowlist, uploads a candidate revision, then downloads and
 verifies the immutable candidate release before deploying it. The Pages commit
 message carries `content-release:<release-id>` so a later run can reconcile a
 successful upload whose finalize call was interrupted.
 
-Translation writes the English files from the Japanese ones, so the editor's
-publish check asks for Japanese prose and accepts English that is still empty.
-It does ask both locales for structure — a News date is not prose and no
-translation supplies one.
+Translation writes the English files from the Japanese ones. Claude Code is
+primary. If its process exits unsuccessfully,
+`scripts/translate_with_openai.mjs` makes one bounded Responses API request to
+`gpt-5.6-terra` with low reasoning effort. The fallback receives only the
+translation rules and the one item's Japanese source, returns a strict list of
+complete English targets, and has no file or tool access. Both providers pass
+through the same checksum allowlist before publication continues.
+
+The editor's publish check therefore asks for Japanese prose and accepts English
+that is still empty. It does ask both locales for structure — a News date is not
+prose and no translation supplies one.
 
 `deploy.yml` and `reading-refresh.yml` acquire the same queue and always
 download the active release before building. `ci.yml` downloads it too, without
@@ -113,9 +120,8 @@ Set these repository secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `GEMINI_API_KEY`
-- `OPENAI_API_KEY`
-- `CLAUDE_CODE_OAUTH_TOKEN`
+- `OPENAI_API_KEY` (metadata, thumbnail generation, and translation fallback)
+- `CLAUDE_CODE_OAUTH_TOKEN` (primary translation provider)
 
 The CI Access token is distinct from the editor token. No content workflow
 needs `contents: write` or the repository administration token.
-

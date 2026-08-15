@@ -130,6 +130,8 @@ jobs:
         shell: bash
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_TRANSLATION_MODEL: gpt-5.6-terra
           TRANSLATION_PROMPT: |
             Read .project/translation.md and follow it exactly.
             The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains exactly one item.
@@ -150,8 +152,14 @@ jobs:
             --permission-mode acceptEdits \
             > "$RUNNER_TEMP/translation.log" 2>&1; then
             rm -f "$RUNNER_TEMP/translation.log"
-            echo "Translation provider failed; output was suppressed because it may contain source text." >&2
-            exit 1
+            echo "Primary translation provider failed; trying the OpenAI fallback. Detailed output was suppressed because it may contain source text." >&2
+            if ! node scripts/translate_with_openai.mjs \
+              > "$RUNNER_TEMP/openai-translation.log" 2>&1; then
+              rm -f "$RUNNER_TEMP/openai-translation.log"
+              echo "OpenAI translation fallback failed; output was suppressed because it may contain source text." >&2
+              exit 1
+            fi
+            rm -f "$RUNNER_TEMP/openai-translation.log"
           fi
           rm -f "$RUNNER_TEMP/translation.log"
 

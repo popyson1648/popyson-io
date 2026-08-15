@@ -48,12 +48,19 @@ removing `auto_tags`.
 
 ## AI Provider Keys
 
-The generator reads two keys from the environment:
+Each section of `src/content/metadata.toml` names the `provider` and `model`
+that answer it, and the generator reads the key that provider needs. Today
+`[tag_generation]` and `[summary_generation]` name `openai` with
+`gpt-5.6-luna`, and `[thumbnail_generation]` names `openai` with `gpt-image-2`,
+so one key covers everything:
 
-- `GEMINI_API_KEY` (free tier) when `auto_tags`, `[sumup] mode = "auto"`, or a
-  thumbnail concept must be resolved.
-- `OPENAI_API_KEY` (billing enabled) when `[thumbnail] mode = "auto"` must
-  generate an image.
+- `OPENAI_API_KEY` (billing enabled) for tags, summaries, thumbnail concepts,
+  and thumbnail images.
+- `GEMINI_API_KEY` for whichever text section names `provider = "gemini"`.
+
+Text requests go to the Responses API with a strict JSON schema and reasoning
+turned off; these are extraction tasks with one right shape, and a reasoning
+model bills what it thinks as output.
 
 The committed verification check does not call any AI provider; it only fails
 when unresolved metadata remains. Store local keys through 1Password and expose
@@ -79,8 +86,8 @@ does not loop or re-trigger the translation workflow.
 
 ## AI Prompt Files
 
-Prompt files live under `src/content/prompts/`. The Gemini prompts are sent as
-`systemInstruction`:
+Prompt files live under `src/content/prompts/`. The text prompts are sent as
+the request's system instruction:
 
 - `src/content/prompts/tag-generation.md`
 - `src/content/prompts/summary-generation.md`

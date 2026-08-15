@@ -3,10 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
 import { contentSnapshotRoot } from "../scripts/content_loader.mjs";
 import {
   evaluateMetadata,
+  generateJson,
+  knownTagsByLocale,
+  openaiGenerateJson,
   pendingMetadataReasons,
   previewPrompts,
   resolveMetadata,
@@ -539,5 +542,103 @@ describe("resolveMetadata auto thumbnail generation", () => {
 
     expect(previews.map((item) => item.kind)).toEqual(["thumbnail-concept", "thumbnail"]);
     expect(previews[1].prompt).toMatch(/\{CONCEPT\}/);
+  });
+});
+
+describe("text provider selection", () => {
+  const realFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    delete process.env.OPENAI_API_KEY;
+  });
+
+  function stubResponse(text) {
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url, body: JSON.parse(init.body) });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "completed",
+          output: [{ type: "message", content: [{ type: "output_text", text }] }],
+        }),
+      };
+    };
+    return calls;
+  }
+
+  test("asks OpenAI for a strict schema with reasoning turned off", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const calls = stubResponse('{"summary":"要約。"}');
+
+    const result = await openaiGenerateJson({
+      model: "gpt-5.6-luna",
+      systemInstruction: "You are editing metadata.",
+      prompt: "Article body",
+      schema: { type: "object", properties: { summary: { type: "string" } }, required: [] },
+    });
+
+    expect(result).toEqual({ summary: "要約。" });
+    expect(calls[0].url).toBe("https://api.openai.com/v1/responses");
+    expect(calls[0].body.model).toBe("gpt-5.6-luna");
+    expect(calls[0].body.instructions).toBe("You are editing metadata.");
+    expect(calls[0].body.reasoning).toEqual({ effort: "none" });
+    expect(calls[0].body.text.format.strict).toBe(true);
+    // Strict mode answers the schema exactly, so it demands one that closes:
+    // every property required, nothing else allowed.
+    expect(calls[0].body.text.format.schema.required).toEqual(["summary"]);
+    expect(calls[0].body.text.format.schema.additionalProperties).toBe(false);
+  });
+
+  test("reports an OpenAI answer that carries no text", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "incomplete", output: [] }),
+    });
+
+    await expect(
+      openaiGenerateJson({ model: "gpt-5.6-luna", prompt: "x", schema: { type: "object" } }),
+    ).rejects.toThrow(/no text content \(status: incomplete\)/);
+  });
+
+  test("sends a request to the provider it names", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    const calls = stubResponse('{"tags":["ts"]}');
+
+    await generateJson({ provider: "openai", model: "gpt-5.6-luna", prompt: "x", schema: {} });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("api.openai.com");
+  });
+
+  test("refuses a provider it has no client for", async () => {
+    await expect(generateJson({ provider: "nowhere", prompt: "x" })).rejects.toThrow(
+      /Unknown text provider: nowhere/,
+    );
+  });
+});
+
+describe("knownTagsByLocale", () => {
+  test("keeps each locale's vocabulary to itself", () => {
+    const dir = mkdtempSync(join(tmpdir(), "known-tags-"));
+    const post = (title, tags) =>
+      `+++\ntitle = "${title}"\ndate = "2026-06-18"\ntags = ${JSON.stringify(tags)}\n+++\n\n本文。\n`;
+    writeFileSync(join(dir, "a.ja.md"), post("あ", ["設計", "TypeScript"]));
+    writeFileSync(join(dir, "a.en.md"), post("A", ["design", "TypeScript"]));
+    writeFileSync(join(dir, "b.ja.md"), post("い", ["設計"]));
+
+    const known = knownTagsByLocale([
+      join(dir, "a.ja.md"),
+      join(dir, "a.en.md"),
+      join(dir, "b.ja.md"),
+    ]);
+
+    expect(known.ja).toEqual(["TypeScript", "設計"]);
+    expect(known.en).toEqual(["design", "TypeScript"]);
+    rmSync(dir, { recursive: true, force: true });
   });
 });

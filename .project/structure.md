@@ -25,7 +25,7 @@
 - `src/prerenderRoutes.jsx`: build-time SSR entry. `scripts/prerender.mjs` loads it through Vite's SSR pipeline and renders each non-article route's page component (`renderToStaticMarkup`) to bake the primary body into `#root`. No client hydration — `createRoot` still replaces the markup on mount.
 - `src/meta.js`: single source of truth for per-route/per-locale metadata (titles, descriptions, canonical, hreflang, OGP/Twitter) and the prerender route list; shared by `src/app.jsx` (runtime) and `scripts/prerender.mjs` (build).
 - `scripts/contentSnapshotClient.mjs`: validates and materializes pinned D1/R2 publication and release snapshots into an explicit isolated root.
-- `src/content/metadata.toml`: article metadata defaults plus Gemini (tags/summary) and OpenAI (`[thumbnail_generation]`) provider/model settings.
+- `src/content/metadata.toml`: article metadata defaults plus the provider and model each generated field is answered by. Every section names OpenAI today; `provider = "gemini"` on a text section moves that field back.
 - `src/content/prompts/tag-generation.md`: system instruction used by automatic tag generation.
 - `src/content/prompts/summary-generation.md`: system instruction used by automatic summary generation.
 - `src/content/prompts/thumbnail-concept.md`: system instruction that derives the thumbnail concept from the Japanese summary.

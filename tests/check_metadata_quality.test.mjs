@@ -39,15 +39,20 @@ function validatePromptFile(configPath, field) {
   return [];
 }
 
+// The providers scripts/generate_metadata.mjs can dispatch a text request to,
+// and the prefix each one's model ids carry. A section naming a provider whose
+// model belongs to the other reaches the wrong API at publication time.
+const TEXT_MODEL_PREFIXES = { gemini: "gemini-", openai: "gpt-" };
+
 function validateProvider(sectionName, section) {
-  const errors = [];
-  if (section?.provider !== "gemini") {
-    errors.push(`src/content/metadata.toml: ${sectionName}.provider: must be "gemini"`);
+  const prefix = TEXT_MODEL_PREFIXES[section?.provider];
+  if (!prefix) {
+    return [`src/content/metadata.toml: ${sectionName}.provider: must be "openai" or "gemini"`];
   }
-  if (typeof section?.model !== "string" || !section.model.startsWith("gemini-")) {
-    errors.push(`src/content/metadata.toml: ${sectionName}.model: must be a gemini-* model string`);
+  if (typeof section?.model !== "string" || !section.model.startsWith(prefix)) {
+    return [`src/content/metadata.toml: ${sectionName}.model: must be a ${prefix}* model string`];
   }
-  return errors;
+  return [];
 }
 
 function validateThumbnailGeneration() {

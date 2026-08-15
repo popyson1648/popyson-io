@@ -326,12 +326,101 @@ export async function geminiGenerateJson({
   }
 }
 
-function requireOpenaiKey() {
+function requireOpenaiKey(purpose = "thumbnail image generation") {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is required for thumbnail image generation");
+    throw new Error(`OPENAI_API_KEY is required for ${purpose}`);
   }
   return apiKey;
+}
+
+// Strict structured output answers the schema exactly, and asks for a schema
+// that says exactly what it wants: every property required, nothing else
+// allowed. The schemas above are written for neither provider in particular,
+// so the closing is applied here rather than at each definition.
+function strictSchema(schema) {
+  if (!schema || schema.type !== "object") return schema;
+  const properties = schema.properties || {};
+  return {
+    ...schema,
+    properties,
+    required: Object.keys(properties),
+    additionalProperties: false,
+  };
+}
+
+/**
+ * Ask OpenAI for JSON matching a schema. Reasoning is turned off: these are
+ * extraction tasks with one right shape, and a reasoning model bills what it
+ * thinks as output.
+ */
+export async function openaiGenerateJson({
+  apiKey = requireOpenaiKey("AI metadata generation"),
+  model,
+  systemInstruction = "",
+  prompt,
+  schema,
+}) {
+  const requestBody = {
+    model,
+    input: prompt,
+    reasoning: { effort: "none" },
+    text: {
+      format: {
+        type: "json_schema",
+        name: "metadata",
+        schema: strictSchema(schema),
+        strict: true,
+      },
+    },
+  };
+  if (systemInstruction.trim()) requestBody.instructions = systemInstruction;
+
+  const response = await fetchWithRetry("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API request failed: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  const text = (data.output || [])
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content || [])
+    .filter((part) => part.type === "output_text")
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
+  if (!text) {
+    throw new Error(`OpenAI API returned no text content (status: ${data.status || "unknown"})`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`OpenAI API returned non-JSON content: ${text.slice(0, 200)}`);
+  }
+}
+
+const TEXT_PROVIDERS = {
+  gemini: geminiGenerateJson,
+  openai: openaiGenerateJson,
+};
+
+/**
+ * Send a text request to the provider it names. Each request carries the
+ * provider and model from its own section of src/content/metadata.toml, so
+ * tags, summaries, and thumbnail concepts can be moved one at a time.
+ */
+export async function generateJson(request) {
+  const provider = TEXT_PROVIDERS[request.provider || "gemini"];
+  if (!provider) throw new Error(`Unknown text provider: ${request.provider}`);
+  return provider(request);
 }
 
 /**
@@ -364,13 +453,21 @@ export async function openaiGenerateImage({
   return Buffer.from(b64, "base64");
 }
 
-function allKnownTags(files) {
-  const tags = [];
+// Tags are shown to the model as the vocabulary the blog already uses, and the
+// blog keeps a separate vocabulary per locale: the English list of a Japanese
+// article is a list of words that article will never be filed under. Reading
+// them per locale is also what keeps the answer from drifting into the wrong
+// language when a model weighs the list over the instruction.
+export function knownTagsByLocale(files) {
+  const byLocale = { ja: [], en: [] };
   for (const file of files) {
     const parsed = parseMarkdownFrontmatter(readFileSync(file, "utf8"), file);
-    tags.push(...normalizeTags(parsed.meta.tags));
+    byLocale[localeFromPath(file)].push(...normalizeTags(parsed.meta.tags));
   }
-  return normalizeTags(tags).sort((a, b) => a.localeCompare(b));
+  return {
+    ja: normalizeTags(byLocale.ja).sort((a, b) => a.localeCompare(b)),
+    en: normalizeTags(byLocale.en).sort((a, b) => a.localeCompare(b)),
+  };
 }
 
 export function hasPendingMetadata(meta) {
@@ -390,6 +487,7 @@ function autoTagCount(meta, config) {
 
 function tagGenerationRequest({ filePath, meta, body, config, knownTags, count }) {
   return {
+    provider: config.tag_generation?.provider,
     model: config.tag_generation?.model || "gemini-2.5-flash",
     systemInstruction: readPromptFile(config.tag_generation?.prompt_file),
     schema: tagSchema(),
@@ -399,6 +497,7 @@ function tagGenerationRequest({ filePath, meta, body, config, knownTags, count }
 
 function summaryGenerationRequest({ filePath, meta, body, config, attempt = 0 }) {
   return {
+    provider: config.summary_generation?.provider || config.tag_generation?.provider,
     model: config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash",
     systemInstruction: readPromptFile(config.summary_generation?.prompt_file),
     schema: summarySchema(),
@@ -420,12 +519,19 @@ function buildConceptPrompt({ summary }) {
   return ["Article summary:", summary].join("\n");
 }
 
+// The concept is written from the summary, so it goes to whichever model wrote
+// the summary.
+function conceptProvider(config) {
+  return config.summary_generation?.provider || config.tag_generation?.provider;
+}
+
 function conceptModel(config) {
   return config.summary_generation?.model || config.tag_generation?.model || "gemini-2.5-flash";
 }
 
 function conceptGenerationRequest({ config, summary }) {
   return {
+    provider: conceptProvider(config),
     model: conceptModel(config),
     systemInstruction: readPromptFile(config.thumbnail_generation?.concept_prompt_file),
     schema: conceptSchema(),
@@ -619,7 +725,7 @@ export async function resolveMetadata({
   source,
   config,
   knownTags = [],
-  provider = geminiGenerateJson,
+  provider = generateJson,
   imageProvider = openaiGenerateImage,
 }) {
   const parsed = parseMarkdownFrontmatter(source, filePath);
@@ -722,12 +828,12 @@ function unresolvedMetadataMessage(items) {
 export async function runGenerateMetadata({
   check = false,
   preview = false,
-  provider = geminiGenerateJson,
+  provider = generateJson,
   imageProvider = openaiGenerateImage,
 } = {}) {
   const config = readMetadataConfig();
   const files = postMarkdownFiles();
-  const knownTags = allKnownTags(files);
+  const knownTags = knownTagsByLocale(files);
   const changedFiles = [];
 
   if (preview) {
@@ -736,7 +842,7 @@ export async function runGenerateMetadata({
         filePath,
         source: readFileSync(filePath, "utf8"),
         config,
-        knownTags,
+        knownTags: knownTags[localeFromPath(filePath)],
       }),
     );
     for (const item of previews) {
@@ -771,7 +877,7 @@ export async function runGenerateMetadata({
       filePath,
       source,
       config,
-      knownTags,
+      knownTags: knownTags[localeFromPath(filePath)],
       provider,
       imageProvider,
     });

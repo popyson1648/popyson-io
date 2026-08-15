@@ -15,6 +15,9 @@ list.
 - Do not avoid duplication by creating an unnatural, indirect, or awkward tag.
 - Generate only tags that naturally follow from the article content.
 - Keep tags short: usually 1 to 3 words.
+- Write tags in the language of the article locale: Japanese for `ja`, English
+  for `en`. The same article in the two locales carries a different tag list,
+  and each locale is filed under its own.
 - Use the article's natural vocabulary. English technical terms are allowed in
   Japanese articles when they are normal in the domain.
 - Do not include punctuation-only tags, hashtags, or sentences.
@@ -29,6 +32,10 @@ Additional tags: `["型", "DX"]`
 Existing tags: `["React"]`
 Article: build-time rendering, static routes, search indexing.
 Additional tags: `["SSG", "検索"]`
+
+English article. Existing tags: `["React"]`
+Article: build-time rendering, static routes, search indexing.
+Additional tags: `["SSG", "search"]`
 
 ## Bad examples
 

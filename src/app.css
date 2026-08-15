@@ -1399,6 +1399,9 @@
 .prose li > :is(ul, ol) {
   margin: 4px 0;
 }
+.prose li > p:has(+ :is(ul, ol)) {
+  margin-block-end: 4px;
+}
 .prose ul li::marker {
   color: var(--text-muted);
   font-size: 1.2em;

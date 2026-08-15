@@ -26,6 +26,7 @@ describe("article prose refinements", () => {
   test("keeps list rows and nested groups compact", () => {
     expect(ruleBody(".prose li")).toMatch(/margin:\s*4px 0/);
     expect(ruleBody(".prose li > :is(ul, ol)")).toMatch(/margin:\s*4px 0/);
+    expect(ruleBody(".prose li > p:has(+ :is(ul, ol))")).toMatch(/margin-block-end:\s*4px/);
   });
 
   test("uses one compact logical indentation system for all list kinds", () => {

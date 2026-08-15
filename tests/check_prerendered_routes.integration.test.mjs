@@ -89,24 +89,29 @@ describe("prerendered routes", () => {
   test.each(cases)(
     "$dir ($route.name, $lang) bakes its primary body into #root",
     ({ dir, route, lang }) => {
-      const expectations = expectationsFor(route, lang);
-      expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
-      const html = read(dir);
-      const document = parse(html);
-      for (const needle of expectations) {
-        if (needle.startsWith("class=")) {
-          expect(html).toContain(needle);
-        } else if (route.name === "app") {
-          expect(
-            [...document.querySelectorAll(".acard-title")].some(
-              (element) => element.textContent === needle,
-            ),
-          ).toBe(true);
-        } else if (route.name === "appDetail" && needle.startsWith("<h1>")) {
-          expect(document.querySelector(".adetail h1")?.textContent).toBe(appTitle(route, lang));
-        } else {
-          expect(html).toContain(needle);
+      try {
+        const expectations = expectationsFor(route, lang);
+        expect(expectations, `no expectations defined for route ${route.name}`).toBeTruthy();
+        const html = read(dir);
+        const document = parse(html);
+        for (const needle of expectations) {
+          if (needle.startsWith("class=")) {
+            expect(html).toContain(needle);
+          } else if (route.name === "app") {
+            expect(
+              [...document.querySelectorAll(".acard-title")].some(
+                (element) => element.textContent === needle,
+              ),
+            ).toBe(true);
+          } else if (route.name === "appDetail" && needle.startsWith("<h1>")) {
+            expect(document.querySelector(".adetail h1")?.textContent).toBe(appTitle(route, lang));
+          } else {
+            expect(html).toContain(needle);
+          }
         }
+      } catch (error) {
+        console.error(`[verify] failing prerendered route: ${route.name} (${lang})`);
+        throw error;
       }
     },
   );

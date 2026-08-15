@@ -1,3 +1,5 @@
+import { articleOgpPath } from "./ogp.js";
+
 /* ============================================================
    Route metadata — single source of truth for titles, descriptions,
    canonical URLs, hreflang alternates and Open Graph / Twitter Card
@@ -98,6 +100,14 @@ function findApp(id) {
   return apps().find((a) => a.id === id) || null;
 }
 
+function imageForRoute(route, lang) {
+  if (route.name !== "article") return SITE.image;
+  const post = findPost(route.id);
+  if (!post) return SITE.image;
+  const title = L(post.title, lang);
+  return SITE.url + articleOgpPath(post.id, lang, title);
+}
+
 /** Page title + description for a route in a given language. */
 function titleAndDesc(route, lang) {
   switch (route.name) {
@@ -127,6 +137,7 @@ function titleAndDesc(route, lang) {
  */
 export function headModel(route, lang) {
   const { title, description } = titleAndDesc(route, lang);
+  const image = imageForRoute(route, lang);
   const canonicalPath = routeToPath(route); // tag-less: filters are not distinct canonicals
   const canonical = SITE.url + localized(canonicalPath, lang);
   const locale = lang === "en" ? "en_US" : "ja_JP";
@@ -148,7 +159,7 @@ export function headModel(route, lang) {
       title,
       description,
       url: canonical,
-      image: SITE.image,
+      image,
       locale,
       localeAlternate: altLocale,
     },
@@ -158,7 +169,7 @@ export function headModel(route, lang) {
       creator: SITE.twitter,
       title,
       description,
-      image: SITE.image,
+      image,
     },
   };
 }

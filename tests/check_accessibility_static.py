@@ -40,6 +40,7 @@ def main() -> int:
     app = read("src/app.jsx")
     app_css = read("src/app.css")
     styles_css = read("src/styles.css")
+    theme_toml = read("src/content/theme.toml")
 
     # The formatter may place each JSX attribute on its own line, so allow whitespace
     # (including newlines) between `<button` and its first `className` attribute.
@@ -87,8 +88,10 @@ def main() -> int:
         and bool(re.search(r"\.code code[ \t]*\{[^}]*?font-size:\s*16px\b", app_css, re.MULTILINE)),
         "fenced article code must render at 16px"))
     checks.append((
-        bool(re.search(r"\.prose :not\(pre\) > code[ \t]*\{[^}]*?background:\s*#fbfdf4\b", app_css, re.MULTILINE | re.IGNORECASE)),
-        "inline article code must use the requested #FBFDF4 background"))
+        bool(re.search(r"\.prose :not\(pre\) > code[ \t]*\{[^}]*?background:\s*var\(--code-bg\)", app_css, re.MULTILINE))
+        and 'code-bg     = "#fbfdf4"' in theme_toml
+        and 'code-bg     = "#1b2030"' in theme_toml,
+        "inline article code must use the light and dark code background tokens"))
     checks.append((
         "className=\"article-scroll-top\"" in blog and "aria-label={t.back_to_top}" in blog,
         "article scroll-to-top control must be a labelled native button"))

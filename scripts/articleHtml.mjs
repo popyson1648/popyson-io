@@ -64,6 +64,36 @@ function remarkCallouts() {
   };
 }
 
+function remarkDetails(detailsLabel) {
+  return (tree) => {
+    visit(tree, "containerDirective", (node) => {
+      if (node.name !== "details") return;
+
+      let title = node.attributes?.title || "";
+      if (!title && node.children?.[0]?.data?.directiveLabel) {
+        title = nodeText(node.children[0]);
+        node.children = node.children.slice(1);
+      }
+      node.children.unshift({
+        type: "paragraph",
+        children: [{ type: "text", value: title || detailsLabel }],
+        data: {
+          hName: "summary",
+          hProperties: { className: ["details-summary"] },
+        },
+      });
+      node.data = {
+        ...node.data,
+        hName: "details",
+        hProperties: {
+          className: ["details"],
+          ...(Object.hasOwn(node.attributes || {}, "open") ? { open: true } : {}),
+        },
+      };
+    });
+  };
+}
+
 function embedLinkNode(url, label) {
   return {
     type: "paragraph",
@@ -332,6 +362,25 @@ function rehypeCalloutBody() {
   };
 }
 
+function rehypeDetailsBody() {
+  return (tree) => {
+    visit(tree, "element", (node) => {
+      const className = node.properties?.className;
+      if (!Array.isArray(className) || !className.includes("details")) return;
+      const [summary, ...body] = node.children || [];
+      node.children = [
+        summary,
+        {
+          type: "element",
+          tagName: "div",
+          properties: { className: ["details-body"] },
+          children: body,
+        },
+      ].filter(Boolean);
+    });
+  };
+}
+
 function getLanguage(codeNode) {
   const className = codeNode?.properties?.className || [];
   const classes = Array.isArray(className) ? className : String(className).split(/\s+/);
@@ -466,15 +515,17 @@ export function markdownToPlainText(markdown) {
   );
 }
 
-function articleProcessor(copyLabel) {
-  if (!articleProcessors.has(copyLabel)) {
+function articleProcessor(copyLabel, detailsLabel) {
+  const cacheKey = JSON.stringify([copyLabel, detailsLabel]);
+  if (!articleProcessors.has(cacheKey)) {
     articleProcessors.set(
-      copyLabel,
+      cacheKey,
       unified()
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkDirective)
         .use(remarkCallouts)
+        .use(remarkDetails, detailsLabel)
         .use(remarkEmbeds)
         .use(remarkLineBlocks)
         .use(remarkDirectiveFallback)
@@ -482,6 +533,7 @@ function articleProcessor(copyLabel) {
         .use(remarkRehype)
         .use(rehypeSafeUrls)
         .use(rehypeCalloutBody)
+        .use(rehypeDetailsBody)
         .use(rehypeCodeToolbar, copyLabel)
         .use(rehypeShiki, {
           themes: {
@@ -493,11 +545,14 @@ function articleProcessor(copyLabel) {
         .use(rehypeStringify),
     );
   }
-  return articleProcessors.get(copyLabel);
+  return articleProcessors.get(cacheKey);
 }
 
-export async function renderArticleHtml(markdown, { copyLabel = "Copy code" } = {}) {
-  const file = await articleProcessor(copyLabel).process(String(markdown || ""));
+export async function renderArticleHtml(
+  markdown,
+  { copyLabel = "Copy code", detailsLabel = "Details" } = {},
+) {
+  const file = await articleProcessor(copyLabel, detailsLabel).process(String(markdown || ""));
   return String(file);
 }
 

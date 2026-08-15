@@ -415,12 +415,19 @@ export function loadSiteContent({ snapshotRoot = contentSnapshotRoot() } = {}) {
 
 export async function renderArticleBodies(content) {
   const copyLabels = { ja: "コードをコピー", en: "Copy code" };
+  const detailsLabels = { ja: "詳細", en: "Details" };
   const entries = await Promise.all(
     Object.entries(content.ARTICLE_BODIES).map(async ([id, body]) => [
       id,
       {
-        ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
-        en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
+        ja: await renderArticleBody(body.ja, {
+          copyLabel: copyLabels.ja,
+          detailsLabel: detailsLabels.ja,
+        }),
+        en: await renderArticleBody(body.en, {
+          copyLabel: copyLabels.en,
+          detailsLabel: detailsLabels.en,
+        }),
         headings: body.headings,
       },
     ]),
@@ -429,8 +436,14 @@ export async function renderArticleBodies(content) {
     Object.entries(content.WORK_BODIES || {}).map(async ([id, body]) => [
       id,
       {
-        ja: await renderArticleBody(body.ja, { copyLabel: copyLabels.ja }),
-        en: await renderArticleBody(body.en, { copyLabel: copyLabels.en }),
+        ja: await renderArticleBody(body.ja, {
+          copyLabel: copyLabels.ja,
+          detailsLabel: detailsLabels.ja,
+        }),
+        en: await renderArticleBody(body.en, {
+          copyLabel: copyLabels.en,
+          detailsLabel: detailsLabels.en,
+        }),
       },
     ]),
   );

@@ -26,6 +26,16 @@ const TOGGLE_COMMANDS = [
   "task",
 ];
 
+function insertDetailsCompletion(view, _completion, from, to) {
+  const template = ":::details[タイトル]\n本文\n:::";
+  const bodyStart = from + template.indexOf("本文");
+  view.dispatch({
+    changes: { from, to, insert: template },
+    selection: EditorSelection.range(bodyStart, bodyStart + "本文".length),
+    scrollIntoView: true,
+  });
+}
+
 const SLASH_OPTIONS = [
   { label: "/見出し2", detail: "大見出し", apply: "## " },
   { label: "/見出し3", detail: "小見出し", apply: "### " },
@@ -39,6 +49,7 @@ const SLASH_OPTIONS = [
     apply: "| 見出し | 見出し |\n| --- | --- |\n| 内容 | 内容 |",
   },
   { label: "/補足", detail: "補足ブロック", apply: ":::message\n\n:::" },
+  { label: "/折りたたみ", detail: "折りたたみブロック", apply: insertDetailsCompletion },
 ];
 
 function slashCompletions(context) {

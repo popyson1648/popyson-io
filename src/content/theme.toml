@@ -16,6 +16,7 @@
 [light]
 bg          = "#fdfff7"
 bg-subtle   = "#fdfff7"
+code-bg     = "#fbfdf4"
 surface     = "transparent"
 text        = "#4960ff"
 text-muted  = "color-mix(in srgb, #4960ff 72%, #242526)"
@@ -65,6 +66,7 @@ msg-danger-tx = "#4960ff"
 [dark]
 bg          = "#12141d"
 bg-subtle   = "#1b2030"
+code-bg     = "#1b2030"
 surface     = "transparent"
 text        = "#95a6ff"
 text-muted  = "color-mix(in srgb, #95a6ff 96%, #12141d)"

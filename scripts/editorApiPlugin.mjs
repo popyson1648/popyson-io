@@ -181,8 +181,9 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
   if (request.method === "POST" && pathname === "/api/editor/preview") {
     const body = await readJson(request);
     const copyLabel = body.locale === "ja" ? "コードをコピー" : "Copy code";
+    const detailsLabel = body.locale === "ja" ? "詳細" : "Details";
     sendJson(response, 200, {
-      html: await renderArticleHtml(body.markdown, { copyLabel }),
+      html: await renderArticleHtml(body.markdown, { copyLabel, detailsLabel }),
     });
     return;
   }

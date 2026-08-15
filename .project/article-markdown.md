@@ -14,6 +14,22 @@ Body text.
 
 Types: `note`, `tip`, `info`, `warning`, `danger`.
 
+## Collapsible details
+
+```markdown
+:::details[Optional title]
+Body text with ordinary **Markdown**.
+:::
+```
+
+- Use `:::details{title="Optional title"}` to write the title as an
+  attribute.
+- Add the `open` attribute to show the body initially:
+  `:::details[Optional title]{open}`.
+- An omitted title renders as `詳細` in Japanese and `Details` in English.
+- The body can contain paragraphs, lists, inline code, and other ordinary
+  Markdown blocks.
+
 ## Line blocks
 
 ```markdown

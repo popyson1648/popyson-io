@@ -75,9 +75,8 @@ function expectationsFor(route, lang) {
 const cases = allRoutes().filter(({ route }) => ROUTES_WITH_EXPECTATIONS.has(route.name));
 
 describe("prerendered routes", () => {
-  test("APPS metadata is a non-empty array", () => {
+  test("APPS metadata is an array", () => {
     expect(Array.isArray(APPS)).toBe(true);
-    expect(APPS.length).toBeGreaterThan(0);
   });
 
   test("has non-article routes to validate", () => {

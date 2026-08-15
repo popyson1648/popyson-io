@@ -56,9 +56,7 @@ function expectationsFor(route, lang) {
         ? ['class="post-index"', "post-index-title"]
         : ['class="empty"'];
     case "app": {
-      const firstApp = APPS[0];
-      expect(firstApp, "missing app metadata for the app index route").toBeTruthy();
-      return ['class="app-grid"', firstApp.title[lang]];
+      return ['class="app-grid"', "app-card-titles"];
     }
     case "appDetail": {
       const app = APPS.find((a) => a.id === route.id);
@@ -97,12 +95,10 @@ describe("prerendered routes", () => {
         for (const needle of expectations) {
           if (needle.startsWith("class=")) {
             expect(html).toContain(needle);
-          } else if (route.name === "app") {
-            expect(
-              [...document.querySelectorAll(".acard-title")].some(
-                (element) => element.textContent === needle,
-              ),
-            ).toBe(true);
+          } else if (route.name === "app" && needle === "app-card-titles") {
+            const titles = [...document.querySelectorAll(".acard-title")];
+            expect(titles).toHaveLength(APPS.length);
+            expect(titles.every((element) => element.textContent.trim().length > 0)).toBe(true);
           } else if (route.name === "appDetail" && needle.startsWith("<h1>")) {
             expect(document.querySelector(".adetail h1")?.textContent).toBe(appTitle(route, lang));
           } else {

@@ -63,8 +63,14 @@ for.
 - Subjects narrow to objects geometry can build. A hand, an animal, or a plant
   is out of reach, which the concept prompt now says.
 - The concept examples in the prompt carry weight, and a careless one steers
-  every thumbnail. Three were measured and removed: a baton thins to nothing, a
-  dial wears tick marks, a toolbox fills with tools.
+  every thumbnail. Four were measured and removed: a baton thins to nothing, a
+  dial wears tick marks, a toolbox fills with tools, and a compass is drawn as
+  a compass rose — a ring of radiating points, which is the shape this change
+  set out to stop.
+- The concept step answers differently from one run to the next, so a single
+  generation says little about what the pipeline will publish. Sampling it
+  several times over a few summaries costs a handful of text requests and shows
+  the spread before an image is drawn.
 - Thumbnails from before this change stay as they were generated.
 
 ## Revisit Conditions

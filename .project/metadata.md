@@ -148,7 +148,9 @@ New posts scaffolded by `npm run new:post` default to `mode = "auto"`.
 
 - The image is stored at `public/thumbnails/<post-id>.png` and referenced as
   `/thumbnails/<post-id>.png`. Generation is idempotent: if the file already
-  exists it is reused instead of regenerated.
+  exists it is reused instead of regenerated. To have one drawn again, the
+  editor's 「自動生成の画像を描き直す」 takes the stored image away and returns
+  `[thumbnail]` to `mode = "auto"`; the next publication draws.
 - The image subject (the `{CONCEPT}` placeholder in the image prompt) comes from
   an explicit `[thumbnail].concept` string when present, otherwise from the
   Japanese `title`. The Japanese title is always the concept source, so both

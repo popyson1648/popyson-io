@@ -413,7 +413,16 @@ function MetaInput({ label, value, onChange, type = "text", helpMessage = undefi
   );
 }
 
-function PostMetadata({ meta, update, locale, suggestions, imageChoices, onUpload, busy }) {
+function PostMetadata({
+  meta,
+  update,
+  locale,
+  suggestions,
+  imageChoices,
+  onUpload,
+  onRegenerateThumbnail,
+  busy,
+}) {
   const sumup = meta.sumup || { mode: "text", text: "" };
   const thumbnail = meta.thumbnail || { mode: "none" };
   // The metadata workflow rewrites `mode = "auto"` into a file path under
@@ -476,6 +485,17 @@ function PostMetadata({ meta, update, locale, suggestions, imageChoices, onUploa
           onChangeValue={(mode) => update("thumbnail", { ...thumbnail, mode })}
         />
       </FormControl>
+      {generatedUrl && (
+        <Button
+          type="button"
+          size="S"
+          variant="secondary"
+          disabled={busy}
+          onClick={onRegenerateThumbnail}
+        >
+          自動生成の画像を描き直す
+        </Button>
+      )}
       {thumbnail.mode === "file" && (
         <>
           <ImageField
@@ -1325,6 +1345,30 @@ function App() {
     }
   };
 
+  /**
+   * Take away the stored image so the next publication draws a new one.
+   * Generation reuses the file it already wrote, so this is what asking again
+   * means, and the drawing itself happens during publication rather than here.
+   */
+  const regenerateThumbnail = async () => {
+    if (!content) return;
+    if (!window.confirm("保存済みのサムネイルを削除します。次の公開で描き直されます。")) return;
+    setBusy(true);
+    try {
+      const result = await api.regenerateThumbnail(content.kind, content.id);
+      setContent(cloneContent(result));
+      setSavedAt(new Date());
+      setMessage({
+        type: "success",
+        text: "サムネイルを削除しました。次の公開で描き直されます。",
+      });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openHistory = async () => {
     if (!content) return;
     setBusy(true);
@@ -2159,6 +2203,7 @@ function App() {
                     suggestions={tagSuggestions}
                     imageChoices={imageChoices}
                     onUpload={uploadMetaImage}
+                    onRegenerateThumbnail={regenerateThumbnail}
                     busy={busy}
                   />
                 ) : (

@@ -10,7 +10,7 @@ Store optional translation on the publication job and preserve a Japanese-source
 
 ## Status
 
-Accepted
+Superseded by `2026-08-21-persistent-article-translation-setting.md`
 
 ## Decision
 

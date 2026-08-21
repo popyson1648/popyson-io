@@ -42,18 +42,22 @@ The Worker must provide these idempotent routes:
 
 A batch job snapshot has
 `{ job, items: [{ item, revision, assets, translationEnabled }] }`.
-Legacy single-item jobs retain `{ job, item, revision, assets }`. A release snapshot has
-`{ release, items: [{ item, revision, assets }] }`. Each asset descriptor has
+Legacy single-item jobs retain
+`{ job, item, revision, assets, translationEnabled }`. A release snapshot has
+`{ release, items: [{ item, revision, assets, translationEnabled }] }`. Each asset descriptor has
 `id`, `mediaType`, `sizeBytes`, `logicalPath`, and `role`; bytes are downloaded
 separately and accepted only when both the declared size and SHA-256 match.
 Logical paths must be relative, traversal-free output paths.
 
 The editor reads the complete pending set from
 `GET /v1/author/publication/preflight` and creates one pinned job with
-`POST /v1/author/publication`. Public additions and updates carry an exact
-per-item translation preference; omission by an older client means enabled.
-The preference is stored on the pinned job item, and the editor's canonical
-idempotency key includes it. The intent checksum rejects a stale preflight.
+`POST /v1/author/publication`. Each Blog article stores its translation setting
+on `content_items`; new articles default to enabled, and the article's gear →
+publication settings is the only editable UI. Works and About always translate.
+The saved value is stored on the pinned job item and the release item. The
+intent checksum includes it, rejects a stale preflight, and makes a setting-only
+change a pending update. The batch confirmation dialog displays the value but
+does not edit it.
 Pending public revisions are additions or updates; private/deleted items are
 included only when the active release still contains them. Existing
 `POST /v1/author/content/:kind/:id/publish` jobs remain supported for rollout
@@ -79,8 +83,9 @@ translation rules and the allowlisted Japanese sources, returns a strict list
 of complete English targets, and has no file or tool access. Both providers
 pass through the same exact checksum allowlist before publication continues.
 
-When translation is disabled, preparation copies the Japanese source into the
-English slot without invoking either translation provider. Blog metadata is
+When a Blog article's saved translation setting is disabled, preparation copies
+the Japanese source into the English slot without invoking either translation
+provider. Blog metadata is
 resolved only from the Japanese file and the completed file is copied again so
 the two slots remain identical. Candidate revision metadata records the
 Japanese-source fallback. A generated `src/content/publication.json` in each
@@ -90,6 +95,12 @@ article view shows a small muted availability note above the title.
 The editor's publish check therefore asks for Japanese prose and accepts English
 that is still empty. It does ask both locales for structure — a News date is not
 prose and no translation supplies one.
+
+Migration `0005_persistent_article_translation.sql` adds the item and release
+settings. It preserves the disabled state of previously published Japanese-only
+Blog articles by backfilling rows whose revision metadata carries
+`translation.en = "japanese-source"`. Apply the migration before deploying the
+Worker code that reads these columns.
 
 `deploy.yml` and `reading-refresh.yml` acquire the same queue and always
 download the active release before building. `ci.yml` downloads it too, without

@@ -215,6 +215,7 @@ describe("content editor shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
     expect(screen.getByRole("complementary", { name: "公開設定" })).toHaveTextContent("公開");
     expect(screen.getByRole("heading", { name: "公開設定" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /英語に翻訳する/ })).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "パネルを閉じる" }));
     fireEvent.click(screen.getByRole("button", { name: "アウトラインを開く" }));
     expect(screen.getByRole("complementary", { name: "文書アウトライン" })).toBeInTheDocument();
@@ -243,6 +244,82 @@ describe("content editor shell", () => {
       "revision-0",
       "revision-1",
     ]);
+  });
+
+  test("saves the per-article translation setting from publication settings", async () => {
+    const content = {
+      kind: "post",
+      id: "20260821-120000",
+      currentRevisionId: "revision-1",
+      translationEnabled: true,
+      visibility: "public",
+      deletedAt: null,
+      files: {
+        ja: {
+          meta: { title: "翻訳設定", date: "2026-08-21", tags: [] },
+          body: "本文",
+          revision: "revision-1",
+        },
+        en: {
+          meta: { title: "Translation setting", date: "2026-08-21", tags: [] },
+          body: "Body",
+          revision: "revision-1",
+        },
+      },
+    };
+    const contentPath = `/api/editor/content/post/${content.id}`;
+    const fetchMock = vi.fn(async (path, options = {}) => {
+      if (path === "/api/editor/content") {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                kind: "post",
+                id: content.id,
+                title: { ja: "翻訳設定", en: "Translation setting" },
+                updatedAt: "2026-08-21T03:00:00.000Z",
+                status: "public",
+              },
+            ],
+          }),
+        };
+      }
+      if (path === "/api/editor/preview") {
+        return { ok: true, json: async () => ({ html: "<p>本文</p>" }) };
+      }
+      if (path === contentPath && options.method === "PATCH") {
+        return {
+          ok: true,
+          json: async () => ({ ...content, translationEnabled: false }),
+        };
+      }
+      if (path === contentPath) return { ok: true, json: async () => content };
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<EditorRoot />);
+    fireEvent.click(await screen.findByRole("button", { name: /翻訳設定/ }));
+    await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+    const translate = screen.getByRole("checkbox", { name: /英語に翻訳する/ });
+    expect(translate).toBeChecked();
+    fireEvent.click(translate);
+
+    await waitFor(() => expect(translate).not.toBeChecked());
+    const request = fetchMock.mock.calls.find(
+      ([path, options]) => path === contentPath && options.method === "PATCH",
+    );
+    expect(JSON.parse(request[1].body)).toEqual({
+      translationEnabled: false,
+      currentRevisionId: "revision-1",
+    });
+    expect(
+      screen.getByText(
+        "この記事を日本語のみに設定しました。公開ボタンでサイトへ反映してください。",
+      ),
+    ).toBeInTheDocument();
   });
 
   test("picks work images by upload and from images already attached", async () => {
@@ -301,6 +378,7 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /LineWatch/ }));
     await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "公開設定を開く" }));
+    expect(screen.queryByRole("checkbox", { name: /英語に翻訳する/ })).not.toBeInTheDocument();
 
     // The two work image fields were plain text inputs before; each now offers
     // an upload and a list of the images already attached to the work.
@@ -634,10 +712,8 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /公開ジョブ/ }));
     await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /^変更をまとめて公開/ }));
-    const translate = await screen.findByRole("checkbox", { name: "英語に翻訳する" });
-    expect(translate).toBeChecked();
-    fireEvent.click(translate);
-    expect(translate).not.toBeChecked();
+    expect(await screen.findByText("英語版: 翻訳する")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "英語に翻訳する" })).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
 
     await waitFor(
@@ -651,7 +727,6 @@ describe("content editor shell", () => {
     );
     expect(JSON.parse(publishRequest[1].body)).toEqual({
       intentChecksum: "a".repeat(64),
-      translations: [{ itemId: "item-1", enabled: false }],
     });
     expect(fetchMock.mock.calls.some(([path]) => String(path).includes("undefined"))).toBe(false);
   });

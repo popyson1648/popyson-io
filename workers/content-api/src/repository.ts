@@ -20,6 +20,7 @@ export interface ItemRow {
   kind: ContentKind;
   slug: string;
   visibility: Visibility;
+  translation_enabled: number;
   deleted_at: string | null;
   current_revision_id: string | null;
   published_revision_id: string | null;
@@ -99,6 +100,7 @@ export function itemJson(row: ItemRow) {
     itemId: row.id,
     kind: row.kind,
     visibility: row.visibility,
+    translationEnabled: row.kind === "post" ? row.translation_enabled !== 0 : true,
     deletedAt: row.deleted_at,
     currentRevisionId: row.current_revision_id,
     publishedRevisionId: row.published_revision_id,
@@ -137,7 +139,7 @@ export async function getItem(env: RuntimeEnv, kindValue: string, slug: string):
   assertKind(kindValue);
   assertSlug(kindValue, slug);
   const item = await env.CONTENT_DB.prepare(
-    `SELECT id, kind, slug, visibility, deleted_at, current_revision_id,
+    `SELECT id, kind, slug, visibility, translation_enabled, deleted_at, current_revision_id,
             published_revision_id, created_at, updated_at
        FROM content_items WHERE kind = ?1 AND slug = ?2`,
   )
@@ -176,7 +178,7 @@ export async function getRevisionAssets(env: RuntimeEnv, revisionId: string): Pr
 
 export async function listContent(env: RuntimeEnv) {
   const result = await env.CONTENT_DB.prepare(
-    `SELECT id, kind, slug, visibility, deleted_at, current_revision_id,
+    `SELECT id, kind, slug, visibility, translation_enabled, deleted_at, current_revision_id,
             published_revision_id, created_at, updated_at
        FROM content_items
       ORDER BY updated_at DESC`,
@@ -447,7 +449,12 @@ export async function updateState(
   env: RuntimeEnv,
   kindValue: string,
   slug: string,
-  input: { visibility?: Visibility; deleted?: boolean; expectedRevisionId?: string | null },
+  input: {
+    visibility?: Visibility;
+    translationEnabled?: boolean;
+    deleted?: boolean;
+    expectedRevisionId?: string | null;
+  },
 ) {
   const item = await getItem(env, kindValue, slug);
   if (
@@ -463,14 +470,29 @@ export async function updateState(
   if (input.deleted !== undefined && typeof input.deleted !== "boolean") {
     throw new HttpError(400, "invalid_deleted", "Deleted must be a boolean");
   }
+  if (input.translationEnabled !== undefined) {
+    if (typeof input.translationEnabled !== "boolean" || item.kind !== "post") {
+      throw new HttpError(
+        400,
+        "invalid_translation_setting",
+        "Translation can be configured only for Blog articles",
+      );
+    }
+  }
   const now = new Date().toISOString();
   const deletedAt = input.deleted === undefined ? item.deleted_at : input.deleted ? now : null;
+  const translationEnabled =
+    input.translationEnabled === undefined
+      ? item.translation_enabled
+      : input.translationEnabled
+        ? 1
+        : 0;
   const result = await env.CONTENT_DB.prepare(
     `UPDATE content_items
-        SET visibility = ?1, deleted_at = ?2, updated_at = ?3
-      WHERE id = ?4 AND current_revision_id = ?5`,
+        SET visibility = ?1, translation_enabled = ?2, deleted_at = ?3, updated_at = ?4
+      WHERE id = ?5 AND current_revision_id = ?6`,
   )
-    .bind(visibility, deletedAt, now, item.id, item.current_revision_id)
+    .bind(visibility, translationEnabled, deletedAt, now, item.id, item.current_revision_id)
     .run();
   if (result.meta.changes !== 1) {
     throw new HttpError(409, "revision_conflict", "Content changed; reload before updating state");

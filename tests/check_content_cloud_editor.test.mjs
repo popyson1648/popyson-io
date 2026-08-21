@@ -10,10 +10,7 @@ import {
   validateCloudContent,
 } from "../scripts/contentCloudEditorModel.mjs";
 import { ContentCloudClient } from "../scripts/contentCloudClient.mjs";
-import {
-  batchPublicationIdempotencyKey,
-  normalizeBatchTranslations,
-} from "../scripts/editorApiPlugin.mjs";
+import { batchPublicationIdempotencyKey } from "../scripts/editorApiPlugin.mjs";
 import { githubWorkflowConfig, GitHubWorkflowClient } from "../scripts/githubWorkflowClient.mjs";
 import { validateEditorEnvironment } from "../scripts/editorServer.mjs";
 
@@ -65,6 +62,14 @@ describe("cloud-backed editor model", () => {
     expect(cloudListItem(cloudValue()).status).toBe("private");
     expect(cloudListItem(cloudValue({ visibility: "public" })).status).toBe("public");
     expect(cloudListItem(cloudValue({ deletedAt: "2026-08-12T04:00:00Z" })).status).toBe("deleted");
+  });
+
+  test("defaults Blog translation on and preserves a saved setting", () => {
+    expect(fromCloudContent(cloudValue()).translationEnabled).toBe(true);
+    expect(fromCloudContent(cloudValue({ translationEnabled: false })).translationEnabled).toBe(
+      false,
+    );
+    expect(cloudListItem(cloudValue({ translationEnabled: false })).translationEnabled).toBe(false);
   });
 
   test("creates private source pairs without touching the repository", () => {
@@ -164,27 +169,13 @@ describe("cloud-backed editor model", () => {
 });
 
 describe("server-only authenticated clients", () => {
-  test("canonicalizes batch translation preferences for stable idempotency", () => {
-    const translations = normalizeBatchTranslations([
-      { itemId: "item-z", enabled: true },
-      { itemId: "item-a", enabled: false },
-    ]);
-    expect(translations).toEqual([
-      { itemId: "item-a", enabled: false },
-      { itemId: "item-z", enabled: true },
-    ]);
-    expect(batchPublicationIdempotencyKey("a".repeat(64), translations)).not.toBe(
-      batchPublicationIdempotencyKey("a".repeat(64), [
-        { itemId: "item-a", enabled: true },
-        { itemId: "item-z", enabled: true },
-      ]),
+  test("derives batch idempotency from the pinned publication intent", () => {
+    expect(batchPublicationIdempotencyKey("a".repeat(64))).toBe(
+      batchPublicationIdempotencyKey("a".repeat(64)),
     );
-    expect(() =>
-      normalizeBatchTranslations([
-        { itemId: "item-a", enabled: true },
-        { itemId: "item-a", enabled: false },
-      ]),
-    ).toThrow(/翻訳設定/);
+    expect(batchPublicationIdempotencyKey("a".repeat(64))).not.toBe(
+      batchPublicationIdempotencyKey("b".repeat(64)),
+    );
   });
 
   test("sends optimistic state updates through the Worker client", async () => {

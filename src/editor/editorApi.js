@@ -110,10 +110,10 @@ export function createEditorApi() {
       request(`/api/editor/content/${kind}/${encodeURIComponent(id)}/publish`),
     publishJob: (jobId) => request(`/api/editor/publish/${encodeURIComponent(jobId)}`),
     globalPublishPreflight: () => request("/api/editor/publication"),
-    globalPublish: (intentChecksum) =>
+    globalPublish: (intentChecksum, translations) =>
       request("/api/editor/publication", {
         method: "POST",
-        body: JSON.stringify({ intentChecksum }),
+        body: JSON.stringify({ intentChecksum, translations }),
       }),
   };
 }

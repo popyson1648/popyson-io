@@ -1345,6 +1345,12 @@ select {
   font-weight: 700;
 }
 
+.editor-publish-item {
+  display: grid;
+  gap: 6px;
+  margin-block: 8px;
+}
+
 .editor-validation-error {
   padding: 8px 10px;
   border-left: 3px solid var(--editor-danger);

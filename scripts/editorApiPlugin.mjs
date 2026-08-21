@@ -172,6 +172,39 @@ function publicationIdempotencyKey(content) {
     .digest("hex");
 }
 
+export function normalizeBatchTranslations(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    throw new EditorContentError(
+      "翻訳設定が正しくありません。公開画面を開き直してください。",
+      400,
+      "invalid_translation_preferences",
+    );
+  }
+  const itemIds = new Set();
+  const translations = value.map((entry) => {
+    const itemId = String(entry?.itemId || "");
+    if (!itemId || typeof entry?.enabled !== "boolean" || itemIds.has(itemId)) {
+      throw new EditorContentError(
+        "翻訳設定が正しくありません。公開画面を開き直してください。",
+        400,
+        "invalid_translation_preferences",
+      );
+    }
+    itemIds.add(itemId);
+    return { itemId, enabled: entry.enabled };
+  });
+  return translations.sort((left, right) => left.itemId.localeCompare(right.itemId));
+}
+
+export function batchPublicationIdempotencyKey(intentChecksum, translations) {
+  return createHash("sha256")
+    .update(
+      `batch\0${String(intentChecksum || "")}\0${JSON.stringify(translations ?? "default-on")}`,
+    )
+    .digest("hex");
+}
+
 async function handleApi(request, response, pathname, { cloud, workflows }) {
   if (request.method === "GET" && pathname === "/api/editor/content") {
     sendJson(response, 200, { items: await listCloudEditorContent(cloud) });
@@ -218,11 +251,11 @@ async function handleApi(request, response, pathname, { cloud, workflows }) {
   }
   if (pathname === "/api/editor/publication" && request.method === "POST") {
     const body = await readJson(request);
+    const translations = normalizeBatchTranslations(body.translations);
     const result = await cloud.createBatchPublication({
       intentChecksum: body.intentChecksum,
-      idempotencyKey: createHash("sha256")
-        .update(`batch\0${String(body.intentChecksum || "")}`)
-        .digest("hex"),
+      idempotencyKey: batchPublicationIdempotencyKey(body.intentChecksum, translations),
+      translations,
     });
     if (result.noChanges || !result.job) {
       sendJson(response, 200, { noChanges: true });

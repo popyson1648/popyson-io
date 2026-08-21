@@ -64,6 +64,10 @@ describe("database content workflows", () => {
     expect(boundary).toBeGreaterThan(fallback);
     expect(publication).toContain("OPENAI_TRANSLATION_MODEL: gpt-5.6-terra");
     expect(publication).toContain("OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}");
+    expect(publication).toContain("TRANSLATION_TARGETS_FILE:");
+    expect(publication).toContain("steps.snapshot.outputs.translation_target_count != '0'");
+    expect(publication).toContain("(.translationTargets // []) | index($path)");
+    expect(publication).toContain("do not change any unlisted English source");
     expect(publication).toMatch(/if ! npx[\s\S]+if ! node scripts\/translate_with_openai\.mjs/);
     expect(publication).toContain("OpenAI translation fallback failed");
   });

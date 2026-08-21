@@ -61,11 +61,13 @@ and `GEMINI_API_KEY` for whichever section of `src/content/metadata.toml` names
 scripts/generate_metadata.mjs --check`, which is a static check and does not call
 any AI provider.
 
-Database-backed publication translates first, then runs the same generation
-step inside `.github/workflows/content-publish.yml`. Claude Code is the primary
-translator; if it exits unsuccessfully, the workflow makes one fallback request
-to OpenAI GPT-5.6 Terra. Generated content is returned to the Worker as a
-candidate revision and is never committed to Git. See `.project/metadata.md`
+Database-backed publication prepares English sources first, translates only the
+items enabled in the editor, then runs the same generation step inside
+`.github/workflows/content-publish.yml`. Disabled items use their Japanese
+source in the English slot. Claude Code is the primary translator; if it exits
+unsuccessfully, the workflow makes one fallback request to OpenAI GPT-5.6 Terra
+for the exact target allowlist. Generated content is returned to the Worker as
+a candidate revision and is never committed to Git. See `.project/metadata.md`
 and `.project/content-publication.md`.
 
 ## Publish content
@@ -73,8 +75,9 @@ and `.project/content-publication.md`.
 The local editor saves immutable revisions and desired visibility/deletion state
 through the authenticated Worker API. Publish creates a job pinned to the exact
 revision and state, then dispatches `content-publish.yml` with only the opaque
-job id. The workflow translates, generates metadata, verifies, and deploys one
-immutable release without committing content to Git. See
+job id. The workflow prepares English sources, translates enabled targets,
+generates metadata, verifies, and deploys one immutable release without
+committing content to Git. See
 `.project/content-publication.md`.
 
 ## Run
@@ -118,12 +121,14 @@ document counts and asset bytes and checksums compared with the migration
 source. Public/private and soft-delete changes are saved in D1 immediately but
 do not alter the static site until Publish is run.
 
-Publish pins the current revision, visibility, and deletion state and sends
-only an opaque job id to GitHub Actions. Actions fetches that fixed D1/R2
-snapshot into temporary storage, translates and generates metadata, verifies
-and builds the static site, and deploys it to Pages. The published revision is
-advanced only after a successful deployment, and the deployed site does not
-read D1 at request time.
+Publish pins the current revision, visibility, deletion state, and per-public
+item translation choice and sends only an opaque job id to GitHub Actions. Each
+eligible choice defaults to enabled whenever the confirmation dialog opens.
+Actions fetches that fixed D1/R2 snapshot into temporary storage, translates
+the enabled targets, uses Japanese as the English fallback for disabled targets,
+generates metadata, verifies and builds the static site, and deploys it to
+Pages. The published revision is advanced only after a successful deployment,
+and the deployed site does not read D1 at request time.
 
 The local Node server alone owns the author Access credential and fine-grained
 GitHub Actions credential. The browser receives neither credential, and source
@@ -217,8 +222,9 @@ newer content release.
   Refreshes the reading list; it builds and deploys only when the fetch
   succeeds, otherwise the last successful deployment keeps serving.
 - `.github/workflows/content-publish.yml` — dispatched with an opaque database
-  publication job id. It translates, generates metadata, verifies, deploys, and
-  atomically finalizes the pinned release without committing content to Git.
+  publication job id. It prepares English sources, translates enabled targets,
+  generates metadata, verifies, deploys, and atomically finalizes the pinned
+  release without committing content to Git.
 
 Code and reading-list deployments download the active immutable release from
 the Worker after acquiring the shared queue, and `ci.yml` downloads the same

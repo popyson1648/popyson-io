@@ -87,10 +87,11 @@ async function route(request: Request, env: RuntimeEnv, url: URL): Promise<Respo
     return json(await publicationPreflight(env));
   }
   if (request.method === "POST" && url.pathname === "/v1/author/publication") {
-    const body = await readJson<{ intentChecksum?: string; idempotencyKey?: string }>(
-      request,
-      maximumJsonBytes,
-    );
+    const body = await readJson<{
+      intentChecksum?: string;
+      idempotencyKey?: string;
+      translations?: Array<{ itemId?: string; enabled?: boolean }>;
+    }>(request, maximumJsonBytes);
     return json(await createBatchPublishJob(env, body), 201);
   }
 

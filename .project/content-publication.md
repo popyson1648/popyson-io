@@ -40,7 +40,8 @@ The Worker must provide these idempotent routes:
 - `GET /v1/ci/releases/pending`
 - `POST /v1/ci/releases/reconcile`
 
-A batch job snapshot has `{ job, items: [{ item, revision, assets }] }`.
+A batch job snapshot has
+`{ job, items: [{ item, revision, assets, translationEnabled }] }`.
 Legacy single-item jobs retain `{ job, item, revision, assets }`. A release snapshot has
 `{ release, items: [{ item, revision, assets }] }`. Each asset descriptor has
 `id`, `mediaType`, `sizeBytes`, `logicalPath`, and `role`; bytes are downloaded
@@ -49,7 +50,10 @@ Logical paths must be relative, traversal-free output paths.
 
 The editor reads the complete pending set from
 `GET /v1/author/publication/preflight` and creates one pinned job with
-`POST /v1/author/publication`. The intent checksum rejects a stale preflight.
+`POST /v1/author/publication`. Public additions and updates carry an exact
+per-item translation preference; omission by an older client means enabled.
+The preference is stored on the pinned job item, and the editor's canonical
+idempotency key includes it. The intent checksum rejects a stale preflight.
 Pending public revisions are additions or updates; private/deleted items are
 included only when the active release still contains them. Existing
 `POST /v1/author/content/:kind/:id/publish` jobs remain supported for rollout
@@ -60,19 +64,28 @@ GitHub receives only the opaque `job_id` as workflow input.
 
 `.github/workflows/content-publish.yml` acquires the shared
 `cloudflare-deploy` queue, reconciles an interrupted deployment, downloads the
-pinned batch, translates every public item before post metadata generation, validates an
-exact changed-file allowlist, uploads a candidate revision, then downloads and
-verifies the immutable candidate release before deploying it. The Pages commit
-message carries `content-release:<release-id>` so a later run can reconcile a
-successful upload whose finalize call was interrupted.
+pinned batch, prepares each English source, translates only enabled items before
+post metadata generation, validates an exact changed-file allowlist, uploads a
+candidate revision, then downloads and verifies the immutable candidate release
+before deploying it. The Pages commit message carries
+`content-release:<release-id>` so a later run can reconcile a successful upload
+whose finalize call was interrupted.
 
-Translation writes the English files from the Japanese ones. Claude Code is
-primary. If its process exits unsuccessfully,
+Translation-enabled targets are listed explicitly in runner-temporary snapshot
+metadata. Claude Code is primary. If its process exits unsuccessfully,
 `scripts/translate_with_openai.mjs` makes one bounded Responses API request to
 `gpt-5.6-terra` with low reasoning effort. The fallback receives only the
-translation rules and the one item's Japanese source, returns a strict list of
-complete English targets, and has no file or tool access. Both providers pass
-through the same checksum allowlist before publication continues.
+translation rules and the allowlisted Japanese sources, returns a strict list
+of complete English targets, and has no file or tool access. Both providers
+pass through the same exact checksum allowlist before publication continues.
+
+When translation is disabled, preparation copies the Japanese source into the
+English slot without invoking either translation provider. Blog metadata is
+resolved only from the Japanese file and the completed file is copied again so
+the two slots remain identical. Candidate revision metadata records the
+Japanese-source fallback. A generated `src/content/publication.json` in each
+materialized snapshot carries that marker into the site build; the English Blog
+article view shows a small muted availability note above the title.
 
 The editor's publish check therefore asks for Japanese prose and accepts English
 that is still empty. It does ask both locales for structure — a News date is not

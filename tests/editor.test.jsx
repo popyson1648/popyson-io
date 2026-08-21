@@ -634,6 +634,10 @@ describe("content editor shell", () => {
     fireEvent.click(await screen.findByRole("button", { name: /公開ジョブ/ }));
     await waitFor(() => expect(container.querySelector(".markdown-editor")).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /^変更をまとめて公開/ }));
+    const translate = await screen.findByRole("checkbox", { name: "英語に翻訳する" });
+    expect(translate).toBeChecked();
+    fireEvent.click(translate);
+    expect(translate).not.toBeChecked();
     fireEvent.click(await screen.findByRole("button", { name: "公開処理を開始" }));
 
     await waitFor(
@@ -642,6 +646,13 @@ describe("content editor shell", () => {
       },
       { timeout: 2500 },
     );
+    const publishRequest = fetchMock.mock.calls.find(
+      ([path, options]) => path === publishPath && options.method === "POST",
+    );
+    expect(JSON.parse(publishRequest[1].body)).toEqual({
+      intentChecksum: "a".repeat(64),
+      translations: [{ itemId: "item-1", enabled: false }],
+    });
     expect(fetchMock.mock.calls.some(([path]) => String(path).includes("undefined"))).toBe(false);
   });
 

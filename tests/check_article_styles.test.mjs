@@ -66,4 +66,11 @@ describe("article prose refinements", () => {
     );
     expect(ruleBody("img.rel-thumb")).toMatch(/border-radius:\s*var\(--r\)/);
   });
+
+  test("keeps the Japanese-only note within the existing muted type system", () => {
+    const note = ruleBody(".article-language-note");
+    expect(note).toMatch(/font-size:\s*var\(--fs-caption\)/);
+    expect(note).toMatch(/color:\s*var\(--text-meta\)/);
+    expect(note).not.toMatch(/background|border|box-shadow/);
+  });
 });

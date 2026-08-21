@@ -10,6 +10,7 @@ import { renderArticleBody } from "./articleHtml.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { dateToIsoDate } from "./metadataSchema.mjs";
+import { japaneseSourceItemIds, PUBLICATION_MANIFEST_PATH } from "./publicationManifest.mjs";
 import { assertValidWorkMetadata } from "./workSchema.mjs";
 
 /** @typedef {import("./workSchema.mjs").WorkMetadata} WorkMetadata */
@@ -157,7 +158,7 @@ export function localizeMarkdown(jaBody, enBody) {
   return { ja: jaBody, en: enBody, headings };
 }
 
-function readPost(dirName, config, paths) {
+function readPost(dirName, config, paths, japaneseOnlyPosts = new Set()) {
   if (!POST_ID_RE.test(dirName)) {
     throw new Error(`Invalid post directory name: ${dirName}`);
   }
@@ -178,6 +179,7 @@ function readPost(dirName, config, paths) {
     kana: String(common.kana || ""),
     summary: { ja: resolveSummary(ja.meta), en: resolveSummary(en.meta) },
     thumbnail: resolveThumbnail(common, config),
+    japaneseOnly: japaneseOnlyPosts.has(dirName),
   };
   return { post, body: localizeMarkdown(ja.body, en.body) };
 }
@@ -296,9 +298,9 @@ function postDirectories(paths) {
     .sort();
 }
 
-function readPostEntries(config, paths) {
+function readPostEntries(config, paths, japaneseOnlyPosts) {
   return postDirectories(paths)
-    .map((dir) => readPost(dir, config, paths))
+    .map((dir) => readPost(dir, config, paths, japaneseOnlyPosts))
     .sort((a, b) => b.post.date.localeCompare(a.post.date));
 }
 
@@ -388,7 +390,11 @@ function localizeAbout(ja, en) {
 export function loadSiteContent({ snapshotRoot = contentSnapshotRoot() } = {}) {
   const paths = contentPaths(snapshotRoot);
   const metadataConfig = readMetadataConfig();
-  const entries = readPostEntries(metadataConfig, paths);
+  const entries = readPostEntries(
+    metadataConfig,
+    paths,
+    japaneseSourceItemIds(snapshotRoot, "post"),
+  );
   const posts = withRelatedIds(entries.map((entry) => entry.post));
   const articleBodies = articleBodiesFromEntries(entries);
   const tags = uniqueTags(posts);
@@ -462,6 +468,8 @@ export function contentWatchFiles({ snapshotRoot = contentSnapshotRoot() } = {})
     ...newsWatchFiles(paths),
     METADATA_CONFIG_FILE,
   ];
+  const publicationManifest = join(snapshotRoot, PUBLICATION_MANIFEST_PATH);
+  if (existsSync(publicationManifest)) files.push(publicationManifest);
   const metadataConfig = existsSync(METADATA_CONFIG_FILE) ? readMetadataConfig() : {};
   const promptFile = metadataConfig.tag_generation?.prompt_file;
   if (promptFile) files.push(join(ROOT, promptFile));

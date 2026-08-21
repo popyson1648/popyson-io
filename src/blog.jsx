@@ -1005,6 +1005,9 @@ export function Article({ id }) {
           <Icon.back width={13} height={13} /> {t.back_blog}
         </button>
         <div className="article-head">
+          {lang === "en" && post.japaneseOnly && (
+            <p className="article-language-note">{t.japanese_only}</p>
+          )}
           <h1>{L(post.title, lang)}</h1>
           <div className="article-meta">
             <span>{localizedDateLabel(post, lang)}</span>

@@ -29,6 +29,7 @@ type Post = {
   summary: LocaleMap;
   thumbnail?: string;
   relatedIds?: string[];
+  japaneseOnly?: boolean;
 };
 
 // A work under src/content/works/. Named AppItem because the Works page routes

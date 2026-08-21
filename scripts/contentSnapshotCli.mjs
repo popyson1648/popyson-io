@@ -6,6 +6,7 @@ import {
   ContentCiClient,
   createCandidate,
   materializeSnapshot,
+  preparePublicationTranslations,
   publicationInputSnapshot,
   sanitizedSnapshotMetadata,
 } from "./contentSnapshotClient.mjs";
@@ -57,8 +58,11 @@ async function main(argv = process.argv.slice(2), client = new ContentCiClient()
     const counts = await materializeSnapshot(input.snapshot, absolutePath(values, "root"), {
       client,
     });
+    const translation = input.resumed
+      ? { translationTargets: [] }
+      : preparePublicationTranslations(input.snapshot, absolutePath(values, "root"));
     writeResult(values, {
-      ...sanitizedSnapshotMetadata(input.snapshot, input),
+      ...sanitizedSnapshotMetadata(input.snapshot, { ...input, ...translation }),
       ...counts,
     });
     return;

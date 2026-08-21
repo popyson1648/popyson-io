@@ -6,12 +6,14 @@ import { stringify as stringifyToml } from "smol-toml";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 import { parseMetadataConfig } from "./metadataConfig.mjs";
 import { assertValidMetadata, dateToIsoDate } from "./metadataSchema.mjs";
+import { japaneseSourceItemIds } from "./publicationManifest.mjs";
 import { contentSnapshotRoot } from "./content_loader.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
 const CONTENT_ROOT = contentSnapshotRoot();
 const POSTS_DIR = join(CONTENT_ROOT, "src/content/posts");
 const METADATA_CONFIG_FILE = join(ROOT, "src/content/metadata.toml");
+const JAPANESE_ONLY_POST_IDS = japaneseSourceItemIds(CONTENT_ROOT, "post");
 
 function serializeMarkdown(meta, body) {
   return `+++\n${stringifyToml(meta).trimEnd()}\n+++\n\n${body}`;
@@ -21,14 +23,39 @@ function readMetadataConfig() {
   return parseMetadataConfig(readFileSync(METADATA_CONFIG_FILE, "utf8"));
 }
 
-function postMarkdownFiles() {
-  if (!existsSync(POSTS_DIR)) return [];
-  return readdirSync(POSTS_DIR, { withFileTypes: true })
+export function postMarkdownFiles(
+  postsDir = POSTS_DIR,
+  japaneseOnlyPostIds = JAPANESE_ONLY_POST_IDS,
+) {
+  if (!existsSync(postsDir)) return [];
+  return readdirSync(postsDir, { withFileTypes: true })
     .filter((dirent) => dirent.isDirectory())
-    .flatMap((dirent) => [
-      join(POSTS_DIR, dirent.name, "index.ja.md"),
-      join(POSTS_DIR, dirent.name, "index.en.md"),
-    ]);
+    .flatMap((dirent) => {
+      const directory = join(postsDir, dirent.name);
+      const jaPath = join(directory, "index.ja.md");
+      return japaneseOnlyPostIds.has(dirent.name)
+        ? [jaPath]
+        : [jaPath, join(directory, "index.en.md")];
+    });
+}
+
+export function synchronizeJapaneseOnlyPosts({
+  check = false,
+  postsDir = POSTS_DIR,
+  japaneseOnlyPostIds = JAPANESE_ONLY_POST_IDS,
+} = {}) {
+  const changed = [];
+  for (const id of japaneseOnlyPostIds) {
+    const directory = join(postsDir, id);
+    const jaPath = join(directory, "index.ja.md");
+    const enPath = join(directory, "index.en.md");
+    const source = readFileSync(jaPath, "utf8");
+    if (readFileSync(enPath, "utf8") === source) continue;
+    if (check) throw new Error(`${enPath}: Japanese-only English source is out of sync`);
+    writeFileSync(enPath, source);
+    changed.push(enPath);
+  }
+  return changed;
 }
 
 function firstAddedGitDate(filePath) {
@@ -853,6 +880,7 @@ export async function runGenerateMetadata({
     if (unresolved.length > 0) {
       throw new Error(`metadata is not generated for:\n${unresolvedMetadataMessage(unresolved)}`);
     }
+    synchronizeJapaneseOnlyPosts({ check: true });
     return [];
   }
 
@@ -870,6 +898,8 @@ export async function runGenerateMetadata({
     changedFiles.push(filePath);
     if (!check) writeFileSync(filePath, result.output);
   }
+
+  changedFiles.push(...synchronizeJapaneseOnlyPosts());
 
   return changedFiles;
 }

@@ -111,6 +111,7 @@ jobs:
             echo "database_date=$(jq -r '.databaseDate' "$RUNNER_TEMP/job-snapshot.json")"
             echo "public_item_count=$(jq -r '.publicItemCount' "$RUNNER_TEMP/job-snapshot.json")"
             echo "has_posts=$(jq -r '.hasPosts' "$RUNNER_TEMP/job-snapshot.json")"
+            echo "translation_target_count=$(jq -r '.translationTargets | length' "$RUNNER_TEMP/job-snapshot.json")"
             echo "resumed=$(jq -r '.resumed' "$RUNNER_TEMP/job-snapshot.json")"
             code_sha="$(jq -r '.codeSha' "$RUNNER_TEMP/job-snapshot.json")"
             echo "code_sha=${code_sha:-$GITHUB_SHA}"
@@ -128,25 +129,29 @@ jobs:
       # is given, per locale. The author writes Japanese only, so English has to
       # exist by the time that step reads it.
       - name: Translate the Japanese source
-        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.public_item_count != '0'
+        if: steps.snapshot.outputs.resumed != 'true' && steps.snapshot.outputs.translation_target_count != '0'
         shell: bash
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_TRANSLATION_MODEL: gpt-5.6-terra
+          TRANSLATION_TARGETS_FILE: ${{ runner.temp }}/job-snapshot.json
           TRANSLATION_PROMPT: |
             Read .project/translation.md and follow it exactly.
             The isolated content root is in CONTENT_SNAPSHOT_ROOT and contains the public items in one publication batch.
-            Translate every Japanese source into its matching English source.
+            Translate only the English target paths listed below from their matching Japanese source.
             Metadata still marked for generation — auto_tags, date = "auto", [sumup] mode = "auto",
             [thumbnail] mode = "auto" — is resolved by a later step. Copy those tables across
             unchanged rather than filling them in.
-            Change only index.en.md for Blog/Works, or about.en.toml and news.en.toml for About.
+            Change every listed target in full and do not change any unlisted English source.
             Do not change Japanese source, assets, paths, ids, configuration, or repository files.
         run: |
           set -euo pipefail
+          translation_targets="$(jq -r '.translationTargets[] | "- " + .' "$TRANSLATION_TARGETS_FILE")"
           translation_prompt="${TRANSLATION_PROMPT}
-          Isolated absolute root: ${CONTENT_SNAPSHOT_ROOT}"
+          Isolated absolute root: ${CONTENT_SNAPSHOT_ROOT}
+          Exact English target paths:
+          ${translation_targets}"
           if ! npx --yes @anthropic-ai/claude-code@2.1.179 -p "$translation_prompt" \
             --add-dir "$CONTENT_SNAPSHOT_ROOT" \
             --max-turns 20 \
@@ -184,10 +189,12 @@ jobs:
             | awk '$2 != $3 { print $1 }' > "$RUNNER_TEMP/translated-paths.txt"
           while IFS= read -r file; do
             relative="${file#"$CONTENT_SNAPSHOT_ROOT"/}"
-            case "$relative" in
-              src/content/posts/*/index.en.md|src/content/works/*/index.en.md|src/content/about/about.en.toml|src/content/about/news.en.toml) ;;
-              *) echo "Translation changed a disallowed path." >&2; exit 1 ;;
-            esac
+            if ! jq -e --arg path "$relative" \
+              '((.translationTargets // []) | index($path)) != null' \
+              "$RUNNER_TEMP/job-snapshot.json" > /dev/null; then
+              echo "Translation changed a disallowed path." >&2
+              exit 1
+            fi
           done < "$RUNNER_TEMP/translated-paths.txt"
 
       - name: Record pre-generation checksums

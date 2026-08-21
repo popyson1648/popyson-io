@@ -1,11 +1,15 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { parse as parseToml } from "smol-toml";
 
 import { ContentCloudClient } from "./contentCloudClient.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
+import {
+  revisionMetadataWithTranslation,
+  writePublicationManifest,
+} from "./publicationManifest.mjs";
 
 const CONTENT_KINDS = new Set(["post", "work", "about"]);
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -106,13 +110,25 @@ function assetDestination(root, entry, asset) {
 function snapshotEntries(snapshot) {
   if (Array.isArray(snapshot?.items)) {
     return snapshot.items.map((entry) => ({
+      translationEnabled:
+        typeof entry.translationEnabled === "boolean" ? entry.translationEnabled : undefined,
       item: entry.item || entry,
       revision: entry.revision,
       assets: entry.assets || [],
     }));
   }
   if (snapshot?.item && snapshot?.revision) {
-    return [{ item: snapshot.item, revision: snapshot.revision, assets: snapshot.assets || [] }];
+    return [
+      {
+        translationEnabled:
+          typeof snapshot.translationEnabled === "boolean"
+            ? snapshot.translationEnabled
+            : undefined,
+        item: snapshot.item,
+        revision: snapshot.revision,
+        assets: snapshot.assets || [],
+      },
+    ];
   }
   throw new Error("Content API returned an unsupported snapshot shape");
 }
@@ -275,7 +291,42 @@ export async function materializeSnapshot(snapshot, root, { client = new Content
       assetCount += 1;
     }
   }
+  writePublicationManifest(snapshotRoot, entries);
   return { itemCount: entries.length, assetCount };
+}
+
+function translationPathPairs(root, entry) {
+  const target = itemDirectory(root, entry.item);
+  if (entry.item.kind === "about") {
+    return ["about", "news"].map((name) => ({
+      sourcePath: join(target.directory, `${name}.ja.toml`),
+      targetPath: join(target.directory, `${name}.en.toml`),
+    }));
+  }
+  return [
+    {
+      sourcePath: join(target.directory, "index.ja.md"),
+      targetPath: join(target.directory, "index.en.md"),
+    },
+  ];
+}
+
+export function preparePublicationTranslations(snapshot, root) {
+  const snapshotRoot = requireAbsoluteRoot(root);
+  const entries = snapshotEntries(snapshot).filter(
+    (entry) => entry.item.visibility !== "private" && !entry.item.deletedAt,
+  );
+  const translationTargets = [];
+  for (const entry of entries) {
+    for (const pair of translationPathPairs(snapshotRoot, entry)) {
+      if (entry.translationEnabled === false) {
+        writeFileSync(pair.targetPath, readFileSync(pair.sourcePath));
+      } else {
+        translationTargets.push(relative(snapshotRoot, pair.targetPath).split(sep).join("/"));
+      }
+    }
+  }
+  return { translationTargets: translationTargets.sort() };
 }
 
 function revisionFromRoot(root, entry) {
@@ -321,7 +372,7 @@ function revisionFromRoot(root, entry) {
       sourceJa,
       sourceEn,
       documents: { files },
-      metadata: entry.revision.metadata || {},
+      metadata: revisionMetadataWithTranslation(entry),
       expectedRevisionId: entry.revision.id,
       createdBy: "github-actions",
     },
@@ -414,7 +465,10 @@ export async function createCandidate(
   return client.candidate(jobId, { codeSha, items });
 }
 
-export function sanitizedSnapshotMetadata(snapshot, { resumed = false, codeSha = "" } = {}) {
+export function sanitizedSnapshotMetadata(
+  snapshot,
+  { resumed = false, codeSha = "", translationTargets = [] } = {},
+) {
   const entries = snapshotEntries(snapshot);
   const publicEntries = entries.filter(
     (entry) => entry.item.visibility !== "private" && !entry.item.deletedAt,
@@ -427,6 +481,7 @@ export function sanitizedSnapshotMetadata(snapshot, { resumed = false, codeSha =
     itemCount: entries.length,
     publicItemCount: publicEntries.length,
     hasPosts: publicEntries.some((entry) => entry.item.kind === "post"),
+    translationTargets,
     kind: entries.length === 1 ? String(entries[0].item.kind || "") : "",
     databaseDate: entries.length === 1 ? String(entries[0].item.createdAt || "").slice(0, 10) : "",
   };

@@ -68,6 +68,10 @@ function preloadMarkdownEditor() {
 
 const MarkdownEditor = lazy(loadMarkdownEditor);
 
+function canTranslatePublicationItem(item) {
+  return item?.translationEligible ?? ["add", "update"].includes(item?.action);
+}
+
 const theme = createTheme({
   color: {
     GREY_5: "#f7f7f9",
@@ -781,6 +785,7 @@ function App() {
   const [newSlug, setNewSlug] = useState("");
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishPreflight, setPublishPreflight] = useState(null);
+  const [publishTranslations, setPublishTranslations] = useState({});
   const [publishJob, setPublishJob] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1506,7 +1511,13 @@ function App() {
     helpers.close();
     setPublishOpen(false);
     try {
-      const job = await api.globalPublish(publishPreflight.intentChecksum);
+      const translations = (publishPreflight?.items || [])
+        .filter(canTranslatePublicationItem)
+        .map((item) => ({
+          itemId: item.itemId,
+          enabled: publishTranslations[item.itemId] !== false,
+        }));
+      const job = await api.globalPublish(publishPreflight.intentChecksum, translations);
       if (job.noChanges) {
         setMessage({ type: "info", text: "公開待ちの変更はありません。" });
         return;
@@ -1527,6 +1538,13 @@ function App() {
     try {
       const result = await api.globalPublishPreflight();
       setPublishPreflight(result);
+      setPublishTranslations(
+        Object.fromEntries(
+          (result.items || [])
+            .filter(canTranslatePublicationItem)
+            .map((item) => [item.itemId, true]),
+        ),
+      );
       setPublishOpen(true);
     } catch (error) {
       setMessage({ type: "error", text: error.message });
@@ -2391,15 +2409,31 @@ function App() {
                   </strong>
                   <ul>
                     {entries.map((item) => (
-                      <li key={item.itemId}>
-                        {item.title} —{" "}
-                        {item.action === "add"
-                          ? "追加"
-                          : item.action === "update"
-                            ? "更新"
-                            : item.action === "delete"
-                              ? "削除"
-                              : "非公開へ移動"}
+                      <li className="editor-publish-item" key={item.itemId}>
+                        <span>
+                          {item.title} —{" "}
+                          {item.action === "add"
+                            ? "追加"
+                            : item.action === "update"
+                              ? "更新"
+                              : item.action === "delete"
+                                ? "削除"
+                                : "非公開へ移動"}
+                        </span>
+                        {canTranslatePublicationItem(item) && (
+                          <Checkbox
+                            checked={publishTranslations[item.itemId] !== false}
+                            disabled={busy}
+                            onChange={(event) =>
+                              setPublishTranslations((current) => ({
+                                ...current,
+                                [item.itemId]: event.target.checked,
+                              }))
+                            }
+                          >
+                            英語に翻訳する
+                          </Checkbox>
+                        )}
                         {item.issues?.map((issue) => (
                           <p
                             key={`${issue.locale}:${issue.field}`}

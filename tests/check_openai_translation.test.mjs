@@ -85,6 +85,27 @@ describe("OpenAI translation fallback", () => {
     expect(() => discoverTranslationTargets(root)).toThrow(/exactly one translatable/);
   });
 
+  test("uses an exact allowlist inside a mixed publication snapshot", () => {
+    const root = temporaryRoot();
+    put(root, "src/content/posts/20260815-120000/index.ja.md", "一");
+    put(root, "src/content/posts/20260815-120000/index.en.md", "One");
+    put(root, "src/content/works/example/index.ja.md", "二");
+    put(root, "src/content/works/example/index.en.md", "Two");
+
+    expect(discoverTranslationTargets(root, ["src/content/works/example/index.en.md"])).toEqual([
+      {
+        sourcePath: "src/content/works/example/index.ja.md",
+        targetPath: "src/content/works/example/index.en.md",
+      },
+    ]);
+    expect(() =>
+      discoverTranslationTargets(root, ["src/content/posts/20260815-120000/index.ja.md"]),
+    ).toThrow(/target path is invalid/);
+    expect(() => discoverTranslationTargets(root, ["src/content/works/../index.en.md"])).toThrow(
+      /target path is invalid/,
+    );
+  });
+
   test("builds a low-reasoning strict Responses API request", () => {
     const root = temporaryRoot();
     put(root, "src/content/works/example/index.ja.md", "日本語");
@@ -124,6 +145,7 @@ describe("OpenAI translation fallback", () => {
 
     const result = await translateSnapshotWithOpenAI({
       snapshotRoot: root,
+      targetPaths: [targetPath],
       apiKey: "test-key",
       fetchImpl: async (url, init) => {
         calls.push({ url, init });

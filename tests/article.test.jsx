@@ -13,6 +13,7 @@ const t = {
   min_read: "分",
   copy_code: "コードをコピー",
   copied_code: "コードをコピーしました",
+  japanese_only: "This page is only available in Japanese.",
   tag_to_list: (tag) => `#${tag} の記事一覧を見る`,
 };
 
@@ -63,9 +64,9 @@ const body = {
   ],
 };
 
-function renderArticle() {
+function renderArticle(lang = "ja") {
   return render(
-    <AppCtx.Provider value={{ t, lang: "ja", nav: vi.fn() }}>
+    <AppCtx.Provider value={{ t, lang, nav: vi.fn() }}>
       <Article id="current" />
     </AppCtx.Provider>,
   );
@@ -122,5 +123,19 @@ describe("Article", () => {
     await userEvent.click(button);
 
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: "smooth" });
+  });
+
+  test("shows the restrained Japanese-only note above the title only in English", () => {
+    window.BlogData = { POSTS: [{ ...post, japaneseOnly: true }, related] };
+    const english = renderArticle("en");
+
+    const note = screen.getByText("This page is only available in Japanese.");
+    const title = screen.getByRole("heading", { name: "Article" });
+    expect(note).toHaveClass("article-language-note");
+    expect(note.nextElementSibling).toBe(title);
+
+    english.unmount();
+    renderArticle("ja");
+    expect(screen.queryByText("This page is only available in Japanese.")).toBeNull();
   });
 });

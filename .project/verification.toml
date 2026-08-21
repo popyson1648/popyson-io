@@ -30,9 +30,9 @@ reason = "Now a Vitest spec (tests/check_frontmatter.test.mjs) run by the test_u
 [phases.metadata_generate_check]
 enabled = true
 command = "node scripts/generate_metadata.mjs --check"
-# Publication resolves metadata inside the isolated database snapshot before
-# translation. A standard run has no snapshot of its own unless the person
-# pulled one, so this check stays CI-only.
+# Publication resolves metadata inside the isolated database snapshot after
+# translation preparation. A standard run has no snapshot of its own unless
+# the person pulled one, so this check stays CI-only.
 run_standard = false
 run_in_ci = true
 

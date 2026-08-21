@@ -2589,6 +2589,12 @@
 .article-head {
   margin-bottom: 56px;
 }
+.article-language-note {
+  margin: 0 0 10px;
+  color: var(--text-meta);
+  font-size: var(--fs-caption);
+  line-height: var(--leading-en);
+}
 .article-head h1 {
   font-size: clamp(40px, 6vw, 64px);
   line-height: 1.04;

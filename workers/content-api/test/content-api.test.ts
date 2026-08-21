@@ -438,15 +438,27 @@ describe("content API", () => {
       await request("/v1/author/publication", {
         role: "author",
         method: "POST",
-        body: { intentChecksum: preflight.intentChecksum, idempotencyKey: "batch:0001" },
+        body: {
+          intentChecksum: preflight.intentChecksum,
+          idempotencyKey: "batch:0001",
+          translations: [
+            { itemId: first.itemId, enabled: false },
+            { itemId: second.itemId, enabled: true },
+          ],
+        },
       }),
     );
     expect(created.noChanges).toBe(false);
     await markRunning(created.job.id);
-    const snapshot = await body<{ items: Array<{ item: { itemId: string } }> }>(
-      await request(`/v1/ci/jobs/${created.job.id}/snapshot`, { role: "ci" }),
-    );
+    const snapshot = await body<{
+      items: Array<{ item: { itemId: string }; translationEnabled: boolean }>;
+    }>(await request(`/v1/ci/jobs/${created.job.id}/snapshot`, { role: "ci" }));
     expect(snapshot.items).toHaveLength(2);
+    expect(
+      Object.fromEntries(
+        snapshot.items.map(({ item, translationEnabled }) => [item.itemId, translationEnabled]),
+      ),
+    ).toEqual({ [first.itemId]: false, [second.itemId]: true });
 
     const revisions = new Map([
       [first.itemId, first],
@@ -477,6 +489,54 @@ describe("content API", () => {
       await request("/v1/author/publication/preflight", { role: "author" }),
     );
     expect(empty.items).toEqual([]);
+  });
+
+  it("defaults translation on and rejects incomplete or conflicting batch preferences", async () => {
+    const item = await createValue("translation-work", "public", "Japanese source");
+    const preflight = await body<{
+      intentChecksum: string;
+      items: Array<{ itemId: string; translationEligible: boolean }>;
+    }>(await request("/v1/author/publication/preflight", { role: "author" }));
+    expect(preflight.items).toEqual([
+      expect.objectContaining({ itemId: item.itemId, translationEligible: true }),
+    ]);
+
+    const missing = await request("/v1/author/publication", {
+      role: "author",
+      method: "POST",
+      body: {
+        intentChecksum: preflight.intentChecksum,
+        idempotencyKey: "batch:invalid-missing",
+        translations: [],
+      },
+    });
+    expect(missing.status).toBe(400);
+
+    const created = await body<JobValue>(
+      await request("/v1/author/publication", {
+        role: "author",
+        method: "POST",
+        body: {
+          intentChecksum: preflight.intentChecksum,
+          idempotencyKey: "batch:default-on",
+        },
+      }),
+    );
+    const snapshot = await body<{ translationEnabled: boolean }>(
+      await request(`/v1/ci/jobs/${created.job.id}/snapshot`, { role: "ci" }),
+    );
+    expect(snapshot.translationEnabled).toBe(true);
+
+    const conflict = await request("/v1/author/publication", {
+      role: "author",
+      method: "POST",
+      body: {
+        intentChecksum: preflight.intentChecksum,
+        idempotencyKey: "batch:default-on",
+        translations: [{ itemId: item.itemId, enabled: false }],
+      },
+    });
+    expect(conflict.status).toBe(409);
   });
 
   it("publishes private and deleted state by removing content from the active release", async () => {

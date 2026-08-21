@@ -7,7 +7,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { contentSnapshotRoot, loadSiteContent } from "../scripts/content_loader.mjs";
 import {
+  createCandidate,
   materializeSnapshot,
+  preparePublicationTranslations,
   publicationInputSnapshot,
 } from "../scripts/contentSnapshotClient.mjs";
 import { pullContentSnapshot } from "../scripts/pull_content_snapshot.mjs";
@@ -57,6 +59,21 @@ describe("contentSnapshotRoot", () => {
 
     expect(content.POSTS.some((post) => post.id === "20990101-000000")).toBe(true);
     expect(loadSiteContent().POSTS.some((post) => post.id === "20990101-000000")).toBe(false);
+  });
+
+  test("loads the explicit Japanese-only marker into Blog post data", () => {
+    const fixtureRoot = contentSnapshotRoot();
+    const root = temporaryRoot();
+    cpSync(join(fixtureRoot, "src/content"), join(root, "src/content"), { recursive: true });
+    writeFileSync(
+      join(root, "src/content/publication.json"),
+      `${JSON.stringify({
+        version: 1,
+        items: { "post:20260101-aaaa1111": { englishSource: "japanese" } },
+      })}\n`,
+    );
+
+    expect(loadSiteContent({ snapshotRoot: root }).POSTS[0].japaneseOnly).toBe(true);
   });
 });
 
@@ -126,6 +143,85 @@ describe("materializeSnapshot", () => {
         { client: { downloadAsset: async () => Buffer.from("bad") } },
       ),
     ).rejects.toThrow(/checksum verification/);
+  });
+  test("copies disabled Japanese sources and emits only enabled translation targets", async () => {
+    const root = temporaryRoot();
+    const snapshot = {
+      job: { id: "job-1" },
+      items: [
+        {
+          translationEnabled: false,
+          item: {
+            itemId: "post-item",
+            kind: "post",
+            id: "20260821-120000",
+            visibility: "public",
+            deletedAt: null,
+          },
+          revision: { id: "post-revision", sourceJa: "日本語だけ", sourceEn: "Old English" },
+          assets: [],
+        },
+        {
+          translationEnabled: true,
+          item: {
+            itemId: "work-item",
+            kind: "work",
+            id: "translated-work",
+            visibility: "public",
+            deletedAt: null,
+          },
+          revision: { id: "work-revision", sourceJa: "日本語", sourceEn: "Old English" },
+          assets: [],
+        },
+      ],
+    };
+
+    await materializeSnapshot(snapshot, root, {
+      client: { downloadAsset: async () => Buffer.alloc(0) },
+    });
+    expect(preparePublicationTranslations(snapshot, root)).toEqual({
+      translationTargets: ["src/content/works/translated-work/index.en.md"],
+    });
+    expect(readFileSync(join(root, "src/content/posts/20260821-120000/index.en.md"), "utf8")).toBe(
+      "日本語だけ",
+    );
+    expect(JSON.parse(readFileSync(join(root, "src/content/publication.json"), "utf8"))).toEqual({
+      version: 1,
+      items: { "post:20260821-120000": { englishSource: "japanese" } },
+    });
+  });
+
+  test("persists the pinned fallback marker in a candidate revision", async () => {
+    const root = temporaryRoot();
+    const source = '+++\ntitle = "日本語"\n+++\n\n本文';
+    const snapshot = {
+      job: { id: "job-1" },
+      translationEnabled: false,
+      item: {
+        itemId: "post-item",
+        kind: "post",
+        id: "20260821-130000",
+        visibility: "public",
+        deletedAt: null,
+      },
+      revision: { id: "revision-1", sourceJa: source, sourceEn: source, metadata: {} },
+      assets: [],
+    };
+    await materializeSnapshot(snapshot, root, {
+      client: { downloadAsset: async () => Buffer.alloc(0) },
+    });
+    const candidate = vi.fn(async (_jobId, value) => value);
+    const client = {
+      jobSnapshot: async () => snapshot,
+      uploadAsset: async () => {},
+      candidate,
+    };
+
+    await createCandidate("job-1", root, "a".repeat(40), { client });
+
+    expect(candidate.mock.calls[0][1].revision.metadata).toEqual({
+      translation: { en: "japanese-source" },
+    });
   });
 });
 

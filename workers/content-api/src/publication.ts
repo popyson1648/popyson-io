@@ -46,6 +46,12 @@ interface PublishJobItemRow {
   target_deleted_at: string | null;
   candidate_revision_id: string | null;
   candidate_checksum: string | null;
+  translation_enabled: number;
+}
+
+interface TranslationPreferenceInput {
+  itemId?: string;
+  enabled?: boolean;
 }
 
 interface ReleaseRow {
@@ -237,6 +243,62 @@ interface PendingRow extends ItemRow {
   metadata_json: string;
 }
 
+function translationEligible(row: {
+  visibility?: Visibility | null;
+  target_visibility?: Visibility | null;
+  deleted_at?: string | null;
+  target_deleted_at?: string | null;
+}): boolean {
+  const visibility = "target_visibility" in row ? row.target_visibility : row.visibility;
+  const deletedAt = "target_deleted_at" in row ? row.target_deleted_at : row.deleted_at;
+  return visibility === "public" && deletedAt === null;
+}
+
+function translationPreferences(
+  input: TranslationPreferenceInput[] | undefined,
+  rows: Array<PendingRow | PublishJobItemRow>,
+): Map<string, boolean> {
+  const eligibleIds = rows
+    .filter(translationEligible)
+    .map((row) => ("item_id" in row ? row.item_id : row.id));
+  if (input === undefined) return new Map(eligibleIds.map((itemId) => [itemId, true]));
+  if (!Array.isArray(input)) {
+    throw new HttpError(
+      400,
+      "invalid_translation_preferences",
+      "Translation preferences must be an array",
+    );
+  }
+  const expected = new Set(eligibleIds);
+  const selected = new Map<string, boolean>();
+  for (const preference of input) {
+    const itemId = String(preference?.itemId || "");
+    if (!expected.has(itemId) || typeof preference?.enabled !== "boolean") {
+      throw new HttpError(
+        400,
+        "invalid_translation_preferences",
+        "Translation preference does not match a public publication item",
+      );
+    }
+    if (selected.has(itemId)) {
+      throw new HttpError(
+        400,
+        "invalid_translation_preferences",
+        "Translation preference item is duplicated",
+      );
+    }
+    selected.set(itemId, preference.enabled);
+  }
+  if (selected.size !== expected.size) {
+    throw new HttpError(
+      400,
+      "invalid_translation_preferences",
+      "Every public publication item needs a translation preference",
+    );
+  }
+  return selected;
+}
+
 async function pendingRows(
   env: RuntimeEnv,
 ): Promise<{ releaseId: string | null; rows: PendingRow[] }> {
@@ -300,6 +362,7 @@ export async function publicationPreflight(env: RuntimeEnv) {
           : row.release_revision_id
             ? "update"
             : "add",
+      translationEligible: translationEligible(row),
       valid: Boolean(row.current_revision_id),
     })),
   };
@@ -307,7 +370,11 @@ export async function publicationPreflight(env: RuntimeEnv) {
 
 export async function createBatchPublishJob(
   env: RuntimeEnv,
-  input: { intentChecksum?: string; idempotencyKey?: string },
+  input: {
+    intentChecksum?: string;
+    idempotencyKey?: string;
+    translations?: TranslationPreferenceInput[];
+  },
 ) {
   const expected = String(input.intentChecksum || "");
   const idempotencyKey = String(input.idempotencyKey || "");
@@ -322,12 +389,23 @@ export async function createBatchPublishJob(
   )
     .bind(idempotencyKey)
     .first<PublishJobRow>();
-  if (existing) return { job: jobJson(existing) };
+  if (existing) {
+    const pinned = await getJobItems(env, existing.id);
+    const requested = translationPreferences(input.translations, pinned);
+    const samePreferences = pinned
+      .filter(translationEligible)
+      .every((row) => requested.get(row.item_id) === (row.translation_enabled === 1));
+    if (!samePreferences) {
+      throw new HttpError(409, "idempotency_conflict", "Idempotency key was already used");
+    }
+    return { job: jobJson(existing) };
+  }
   const { releaseId, rows } = await pendingRows(env);
   if ((await intentChecksum(releaseId, rows)) !== expected) {
     throw new HttpError(409, "preflight_conflict", "Saved content changed; refresh publication");
   }
   if (rows.length === 0) return { job: null, noChanges: true };
+  const translations = translationPreferences(input.translations, rows);
   const anchor = rows[0];
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
@@ -351,12 +429,20 @@ export async function createBatchPublishJob(
     ...rows.map((row) =>
       env.CONTENT_DB.prepare(
         `INSERT INTO publish_job_items
-          (job_id, item_id, revision_id, expected_revision_id, target_visibility, target_deleted_at)
-         SELECT ?1, id, current_revision_id, current_revision_id, visibility, deleted_at
+          (job_id, item_id, revision_id, expected_revision_id, target_visibility,
+           target_deleted_at, translation_enabled)
+         SELECT ?1, id, current_revision_id, current_revision_id, visibility, deleted_at, ?6
            FROM content_items
           WHERE id = ?2 AND current_revision_id = ?3 AND visibility = ?4
             AND deleted_at IS ?5`,
-      ).bind(id, row.id, row.current_revision_id, row.visibility, row.deleted_at),
+      ).bind(
+        id,
+        row.id,
+        row.current_revision_id,
+        row.visibility,
+        row.deleted_at,
+        translations.get(row.id) === false ? 0 : 1,
+      ),
     ),
   ];
   const results = await env.CONTENT_DB.batch(statements);
@@ -417,6 +503,7 @@ export async function publicationJobSnapshot(env: RuntimeEnv, jobId: string) {
       ? await getRevision(env, candidateRevisionId, item.id)
       : null;
     entries.push({
+      translationEnabled: pinned.translation_enabled === 1,
       item: {
         ...itemJson(item),
         visibility: pinned.target_visibility,

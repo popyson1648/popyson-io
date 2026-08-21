@@ -34,7 +34,8 @@
 - `workers/content-backup/src/`: scheduled D1 export and content-addressed R2 backup handlers.
 - `scripts/articleHtml.mjs`: build-time Markdown renderer. It turns post Markdown into safe HTML, applies Shiki dual-theme syntax highlighting, wraps code-copy controls, resolves `::embed` directives into iframes, and generates search plain text. Author-facing syntax is documented in `.project/article-markdown.md`.
 - `scripts/embedProviders.mjs`: maps a URL an author can copy (YouTube, Docswell, Vimeo, X, and Instagram page URLs; the Speaker Deck `/player/<id>` URL, since a talk page does not carry the player id) to the iframe URL that service documents. One entry per service; unknown URLs stay links.
-- `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time.
+- `scripts/content_loader.mjs`: Node-side content reader shared by Vite's `virtual:site-content`, RSS generation, and prerendering. Browser-facing article bodies are rendered to `{ html, text }` at build/dev time. Blog data also carries the generated Japanese-only publication marker used by the English article notice.
+- `scripts/publicationManifest.mjs`: reads and writes the generated per-release `src/content/publication.json`, maps a pinned translation choice into candidate revision metadata, and exposes Japanese-source fallback ids to metadata generation and the site loader.
 - `scripts/metadataSchema.mjs`: shared article frontmatter schema and validation rules used by the loader and lint script.
 - `tests/check_frontmatter.test.mjs`: metadata lint for every article Markdown file.
 - `scripts/generate_metadata.mjs`: resolves `date = "auto"`, `auto_tags`, `[sumup] mode = "auto"`, `[thumbnail] mode = "auto"` (OpenAI image generation into `public/thumbnails/`), and default thumbnails, writing generated values back to Markdown. In check mode, it only performs a static unresolved-metadata check.
@@ -55,7 +56,7 @@
 - `scripts/pull_content_snapshot.mjs`: writes a snapshot from the author API for local work (`npm run content:pull`).
 - `scripts/workSchema.mjs`: front matter schema for works, separate from the article one.
 - `scripts/new_work.mjs`: creates a work directory from a slug. Run it with `npm run new:work -- <slug>`.
-- `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings.
+- `src/data.js`, `src/articleBody.js`, `src/i18n.js`: browser data bootstrap, generated article body bootstrap, and localized UI strings, including the English-only Japanese-source availability notice.
 - `src/content/theme.toml`: single source of truth for the light/dark color tokens (CSS custom properties), generated into CSS at build time.
 - `scripts/prerender.mjs`: post-`vite build` step that generates localized article OGP images, bakes a per-route/per-locale `<head>` into a standalone HTML file under `dist/`, injects article title/body HTML into article route `#root`, renders every other route's body from `src/prerenderRoutes.jsx` into `#root`, and emits `sitemap.xml` + `robots.txt`.
 - `scripts/generateOgpImages.mjs`, `src/ogp.js`, and `src/assets/fonts/`: deterministic 1200x630 article-card rendering, shared hashed public paths, and the vendored OFL-licensed LINE Seed JP face. The renderer uses the site's Alexandria and LINE Seed JP typography, selects the largest measured font size that preserves the title safe area, centers the rendered text block on both axes, and writes locale-specific images under `dist/ogp/blog/`.

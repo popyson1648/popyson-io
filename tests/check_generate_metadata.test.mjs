@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,8 +11,10 @@ import {
   knownTagsByLocale,
   openaiGenerateJson,
   pendingMetadataReasons,
+  postMarkdownFiles,
   previewPrompts,
   resolveMetadata,
+  synchronizeJapaneseOnlyPosts,
 } from "../scripts/generate_metadata.mjs";
 
 const ROOT = join(fileURLToPath(new URL("..", import.meta.url)));
@@ -637,5 +639,28 @@ describe("knownTagsByLocale", () => {
     expect(known.ja).toEqual(["TypeScript", "設計"]);
     expect(known.en).toEqual(["design", "TypeScript"]);
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("Japanese-only metadata synchronization", () => {
+  test("resolves metadata only from Japanese and then mirrors the complete source", () => {
+    const postsDir = mkdtempSync(join(tmpdir(), "japanese-only-metadata-"));
+    const id = "20260821-140000";
+    const directory = join(postsDir, id);
+    mkdirSync(directory);
+    const jaPath = join(directory, "index.ja.md");
+    const enPath = join(directory, "index.en.md");
+    writeFileSync(jaPath, "完成した日本語");
+    writeFileSync(enPath, "stale English");
+    const japaneseOnlyPostIds = new Set([id]);
+
+    expect(postMarkdownFiles(postsDir, japaneseOnlyPostIds)).toEqual([jaPath]);
+    expect(synchronizeJapaneseOnlyPosts({ postsDir, japaneseOnlyPostIds })).toEqual([enPath]);
+    expect(readFileSync(enPath, "utf8")).toBe("完成した日本語");
+    expect(() =>
+      synchronizeJapaneseOnlyPosts({ check: true, postsDir, japaneseOnlyPostIds }),
+    ).not.toThrow();
+
+    rmSync(postsDir, { recursive: true, force: true });
   });
 });

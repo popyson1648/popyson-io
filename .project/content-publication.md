@@ -109,7 +109,7 @@ path, so a token that is valid for one application cannot reach the other.
 
 Client secrets never enter the repository. The author secret is stored in
 1Password and reaches the editor through `op run`; the CI secret is stored in
-GitHub Actions secrets.
+both GitHub Actions and Dependabot secrets under the same name.
 
 ## GitHub configuration
 
@@ -118,7 +118,7 @@ Set these repository variables:
 - `CONTENT_API_URL`
 - `CLOUDFLARE_PAGES_PROJECT`
 
-Set these repository secrets:
+Set these GitHub Actions repository secrets:
 
 - `CONTENT_CI_ACCESS_CLIENT_ID`
 - `CONTENT_CI_ACCESS_CLIENT_SECRET`
@@ -127,6 +127,13 @@ Set these repository secrets:
 - `GEMINI_API_KEY`
 - `OPENAI_API_KEY` (metadata, thumbnail generation, and translation fallback)
 - `CLAUDE_CODE_OAUTH_TOKEN` (primary translation provider)
+
+Set these repository Dependabot secrets to the same values as their GitHub
+Actions counterparts so Dependabot pull requests can download the active
+release during CI:
+
+- `CONTENT_CI_ACCESS_CLIENT_ID`
+- `CONTENT_CI_ACCESS_CLIENT_SECRET`
 
 The CI Access token is distinct from the editor token. No content workflow
 needs `contents: write` or the repository administration token.

@@ -49,11 +49,6 @@ interface PublishJobItemRow {
   translation_enabled: number;
 }
 
-interface TranslationPreferenceInput {
-  itemId?: string;
-  enabled?: boolean;
-}
-
 interface ReleaseRow {
   id: string;
   code_sha: string;
@@ -68,6 +63,7 @@ interface ReleaseRow {
 
 interface ReleaseItemRow extends ItemRow {
   revision_id: string;
+  release_translation_enabled: number;
 }
 
 export interface CandidateInput {
@@ -146,7 +142,7 @@ async function getJobItems(env: RuntimeEnv, jobId: string): Promise<PublishJobIt
 
 async function getItemById(env: RuntimeEnv, itemId: string): Promise<ItemRow> {
   const item = await env.CONTENT_DB.prepare(
-    `SELECT id, kind, slug, visibility, deleted_at, current_revision_id,
+    `SELECT id, kind, slug, visibility, translation_enabled, deleted_at, current_revision_id,
             published_revision_id, created_at, updated_at
        FROM content_items WHERE id = ?1`,
   )
@@ -195,11 +191,13 @@ export async function createPublishJob(
     .bind(idempotencyKey)
     .first<PublishJobRow>();
   if (existing) {
+    const [pinned] = await getJobItems(env, existing.id);
     const sameIntent =
       existing.item_id === item.id &&
       existing.revision_id === revisionId &&
       existing.target_visibility === item.visibility &&
-      existing.target_deleted_at === item.deleted_at;
+      existing.target_deleted_at === item.deleted_at &&
+      pinned?.translation_enabled === item.translation_enabled;
     if (!sameIntent) {
       throw new HttpError(409, "idempotency_conflict", "Idempotency key was already used");
     }
@@ -214,19 +212,21 @@ export async function createPublishJob(
          target_deleted_at, idempotency_key, state, created_at, updated_at)
        SELECT ?1, i.id, ?3, ?3, i.visibility, i.deleted_at, ?4, 'queued', ?5, ?5
          FROM content_items i
-        WHERE i.id = ?2 AND i.current_revision_id = ?3`,
+        WHERE i.id = ?2 AND i.current_revision_id = ?3
+          AND i.translation_enabled = ?6`,
     )
-      .bind(id, item.id, revisionId, idempotencyKey, now)
+      .bind(id, item.id, revisionId, idempotencyKey, now, item.translation_enabled)
       .run();
     if (created.meta.changes !== 1) {
       throw new HttpError(409, "revision_conflict", "Content changed before publication started");
     }
     await env.CONTENT_DB.prepare(
       `INSERT INTO publish_job_items
-        (job_id, item_id, revision_id, expected_revision_id, target_visibility, target_deleted_at)
-       VALUES (?1, ?2, ?3, ?3, ?4, ?5)`,
+        (job_id, item_id, revision_id, expected_revision_id, target_visibility,
+         target_deleted_at, translation_enabled)
+       VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6)`,
     )
-      .bind(id, item.id, revisionId, item.visibility, item.deleted_at)
+      .bind(id, item.id, revisionId, item.visibility, item.deleted_at, item.translation_enabled)
       .run();
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -240,63 +240,8 @@ export async function createPublishJob(
 
 interface PendingRow extends ItemRow {
   release_revision_id: string | null;
+  release_translation_enabled: number | null;
   metadata_json: string;
-}
-
-function translationEligible(row: {
-  visibility?: Visibility | null;
-  target_visibility?: Visibility | null;
-  deleted_at?: string | null;
-  target_deleted_at?: string | null;
-}): boolean {
-  const visibility = "target_visibility" in row ? row.target_visibility : row.visibility;
-  const deletedAt = "target_deleted_at" in row ? row.target_deleted_at : row.deleted_at;
-  return visibility === "public" && deletedAt === null;
-}
-
-function translationPreferences(
-  input: TranslationPreferenceInput[] | undefined,
-  rows: Array<PendingRow | PublishJobItemRow>,
-): Map<string, boolean> {
-  const eligibleIds = rows
-    .filter(translationEligible)
-    .map((row) => ("item_id" in row ? row.item_id : row.id));
-  if (input === undefined) return new Map(eligibleIds.map((itemId) => [itemId, true]));
-  if (!Array.isArray(input)) {
-    throw new HttpError(
-      400,
-      "invalid_translation_preferences",
-      "Translation preferences must be an array",
-    );
-  }
-  const expected = new Set(eligibleIds);
-  const selected = new Map<string, boolean>();
-  for (const preference of input) {
-    const itemId = String(preference?.itemId || "");
-    if (!expected.has(itemId) || typeof preference?.enabled !== "boolean") {
-      throw new HttpError(
-        400,
-        "invalid_translation_preferences",
-        "Translation preference does not match a public publication item",
-      );
-    }
-    if (selected.has(itemId)) {
-      throw new HttpError(
-        400,
-        "invalid_translation_preferences",
-        "Translation preference item is duplicated",
-      );
-    }
-    selected.set(itemId, preference.enabled);
-  }
-  if (selected.size !== expected.size) {
-    throw new HttpError(
-      400,
-      "invalid_translation_preferences",
-      "Every public publication item needs a translation preference",
-    );
-  }
-  return selected;
 }
 
 async function pendingRows(
@@ -304,14 +249,17 @@ async function pendingRows(
 ): Promise<{ releaseId: string | null; rows: PendingRow[] }> {
   const release = await activeRelease(env);
   const result = await env.CONTENT_DB.prepare(
-    `SELECT i.id, i.kind, i.slug, i.visibility, i.deleted_at, i.current_revision_id,
+    `SELECT i.id, i.kind, i.slug, i.visibility, i.translation_enabled,
+            i.deleted_at, i.current_revision_id,
             i.published_revision_id, i.created_at, i.updated_at,
-            ri.revision_id AS release_revision_id, r.metadata_json
+            ri.revision_id AS release_revision_id,
+            ri.translation_enabled AS release_translation_enabled, r.metadata_json
        FROM content_items i
        JOIN content_revisions r ON r.id = i.current_revision_id
        LEFT JOIN release_items ri ON ri.item_id = i.id AND ri.release_id IS ?1
       WHERE (i.visibility = 'public' AND i.deleted_at IS NULL
-             AND (ri.revision_id IS NULL OR ri.revision_id != i.current_revision_id))
+             AND (ri.revision_id IS NULL OR ri.revision_id != i.current_revision_id
+                  OR ri.translation_enabled != i.translation_enabled))
          OR ((i.visibility = 'private' OR i.deleted_at IS NOT NULL) AND ri.revision_id IS NOT NULL)
       ORDER BY i.kind, i.slug`,
   )
@@ -339,8 +287,10 @@ async function intentChecksum(releaseId: string | null, rows: PendingRow[]): Pro
         row.id,
         row.current_revision_id,
         row.visibility,
+        row.translation_enabled,
         row.deleted_at,
         row.release_revision_id,
+        row.release_translation_enabled,
       ]),
     }),
   );
@@ -362,7 +312,6 @@ export async function publicationPreflight(env: RuntimeEnv) {
           : row.release_revision_id
             ? "update"
             : "add",
-      translationEligible: translationEligible(row),
       valid: Boolean(row.current_revision_id),
     })),
   };
@@ -373,7 +322,6 @@ export async function createBatchPublishJob(
   input: {
     intentChecksum?: string;
     idempotencyKey?: string;
-    translations?: TranslationPreferenceInput[];
   },
 ) {
   const expected = String(input.intentChecksum || "");
@@ -390,14 +338,6 @@ export async function createBatchPublishJob(
     .bind(idempotencyKey)
     .first<PublishJobRow>();
   if (existing) {
-    const pinned = await getJobItems(env, existing.id);
-    const requested = translationPreferences(input.translations, pinned);
-    const samePreferences = pinned
-      .filter(translationEligible)
-      .every((row) => requested.get(row.item_id) === (row.translation_enabled === 1));
-    if (!samePreferences) {
-      throw new HttpError(409, "idempotency_conflict", "Idempotency key was already used");
-    }
     return { job: jobJson(existing) };
   }
   const { releaseId, rows } = await pendingRows(env);
@@ -405,7 +345,6 @@ export async function createBatchPublishJob(
     throw new HttpError(409, "preflight_conflict", "Saved content changed; refresh publication");
   }
   if (rows.length === 0) return { job: null, noChanges: true };
-  const translations = translationPreferences(input.translations, rows);
   const anchor = rows[0];
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
@@ -431,17 +370,18 @@ export async function createBatchPublishJob(
         `INSERT INTO publish_job_items
           (job_id, item_id, revision_id, expected_revision_id, target_visibility,
            target_deleted_at, translation_enabled)
-         SELECT ?1, id, current_revision_id, current_revision_id, visibility, deleted_at, ?6
+         SELECT ?1, id, current_revision_id, current_revision_id, visibility, deleted_at,
+                translation_enabled
            FROM content_items
           WHERE id = ?2 AND current_revision_id = ?3 AND visibility = ?4
-            AND deleted_at IS ?5`,
+            AND deleted_at IS ?5 AND translation_enabled = ?6`,
       ).bind(
         id,
         row.id,
         row.current_revision_id,
         row.visibility,
         row.deleted_at,
-        translations.get(row.id) === false ? 0 : 1,
+        row.translation_enabled,
       ),
     ),
   ];
@@ -605,29 +545,44 @@ async function releaseManifest(
     visibility: Visibility;
     deletedAt: string | null;
     revisionId: string;
+    translationEnabled: boolean;
   }>,
   seedCurrentWhenNoBase: boolean,
-): Promise<Map<string, string>> {
-  const manifest = new Map<string, string>();
+): Promise<Map<string, { revisionId: string; translationEnabled: boolean }>> {
+  const manifest = new Map<string, { revisionId: string; translationEnabled: boolean }>();
   if (base) {
     const rows = await env.CONTENT_DB.prepare(
-      "SELECT item_id, revision_id FROM release_items WHERE release_id = ?1 ORDER BY item_id",
+      `SELECT item_id, revision_id, translation_enabled
+         FROM release_items WHERE release_id = ?1 ORDER BY item_id`,
     )
       .bind(base.id)
-      .all<{ item_id: string; revision_id: string }>();
-    for (const row of rows.results) manifest.set(row.item_id, row.revision_id);
+      .all<{ item_id: string; revision_id: string; translation_enabled: number }>();
+    for (const row of rows.results) {
+      manifest.set(row.item_id, {
+        revisionId: row.revision_id,
+        translationEnabled: row.translation_enabled === 1,
+      });
+    }
   } else if (seedCurrentWhenNoBase) {
     const rows = await env.CONTENT_DB.prepare(
-      `SELECT id AS item_id, current_revision_id AS revision_id
+      `SELECT id AS item_id, current_revision_id AS revision_id, translation_enabled
          FROM content_items
         WHERE visibility = 'public' AND deleted_at IS NULL AND current_revision_id IS NOT NULL
         ORDER BY id`,
-    ).all<{ item_id: string; revision_id: string }>();
-    for (const row of rows.results) manifest.set(row.item_id, row.revision_id);
+    ).all<{ item_id: string; revision_id: string; translation_enabled: number }>();
+    for (const row of rows.results) {
+      manifest.set(row.item_id, {
+        revisionId: row.revision_id,
+        translationEnabled: row.translation_enabled === 1,
+      });
+    }
   }
   for (const change of changes) {
     if (change.visibility === "public" && change.deletedAt === null) {
-      manifest.set(change.itemId, change.revisionId);
+      manifest.set(change.itemId, {
+        revisionId: change.revisionId,
+        translationEnabled: change.translationEnabled,
+      });
     } else {
       manifest.delete(change.itemId);
     }
@@ -695,6 +650,7 @@ export async function createCandidateRelease(
     visibility: Visibility;
     deletedAt: string | null;
     revisionId: string;
+    translationEnabled: boolean;
   }> = [];
   if (pinnedItems.length === 1 && !input.items) {
     const item = await getItemById(env, job.item_id);
@@ -710,6 +666,7 @@ export async function createCandidateRelease(
       visibility: job.target_visibility as Visibility,
       deletedAt: job.target_deleted_at,
       revisionId: candidateRevisionId,
+      translationEnabled: pinnedItems[0].translation_enabled === 1,
     });
   } else {
     const candidates = new Map(
@@ -750,6 +707,7 @@ export async function createCandidateRelease(
         visibility: pinned.target_visibility,
         deletedAt: pinned.target_deleted_at,
         revisionId,
+        translationEnabled: pinned.translation_enabled === 1,
       });
     }
     await env.CONTENT_DB.prepare(
@@ -801,11 +759,11 @@ export async function createCandidateRelease(
            WHERE id = ?4 AND state = 'running' AND release_id IS ?7
         )`,
     ).bind(releaseId, codeSha, manifestChecksum, job.id, base?.id ?? null, now, expectedReleaseId),
-    ...entries.map(([itemId, revisionId]) =>
+    ...entries.map(([itemId, entry]) =>
       env.CONTENT_DB.prepare(
-        `INSERT INTO release_items (release_id, item_id, revision_id)
-         SELECT ?1, ?2, ?3 WHERE EXISTS (SELECT 1 FROM releases WHERE id = ?1)`,
-      ).bind(releaseId, itemId, revisionId),
+        `INSERT INTO release_items (release_id, item_id, revision_id, translation_enabled)
+         SELECT ?1, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM releases WHERE id = ?1)`,
+      ).bind(releaseId, itemId, entry.revisionId, entry.translationEnabled ? 1 : 0),
     ),
     env.CONTENT_DB.prepare(
       `UPDATE publish_jobs SET release_id = ?1, updated_at = ?2
@@ -977,8 +935,10 @@ export async function failPublication(
 export async function releaseSnapshot(env: RuntimeEnv, releaseId: string) {
   const release = await getRelease(env, releaseId);
   const rows = await env.CONTENT_DB.prepare(
-    `SELECT i.id, i.kind, i.slug, i.visibility, i.deleted_at, i.current_revision_id,
-            i.published_revision_id, i.created_at, i.updated_at, ri.revision_id
+    `SELECT i.id, i.kind, i.slug, i.visibility, i.translation_enabled,
+            i.deleted_at, i.current_revision_id, i.published_revision_id,
+            i.created_at, i.updated_at, ri.revision_id,
+            ri.translation_enabled AS release_translation_enabled
        FROM release_items ri JOIN content_items i ON i.id = ri.item_id
       WHERE ri.release_id = ?1 ORDER BY i.kind, i.slug`,
   )
@@ -988,7 +948,13 @@ export async function releaseSnapshot(env: RuntimeEnv, releaseId: string) {
   for (const row of rows.results) {
     const revision = await getRevision(env, row.revision_id, row.id);
     items.push({
-      item: { ...itemJson(row), visibility: "public", deletedAt: null },
+      translationEnabled: row.release_translation_enabled === 1,
+      item: {
+        ...itemJson(row),
+        visibility: "public",
+        translationEnabled: row.release_translation_enabled === 1,
+        deletedAt: null,
+      },
       revision: revisionJson(revision),
       assets: await getRevisionAssets(env, revision.id),
     });

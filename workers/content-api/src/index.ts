@@ -90,7 +90,6 @@ async function route(request: Request, env: RuntimeEnv, url: URL): Promise<Respo
     const body = await readJson<{
       intentChecksum?: string;
       idempotencyKey?: string;
-      translations?: Array<{ itemId?: string; enabled?: boolean }>;
     }>(request, maximumJsonBytes);
     return json(await createBatchPublishJob(env, body), 201);
   }
@@ -164,6 +163,7 @@ async function route(request: Request, env: RuntimeEnv, url: URL): Promise<Respo
     if (request.method === "PATCH") {
       const body = await readJson<{
         visibility?: Visibility;
+        translationEnabled?: boolean;
         deleted?: boolean;
         expectedRevisionId?: string | null;
       }>(request, maximumJsonBytes);

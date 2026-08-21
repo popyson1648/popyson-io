@@ -12,6 +12,7 @@ interface ContentValue {
   itemId: string;
   kind: string;
   visibility: "public" | "private";
+  translationEnabled: boolean;
   deletedAt: string | null;
   currentRevisionId: string;
   publishedRevisionId: string | null;
@@ -36,7 +37,9 @@ interface CandidateValue extends JobValue {
 async function clearDatabase() {
   await env.CONTENT_DB.batch([
     env.CONTENT_DB.prepare("DELETE FROM release_items"),
-    env.CONTENT_DB.prepare("UPDATE publish_jobs SET release_id = NULL"),
+    env.CONTENT_DB.prepare(
+      "UPDATE publish_jobs SET release_id = NULL, expected_base_release_id = NULL",
+    ),
     env.CONTENT_DB.prepare("UPDATE releases SET base_release_id = NULL"),
     env.CONTENT_DB.prepare("DELETE FROM releases"),
     env.CONTENT_DB.prepare("DELETE FROM publish_job_items"),
@@ -81,12 +84,13 @@ async function create(
   id = "sample-work",
   visibility: "public" | "private" = "private",
   source = "First",
+  kind: "post" | "work" = "work",
 ) {
   return request("/v1/author/content", {
     role: "author",
     method: "POST",
     body: {
-      kind: "work",
+      kind,
       id,
       visibility,
       sourceJa: source,
@@ -100,14 +104,20 @@ async function createValue(
   id = "sample-work",
   visibility: "public" | "private" = "private",
   source = "First",
+  kind: "post" | "work" = "work",
 ): Promise<ContentValue> {
-  const response = await create(id, visibility, source);
+  const response = await create(id, visibility, source, kind);
   expect(response.status).toBe(201);
   return body<ContentValue>(response);
 }
 
-async function save(id: string, expectedRevisionId: string, source: string) {
-  return request(`/v1/author/content/work/${id}`, {
+async function save(
+  id: string,
+  expectedRevisionId: string,
+  source: string,
+  kind: "post" | "work" = "work",
+) {
+  return request(`/v1/author/content/${kind}/${id}`, {
     role: "author",
     method: "PUT",
     body: {
@@ -123,8 +133,9 @@ async function createJob(
   id: string,
   revisionId: string,
   idempotencyKey = `publish:${id}:0001`,
+  kind: "post" | "work" = "work",
 ): Promise<JobValue> {
-  const response = await request(`/v1/author/content/work/${id}/publish`, {
+  const response = await request(`/v1/author/content/${kind}/${id}/publish`, {
     role: "author",
     method: "POST",
     body: { revisionId, idempotencyKey },
@@ -169,11 +180,17 @@ async function finalize(jobId: string, releaseId: string, deploymentId = "pages-
   return body<CandidateValue>(response);
 }
 
-async function publishCurrent(id: string, revisionId: string, sequence: number) {
+async function publishCurrent(
+  id: string,
+  revisionId: string,
+  sequence: number,
+  kind: "post" | "work" = "work",
+) {
   const created = await createJob(
     id,
     revisionId,
     `publish:${id}:${String(sequence).padStart(4, "0")}`,
+    kind,
   );
   await markRunning(created.job.id, String(1000 + sequence));
   const release = await candidate(created.job.id);
@@ -280,6 +297,43 @@ describe("content API", () => {
       "SELECT COUNT(*) AS count FROM content_revisions",
     ).first<{ count: number }>();
     expect(count?.count).toBe(3);
+  });
+
+  it("stores the Blog translation setting outside revision history", async () => {
+    const first = await createValue("20260821-120000", "private", "First article", "post");
+    expect(first.translationEnabled).toBe(true);
+
+    const disabled = await body<ContentValue>(
+      await request("/v1/author/content/post/20260821-120000", {
+        role: "author",
+        method: "PATCH",
+        body: { translationEnabled: false, expectedRevisionId: first.currentRevisionId },
+      }),
+    );
+    expect(disabled).toMatchObject({
+      translationEnabled: false,
+      currentRevisionId: first.currentRevisionId,
+    });
+
+    const second = await body<ContentValue>(
+      await save("20260821-120000", first.currentRevisionId, "Second article", "post"),
+    );
+    const restored = await body<ContentValue>(
+      await request("/v1/author/content/post/20260821-120000/restore", {
+        role: "author",
+        method: "POST",
+        body: { revisionId: first.currentRevisionId, expectedRevisionId: second.currentRevisionId },
+      }),
+    );
+    expect(restored.translationEnabled).toBe(false);
+
+    const work = await createValue("translation-work");
+    const invalid = await request("/v1/author/content/work/translation-work", {
+      role: "author",
+      method: "PATCH",
+      body: { translationEnabled: false, expectedRevisionId: work.currentRevisionId },
+    });
+    expect(invalid.status).toBe(400);
   });
 
   it("streams a signed, checksummed private asset to author and CI routes", async () => {
@@ -426,13 +480,23 @@ describe("content API", () => {
   });
 
   it("pins and activates every pending item in one batch publication", async () => {
-    const first = await createValue("first-work", "public", "First batch item");
+    const firstCreated = await createValue("20260821-130000", "public", "First batch item", "post");
+    const first = await body<ContentValue>(
+      await request("/v1/author/content/post/20260821-130000", {
+        role: "author",
+        method: "PATCH",
+        body: {
+          translationEnabled: false,
+          expectedRevisionId: firstCreated.currentRevisionId,
+        },
+      }),
+    );
     const second = await createValue("second-work", "public", "Second batch item");
     const preflight = await body<{
       intentChecksum: string;
       items: Array<{ itemId: string; id: string }>;
     }>(await request("/v1/author/publication/preflight", { role: "author" }));
-    expect(preflight.items.map((item) => item.id)).toEqual(["first-work", "second-work"]);
+    expect(preflight.items.map((item) => item.id)).toEqual(["20260821-130000", "second-work"]);
 
     const created = await body<JobValue & { noChanges: boolean }>(
       await request("/v1/author/publication", {
@@ -441,10 +505,6 @@ describe("content API", () => {
         body: {
           intentChecksum: preflight.intentChecksum,
           idempotencyKey: "batch:0001",
-          translations: [
-            { itemId: first.itemId, enabled: false },
-            { itemId: second.itemId, enabled: true },
-          ],
         },
       }),
     );
@@ -480,10 +540,11 @@ describe("content API", () => {
       }),
     });
     await finalize(created.job.id, release.release.id);
-    const active = await body<{ items: Array<{ item: { id: string } }> }>(
-      await request("/v1/ci/releases/active/snapshot", { role: "ci" }),
-    );
-    expect(active.items.map(({ item }) => item.id)).toEqual(["first-work", "second-work"]);
+    const active = await body<{
+      items: Array<{ item: { id: string }; translationEnabled: boolean }>;
+    }>(await request("/v1/ci/releases/active/snapshot", { role: "ci" }));
+    expect(active.items.map(({ item }) => item.id)).toEqual(["20260821-130000", "second-work"]);
+    expect(active.items.map(({ translationEnabled }) => translationEnabled)).toEqual([false, true]);
 
     const empty = await body<{ items: unknown[] }>(
       await request("/v1/author/publication/preflight", { role: "author" }),
@@ -491,34 +552,22 @@ describe("content API", () => {
     expect(empty.items).toEqual([]);
   });
 
-  it("defaults translation on and rejects incomplete or conflicting batch preferences", async () => {
-    const item = await createValue("translation-work", "public", "Japanese source");
+  it("treats a saved translation-only change as a pending Blog update", async () => {
+    const item = await createValue("20260821-140000", "public", "Japanese source", "post");
     const preflight = await body<{
       intentChecksum: string;
-      items: Array<{ itemId: string; translationEligible: boolean }>;
+      items: Array<{ itemId: string; translationEnabled: boolean }>;
     }>(await request("/v1/author/publication/preflight", { role: "author" }));
     expect(preflight.items).toEqual([
-      expect.objectContaining({ itemId: item.itemId, translationEligible: true }),
+      expect.objectContaining({ itemId: item.itemId, translationEnabled: true }),
     ]);
-
-    const missing = await request("/v1/author/publication", {
-      role: "author",
-      method: "POST",
-      body: {
-        intentChecksum: preflight.intentChecksum,
-        idempotencyKey: "batch:invalid-missing",
-        translations: [],
-      },
-    });
-    expect(missing.status).toBe(400);
-
     const created = await body<JobValue>(
       await request("/v1/author/publication", {
         role: "author",
         method: "POST",
         body: {
           intentChecksum: preflight.intentChecksum,
-          idempotencyKey: "batch:default-on",
+          idempotencyKey: "batch:initial-translation",
         },
       }),
     );
@@ -526,17 +575,64 @@ describe("content API", () => {
       await request(`/v1/ci/jobs/${created.job.id}/snapshot`, { role: "ci" }),
     );
     expect(snapshot.translationEnabled).toBe(true);
+    await markRunning(created.job.id);
+    const release = await candidate(created.job.id, {
+      revision: {
+        sourceJa: item.revision.sourceJa,
+        sourceEn: item.revision.sourceEn,
+        documents: { files: {} },
+        expectedRevisionId: item.currentRevisionId,
+      },
+      assets: [],
+    });
+    await finalize(created.job.id, release.release.id);
 
-    const conflict = await request("/v1/author/publication", {
+    const current = await body<ContentValue>(
+      await request("/v1/author/content/post/20260821-140000", { role: "author" }),
+    );
+    const disabled = await body<ContentValue>(
+      await request("/v1/author/content/post/20260821-140000", {
+        role: "author",
+        method: "PATCH",
+        body: {
+          translationEnabled: false,
+          expectedRevisionId: current.currentRevisionId,
+        },
+      }),
+    );
+    expect(disabled.currentRevisionId).toBe(current.currentRevisionId);
+
+    const changed = await body<{
+      intentChecksum: string;
+      items: Array<{ action: string; translationEnabled: boolean }>;
+    }>(await request("/v1/author/publication/preflight", { role: "author" }));
+    expect(changed.items).toEqual([
+      expect.objectContaining({ action: "update", translationEnabled: false }),
+    ]);
+    const next = await body<JobValue>(
+      await request("/v1/author/publication", {
+        role: "author",
+        method: "POST",
+        body: {
+          intentChecksum: changed.intentChecksum,
+          idempotencyKey: "batch:disabled-translation",
+        },
+      }),
+    );
+    const nextSnapshot = await body<{ translationEnabled: boolean }>(
+      await request(`/v1/ci/jobs/${next.job.id}/snapshot`, { role: "ci" }),
+    );
+    expect(nextSnapshot.translationEnabled).toBe(false);
+
+    const stale = await request("/v1/author/publication", {
       role: "author",
       method: "POST",
       body: {
         intentChecksum: preflight.intentChecksum,
-        idempotencyKey: "batch:default-on",
-        translations: [{ itemId: item.itemId, enabled: false }],
+        idempotencyKey: "batch:stale-translation-setting",
       },
     });
-    expect(conflict.status).toBe(409);
+    expect(stale.status).toBe(409);
   });
 
   it("publishes private and deleted state by removing content from the active release", async () => {

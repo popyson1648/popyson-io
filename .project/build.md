@@ -61,10 +61,10 @@ and `GEMINI_API_KEY` for whichever section of `src/content/metadata.toml` names
 scripts/generate_metadata.mjs --check`, which is a static check and does not call
 any AI provider.
 
-Database-backed publication prepares English sources first, translates only the
-items enabled in the editor, then runs the same generation step inside
-`.github/workflows/content-publish.yml`. Disabled items use their Japanese
-source in the English slot. Claude Code is the primary translator; if it exits
+Database-backed publication prepares English sources first, translates Works,
+About, and Blog articles whose saved gear setting is enabled, then runs the same
+generation step inside `.github/workflows/content-publish.yml`. A disabled Blog
+article uses its Japanese source in the English slot. Claude Code is the primary translator; if it exits
 unsuccessfully, the workflow makes one fallback request to OpenAI GPT-5.6 Terra
 for the exact target allowlist. Generated content is returned to the Worker as
 a candidate revision and is never committed to Git. See `.project/metadata.md`
@@ -121,11 +121,15 @@ document counts and asset bytes and checksums compared with the migration
 source. Public/private and soft-delete changes are saved in D1 immediately but
 do not alter the static site until Publish is run.
 
-Publish pins the current revision, visibility, deletion state, and per-public
-item translation choice and sends only an opaque job id to GitHub Actions. Each
-eligible choice defaults to enabled whenever the confirmation dialog opens.
-Actions fetches that fixed D1/R2 snapshot into temporary storage, translates
-the enabled targets, uses Japanese as the English fallback for disabled targets,
+Each Blog article's gear → publication settings contains an
+`英語に翻訳する` checkbox. New articles default to enabled, and the setting is
+saved independently of document revisions. The batch confirmation dialog shows
+the saved choice without changing it.
+
+Publish pins the current revision, visibility, deletion state, and saved
+per-article translation setting and sends only an opaque job id to GitHub
+Actions. Actions fetches that fixed D1/R2 snapshot into temporary storage,
+translates the enabled targets, uses Japanese as the English fallback for disabled Blog articles,
 generates metadata, verifies and builds the static site, and deploys it to
 Pages. The published revision is advanced only after a successful deployment,
 and the deployed site does not read D1 at request time.

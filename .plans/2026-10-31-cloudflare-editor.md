@@ -96,13 +96,14 @@ stored in the Worker configuration and used by the deployment generator. The
 Access application ID is `d466bc1d-efb7-4cf8-b7e3-9c35ce1c9264` in account
 `e4cad72de68b5d765bb6fb575926bb43`, as shown by the user's dashboard URL. The
 user configured an owner-only policy and authenticator-app MFA; live enforcement
-is not independently verified. The team domain must match this account; do not
-assume it from the previously selected, different dashboard account.
+is not independently verified. The user's Access settings screenshot confirms the team domain
+`https://setoshun00424.cloudflareaccess.com` in this account. Both are now pinned
+in the Worker configuration to avoid accidental deployment to the other account.
 
 ## Open Issues
 
 The production hostname and owner email are confirmed. Configure the Access application,
-issuer (audience is now supplied), author service secrets, GitHub Actions credential, and Cloudflare
+author service secrets, GitHub Actions credential, and Cloudflare
 deploy credentials. Then validate real login and isolated draft operations before
 any intended publication. Hosted preview uses a bounded language set (other
 languages fall back to plain text); production CPU/plan limits need measurement.

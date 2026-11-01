@@ -270,8 +270,8 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
    `setoshun00424@gmail.com` and require MFA at the identity provider. Do not add an
    unauthenticated bypass policy. Use a separate audience from the content API.
 2. In GitHub environment `editor-production`, set variables
-   EDITOR_ACCESS_TEAM_DOMAIN (HTTPS team origin), EDITOR_ACCESS_AUD, and
-   CONTENT_API_URL. The approved EDITOR_ORIGIN and EDITOR_EMAIL are stored in
+   EDITOR_ACCESS_TEAM_DOMAIN (HTTPS team origin) and CONTENT_API_URL.
+   The approved EDITOR_ORIGIN, EDITOR_EMAIL, and ACCESS_AUD are stored in
    `workers/editor/wrangler.jsonc` and used by the configuration generator.
    Configure environment reviewers if deployment approval is desired. The workflow uses the current
    repository identity and dispatches publication on main.

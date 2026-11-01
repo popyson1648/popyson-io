@@ -1,0 +1,68 @@
+name: Deploy hosted editor
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy after Access policy and Worker secrets have been configured
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editor-deploy
+  cancel-in-progress: false
+
+jobs:
+  editor:
+    runs-on: ubuntu-latest
+    environment: editor-production
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: npm ci
+      - name: Download the published snapshot for the editor shell
+        env:
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CONTENT_CI_ACCESS_CLIENT_SECRET }}
+        run: |
+          node scripts/contentSnapshotCli.mjs download-release \
+            --release-id active --root "$RUNNER_TEMP/editor-content" \
+            --output "$RUNNER_TEMP/editor-release.json"
+          echo "CONTENT_SNAPSHOT_ROOT=$RUNNER_TEMP/editor-content" >> "$GITHUB_ENV"
+      - name: Verify
+        run: python3 scripts/verify.py --mode standard
+      - name: Prepare protected deployment configuration
+        env:
+          EDITOR_ORIGIN: ${{ vars.EDITOR_ORIGIN }}
+          ACCESS_TEAM_DOMAIN: ${{ vars.EDITOR_ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ vars.EDITOR_ACCESS_AUD }}
+          EDITOR_EMAIL: ${{ vars.EDITOR_EMAIL }}
+          CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
+          CONTENT_GITHUB_REPOSITORY: ${{ github.repository }}
+          CONTENT_GITHUB_REF: main
+        run: node scripts/prepareHostedEditorConfig.mjs "$RUNNER_TEMP/editor-worker.json"
+      - name: Validate deployment bundle
+        run: npx --no-install wrangler deploy --config "$RUNNER_TEMP/editor-worker.json" --dry-run --outdir "$RUNNER_TEMP/editor-bundle"
+      - name: Deploy
+        if: ${{ inputs.deploy }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --no-install wrangler deploy --config "$RUNNER_TEMP/editor-worker.json"
+      - name: Remove content and temporary configuration
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/editor-content" "$RUNNER_TEMP/editor-release.json" "$RUNNER_TEMP/editor-worker.json" "$RUNNER_TEMP/editor-bundle"

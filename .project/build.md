@@ -267,7 +267,7 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
 
 1. Create a Cloudflare Access self-hosted application for the entire editor
    hostname `editor.popyson.com` (confirmed). Allow only
-   `setoshun00424@gmail.com` and require MFA at the identity provider. Do not add an
+   `setoshun00424@gmail.com` and require independent TOTP MFA. Do not add an
    unauthenticated bypass policy. Use a separate audience from the content API.
 2. In GitHub environment `editor-production`, set variables
    CONTENT_API_URL. The confirmed Cloudflare account, EDITOR_ORIGIN,
@@ -304,6 +304,26 @@ same-origin Fetch Metadata when present. Upstream redirects are never followed.
 The shell uses the published snapshot for shared site content. Do not build it
 from private snapshots. Draft content/images are fetched through authenticated
 APIs. API, HTML, and asset responses are private/no-store.
+
+### Confirmed Access configuration
+
+The editor app is `d466bc1d-efb7-4cf8-b7e3-9c35ce1c9264`. Its linked
+`Allow owner` policy permits only the configured email and requires TOTP with a
+six-hour session. API readback verified the policy attachment. The existing
+one-time PIN identity provider supplies the initial login.
+
+An owner-only App Launcher is enabled at
+`https://setoshun00424.cloudflareaccess.com`. Sign in, open the Account page,
+and enroll an authenticator; store the registration secret in 1Password's
+one-time password field. Do not share QR codes or registration secrets in chat.
+This enrollment must be completed by the owner. App Launcher access does not
+replace the editor's separate MFA requirement.
+
+The API token injected into the Codex environment currently permits Access
+administration. Worker-secret metadata returned 403, so deployment is blocked
+until the token also permits Worker operations. Browser login and the API token
+are separate credentials. Proxy-bound credentials must be used over the supported
+HTTPS proxy; never copy placeholders into Worker secret values.
 
 ### Preview limits and validation
 

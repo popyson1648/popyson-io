@@ -100,10 +100,24 @@ is not independently verified. The user's Access settings screenshot confirms th
 `https://setoshun00424.cloudflareaccess.com` in this account. Both are now pinned
 in the Worker configuration to avoid accidental deployment to the other account.
 
+Live Access configuration verified through the API after token injection:
+- Team domain, editor audience, hostname, and six-hour app session match config.
+- The reusable `Allow owner` policy existed but was not attached to the editor.
+  Attached policy `74a31d5e-d5cb-4ed2-86af-e2bbdae93c7e` and read it back: exact
+  owner email, TOTP required, six-hour MFA session. No other app was changed.
+- Enabled an owner-only App Launcher (`f2f45148-8920-4f5e-802e-293bbb6c6f09`)
+  with the account's existing one-time PIN provider, so the owner can enroll a
+  TOTP authenticator in 1Password. Actual owner enrollment is still pending.
+- Reading the editor Worker's secret-name metadata returned HTTP 403. The token
+  currently permits Access administration, not Worker deployment/secret management.
+- This machine's Node fetch did not use the required network proxy; Python's
+  urllib uses the supported proxy and successfully performed the API operations.
+  No token or other secret value was logged or added to the repository.
+
 ## Open Issues
 
-The production hostname and owner email are confirmed. Configure the Access application,
+The production Access application and owner-only policy are now API-verified. Supply
 author service secrets, GitHub Actions credential, and Cloudflare
-deploy credentials. Then validate real login and isolated draft operations before
+deploy credentials with Worker permissions. Then validate real login and isolated draft operations before
 any intended publication. Hosted preview uses a bounded language set (other
 languages fall back to plain text); production CPU/plan limits need measurement.

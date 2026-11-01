@@ -245,3 +245,122 @@ See `.decisions/instapaper-reading-list.md` and
   required`, add the key to `.op.env` locally or to the matching GitHub Actions
   secret.
 - Lighthouse uses a local static server through LHCI and requires Chrome/Chromium.
+
+## Hosted editor
+
+`workers/editor/` serves the editor assets and the same-origin editing API through
+Cloudflare Access. Local Node/Vite and the hosted Worker share `editorApiCore.mjs`
+and the pure content serializers/templates. The original local editor remains
+available. See `.plans/2026-10-31-cloudflare-editor.md` for migration status.
+
+Validate without cloud credentials:
+
+```sh
+export CONTENT_SNAPSHOT_ROOT="$PWD/tests/fixtures/content"
+python3 scripts/verify.py --mode standard
+```
+
+The standard runner builds the editor, tests the Worker with real local D1/R2,
+and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
+
+### Production prerequisites
+
+1. Create a Cloudflare Access self-hosted application for the entire editor
+   hostname `editor.popyson.com` (confirmed). Allow only
+   `setoshun00424@gmail.com` and require independent TOTP MFA. Do not add an
+   unauthenticated bypass policy. Use a separate audience from the content API.
+2. In GitHub environment `editor-production`, set variables
+   CONTENT_API_URL. The confirmed Cloudflare account, EDITOR_ORIGIN,
+   EDITOR_EMAIL, ACCESS_TEAM_DOMAIN, and ACCESS_AUD are stored in
+   `workers/editor/wrangler.jsonc` and used by the configuration generator.
+   Configure environment reviewers if deployment approval is desired. The workflow uses the current
+   repository identity and dispatches publication on main.
+3. Supply CI snapshot credentials CONTENT_CI_ACCESS_CLIENT_ID and
+   CONTENT_CI_ACCESS_CLIENT_SECRET, plus CLOUDFLARE_API_TOKEN and
+   CLOUDFLARE_ACCOUNT_ID for deployment. Restrict the deployment token to the
+   target account/zone and the Worker operations required for this deployment.
+4. Set Worker secrets CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET (the existing
+   **author** service identity accepted by the content API), and
+   CONTENT_GITHUB_TOKEN (repository-scoped Actions write for dispatch/progress).
+   Set secrets securely through Cloudflare's dashboard or `wrangler secret put`;
+   never store values in tracked files or browser configuration. On first
+   deployment, an absent secret makes editor APIs return 503 until configured.
+   Deploying code does not create these secrets.
+5. Run the manual **Deploy hosted editor** workflow with `deploy=false` first.
+   It downloads the active published snapshot, verifies, and validates the
+   generated deployment bundle. It never uses fixture data in production.
+   After reviewing configuration, run with `deploy=true` to deploy. There is no
+   deployment from ordinary PR branch pushes.
+
+For owner testing before merge, deliberately push the reviewed PR commit to
+`codex/editor-review-deploy`. That branch triggers verification and produces a
+portable `editor-review-<commit>` artifact using the active published snapshot.
+The artifact contains compiled assets/code, protected deployment configuration,
+and commit provenance, but no raw snapshot or credentials; retention is one day.
+Download the artifact from the successful run, verify `commit.txt` against the
+reviewed commit, and run `wrangler deploy --config <artifact>/wrangler.json`
+with an authorized Cloudflare token. This deploys `editor.popyson.com` without
+merging into main or publishing articles. Ordinary PR pushes do not deploy.
+Worker secrets must still be configured before editor APIs can operate. Only
+merge after the owner has tested the deployment and explicitly requested merge.
+
+The generated configuration is outside the checkout and contains only nonsecret
+settings. `scripts/prepareHostedEditorConfig.mjs` validates the settings and
+configures a custom domain. Keep `assets.run_worker_first` enabled for every
+path and keep workers.dev/preview URLs disabled. Access protects the whole host;
+the Worker independently checks JWT signature, issuer, audience, expiry, subject,
+and the exact owner email. Writes additionally require matching Origin and
+same-origin Fetch Metadata when present. Upstream redirects are never followed.
+
+The shell uses the published snapshot for shared site content. Do not build it
+from private snapshots. Draft content/images are fetched through authenticated
+APIs. API, HTML, and asset responses are private/no-store.
+
+### Confirmed Access configuration
+
+The editor app is `d466bc1d-efb7-4cf8-b7e3-9c35ce1c9264`. Its linked
+`Allow owner` policy permits only the configured email and requires TOTP with a
+six-hour session. API readback verified the policy attachment. The existing
+one-time PIN identity provider supplies the initial login.
+
+An owner-only App Launcher is enabled at
+`https://setoshun00424.cloudflareaccess.com`. Sign in, open the Account page,
+and enroll an authenticator; store the registration secret in 1Password's
+one-time password field. Do not share QR codes or registration secrets in chat.
+This enrollment must be completed by the owner. App Launcher access does not
+replace the editor's separate MFA requirement.
+
+The API token injected into the Codex environment permits Access administration
+and Worker operations; metadata lookup confirms that the editor Worker has not
+yet been created. Browser login and the API token are separate credentials.
+Proxy-bound credentials must be used over the supported
+HTTPS proxy; never copy placeholders into Worker secret values.
+
+### Preview limits and validation
+
+The hosted Markdown renderer shares the site's structural/sanitization pipeline.
+Shiki uses its JavaScript engine instead of runtime WASM compilation. The hosted
+preview includes JS, TS, JSX, TSX, JSON, Bash, Python, CSS, HTML, TOML, and YAML;
+other code languages display as escaped plain text. Public-site/local-editor
+highlighting retains its existing full renderer. Preview input is limited to
+262144 characters and JSON bodies to 15 MiB. The content API also applies its own
+JSON/image size and image-signature checks.
+
+The compressed Worker bundle is approximately 309 KiB. Real Access login,
+production rendering CPU usage/plan suitability, service permissions, and a
+complete authenticated draft-to-publication smoke check still require production
+configuration. Local tests are not evidence of production permission or delivery.
+
+After deployment verify: unauthenticated and other-user access is denied, private
+assets cannot be fetched without login, create/save an isolated draft, check
+preview/upload/history, and verify publication only with a deliberately selected
+item. Do not publish test fixtures to the live site.
+
+### Rotation and rollback
+
+Rotate author service credentials and GitHub credentials in Worker Secrets;
+verify an isolated draft after rotation. Rotate the content API's accepted author
+identity in coordination with its existing clients. To roll back a broken editor
+release use Cloudflare Worker deployment rollback while preserving Access policy
+and secrets. The local editor remains a recovery path; D1/R2 data and public-site
+deployment are separate from an editor code rollback.

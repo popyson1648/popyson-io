@@ -6,6 +6,7 @@ function requiredEnv(name, env = process.env) {
   return value;
 }
 
+/** @param {Record<string, string | undefined>} [env] */
 export function contentCloudConfig(env = process.env) {
   return {
     baseUrl: requiredEnv("CONTENT_API_URL", env).replace(/\/$/, ""),
@@ -48,6 +49,7 @@ export class ContentCloudClient {
   async request(pathname, { method = "GET", json, body, headers = {} } = {}) {
     const response = await fetch(`${this.baseUrl}${pathname}`, {
       method,
+      redirect: "manual",
       headers: {
         ...this.accessHeaders,
         ...(json === undefined ? {} : { "content-type": "application/json" }),
@@ -75,6 +77,7 @@ export class ContentCloudClient {
   async requestBytes(pathname) {
     const response = await fetch(`${this.baseUrl}${pathname}`, {
       headers: this.accessHeaders,
+      redirect: "manual",
     });
     if (response.ok) return response.arrayBuffer();
     throw new ContentCloudError(
@@ -184,6 +187,7 @@ export class ContentCloudClient {
   async requestRaw(pathname, { method = "GET", body, headers = {} } = {}) {
     const response = await fetch(`${this.baseUrl}${pathname}`, {
       method,
+      redirect: "manual",
       headers: { ...this.accessHeaders, ...headers },
       body,
     });

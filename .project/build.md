@@ -293,9 +293,14 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
    deployment from ordinary PR branch pushes.
 
 For owner testing before merge, deliberately push the reviewed PR commit to
-`codex/editor-review-deploy`. That branch alone triggers the same verification
-and deployment workflow, using the active published snapshot and the protected
-`editor.popyson.com` hostname. It does not merge into main or publish articles.
+`codex/editor-review-deploy`. That branch triggers verification and produces a
+portable `editor-review-<commit>` artifact using the active published snapshot.
+The artifact contains compiled assets/code, protected deployment configuration,
+and commit provenance, but no raw snapshot or credentials; retention is one day.
+Download the artifact from the successful run, verify `commit.txt` against the
+reviewed commit, and run `wrangler deploy --config <artifact>/wrangler.json`
+with an authorized Cloudflare token. This deploys `editor.popyson.com` without
+merging into main or publishing articles. Ordinary PR pushes do not deploy.
 Worker secrets must still be configured before editor APIs can operate. Only
 merge after the owner has tested the deployment and explicitly requested merge.
 

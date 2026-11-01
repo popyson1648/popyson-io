@@ -120,6 +120,11 @@ Owner review must precede merge. The owner explicitly requires successful
 hands-on testing and a separate merge instruction; do not merge PR #188 without
 that instruction. A deliberate push to `codex/editor-review-deploy` runs the
 editor deployment workflow before default-branch registration is available.
+The first deployment run passed verification and bundling but its GitHub-held
+Cloudflare credential failed with "No access to the specified resource" on
+Worker secret metadata. Review branch runs now export a one-day artifact of
+compiled code/assets and nonsecret configuration for deployment with the
+authorized Codex-held Cloudflare credential; no raw content snapshot is exported.
 Ordinary PR pushes remain verification-only. Runtime author/GitHub secrets are
 still required and must be entered securely in the Worker, never in chat.
 Rechecked the owner-only TOTP policy and confirmed Worker API permissions; the

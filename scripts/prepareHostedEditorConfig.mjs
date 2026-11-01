@@ -21,6 +21,7 @@ function httpsOrigin(value, name) {
 
 export function hostedEditorConfig(env = process.env) {
   const config = JSON.parse(readFileSync(resolve(WORKER, "wrangler.jsonc"), "utf8"));
+  env = { ...config.vars, ...env };
   const origin = required(env, "EDITOR_ORIGIN");
   const hostname = httpsOrigin(origin, "EDITOR_ORIGIN").hostname;
   const issuer = required(env, "ACCESS_TEAM_DOMAIN");

@@ -47,10 +47,8 @@ jobs:
         run: python3 scripts/verify.py --mode standard
       - name: Prepare protected deployment configuration
         env:
-          EDITOR_ORIGIN: ${{ vars.EDITOR_ORIGIN }}
           ACCESS_TEAM_DOMAIN: ${{ vars.EDITOR_ACCESS_TEAM_DOMAIN }}
           ACCESS_AUD: ${{ vars.EDITOR_ACCESS_AUD }}
-          EDITOR_EMAIL: ${{ vars.EDITOR_EMAIL }}
           CONTENT_API_URL: ${{ vars.CONTENT_API_URL }}
           CONTENT_GITHUB_REPOSITORY: ${{ github.repository }}
           CONTENT_GITHUB_REF: main

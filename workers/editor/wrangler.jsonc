@@ -12,9 +12,9 @@
     "run_worker_first": true
   },
   "vars": {
-    "EDITOR_ORIGIN": "",
+    "EDITOR_ORIGIN": "https://editor.popyson.com",
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
-    "EDITOR_EMAIL": ""
+    "EDITOR_EMAIL": "setoshun00424@gmail.com"
   }
 }

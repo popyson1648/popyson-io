@@ -266,13 +266,14 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
 ### Production prerequisites
 
 1. Create a Cloudflare Access self-hosted application for the entire editor
-   hostname (proposed `editor.popyson.com`, pending owner confirmation). Allow only
-   the owner's identity and require MFA at the identity provider. Do not add an
+   hostname `editor.popyson.com` (confirmed). Allow only
+   `setoshun00424@gmail.com` and require MFA at the identity provider. Do not add an
    unauthenticated bypass policy. Use a separate audience from the content API.
-2. In GitHub environment `editor-production`, set variables EDITOR_ORIGIN (exact
-   HTTPS origin), EDITOR_ACCESS_TEAM_DOMAIN (HTTPS team origin), EDITOR_ACCESS_AUD,
-   EDITOR_EMAIL (exact email claim), and CONTENT_API_URL. Configure environment
-   reviewers if deployment approval is desired. The workflow uses the current
+2. In GitHub environment `editor-production`, set variables
+   EDITOR_ACCESS_TEAM_DOMAIN (HTTPS team origin), EDITOR_ACCESS_AUD, and
+   CONTENT_API_URL. The approved EDITOR_ORIGIN and EDITOR_EMAIL are stored in
+   `workers/editor/wrangler.jsonc` and used by the configuration generator.
+   Configure environment reviewers if deployment approval is desired. The workflow uses the current
    repository identity and dispatches publication on main.
 3. Supply CI snapshot credentials CONTENT_CI_ACCESS_CLIENT_ID and
    CONTENT_CI_ACCESS_CLIENT_SECRET, plus CLOUDFLARE_API_TOKEN and

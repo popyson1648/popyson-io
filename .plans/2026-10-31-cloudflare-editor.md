@@ -20,7 +20,8 @@ exposing D1/R2 credentials in the browser. Do not deploy a partially migrated AP
 
 ## Assumptions
 
-- Proposed hostname: `editor.popyson.com`; confirm when preparing deployment.
+- Confirmed hostname: `editor.popyson.com`.
+- Confirmed owner identity: `setoshun00424@gmail.com`.
 - Access allows exactly the owner's identity; use MFA at the identity provider.
 - Worker static assets and APIs share one origin. All paths execute the Worker
   first, including scripts, preview documents, images, and unknown API paths.
@@ -82,7 +83,7 @@ Implementation status as of 2026-11-01:
   remains a deployment prerequisite.
 - Step 5 prepared: manual workflow (dry-run by default), validated configuration
   generator, secure setup, rotation, and rollback documentation. Deployment not
-  performed. Hostname and owner identity were requested from the user.
+  performed. Hostname and owner identity were confirmed on 2026-11-01.
 
 Final local validation:
 - `python3 scripts/verify.py --mode standard`: all phases passed, 602 tests.
@@ -92,7 +93,7 @@ Final local validation:
 
 ## Open Issues
 
-Confirm the production hostname and owner email. Configure the Access application,
+The production hostname and owner email are confirmed. Configure the Access application,
 issuer/audience, author service secrets, GitHub Actions credential, and Cloudflare
 deploy credentials. Then validate real login and isolated draft operations before
 any intended publication. Hosted preview uses a bounded language set (other

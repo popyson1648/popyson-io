@@ -1,6 +1,10 @@
 name: Deploy hosted editor
 
 on:
+  # A deliberate push to this branch deploys the review build before main merge.
+  # Ordinary PR branch pushes only run CI.
+  push:
+    branches: [codex/editor-review-deploy]
   workflow_dispatch:
     inputs:
       deploy:
@@ -54,7 +58,7 @@ jobs:
       - name: Validate deployment bundle
         run: npx --no-install wrangler deploy --config "$RUNNER_TEMP/editor-worker.json" --dry-run --outdir "$RUNNER_TEMP/editor-bundle"
       - name: Deploy
-        if: ${{ inputs.deploy }}
+        if: ${{ github.event_name == 'push' || inputs.deploy }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

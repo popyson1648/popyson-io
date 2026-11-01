@@ -116,6 +116,15 @@ Live Access configuration verified through the API after token injection:
 
 ## Open Issues
 
+Owner review must precede merge. The owner explicitly requires successful
+hands-on testing and a separate merge instruction; do not merge PR #188 without
+that instruction. A deliberate push to `codex/editor-review-deploy` runs the
+editor deployment workflow before default-branch registration is available.
+Ordinary PR pushes remain verification-only. Runtime author/GitHub secrets are
+still required and must be entered securely in the Worker, never in chat.
+Rechecked the owner-only TOTP policy and confirmed Worker API permissions; the
+editor Worker does not exist yet (404), superseding the earlier 403 finding.
+
 The production Access application and owner-only policy are now API-verified. Supply
 author service secrets, GitHub Actions credential, and Cloudflare
 deploy credentials with Worker permissions. Then validate real login and isolated draft operations before

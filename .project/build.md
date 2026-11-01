@@ -290,8 +290,14 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
    It downloads the active published snapshot, verifies, and validates the
    generated deployment bundle. It never uses fixture data in production.
    After reviewing configuration, run with `deploy=true` to deploy. There is no
-   automatic push-triggered deployment and no production deployment has been
-   performed during implementation.
+   deployment from ordinary PR branch pushes.
+
+For owner testing before merge, deliberately push the reviewed PR commit to
+`codex/editor-review-deploy`. That branch alone triggers the same verification
+and deployment workflow, using the active published snapshot and the protected
+`editor.popyson.com` hostname. It does not merge into main or publish articles.
+Worker secrets must still be configured before editor APIs can operate. Only
+merge after the owner has tested the deployment and explicitly requested merge.
 
 The generated configuration is outside the checkout and contains only nonsecret
 settings. `scripts/prepareHostedEditorConfig.mjs` validates the settings and
@@ -319,10 +325,10 @@ one-time password field. Do not share QR codes or registration secrets in chat.
 This enrollment must be completed by the owner. App Launcher access does not
 replace the editor's separate MFA requirement.
 
-The API token injected into the Codex environment currently permits Access
-administration. Worker-secret metadata returned 403, so deployment is blocked
-until the token also permits Worker operations. Browser login and the API token
-are separate credentials. Proxy-bound credentials must be used over the supported
+The API token injected into the Codex environment permits Access administration
+and Worker operations; metadata lookup confirms that the editor Worker has not
+yet been created. Browser login and the API token are separate credentials.
+Proxy-bound credentials must be used over the supported
 HTTPS proxy; never copy placeholders into Worker secret values.
 
 ### Preview limits and validation

@@ -8,3 +8,7 @@ coverage/
 .drafts/
 /editor/dist/
 .wrangler/
+
+# Hosted editor dry-run output
+/.tmp/editor-worker/
+/.tmp/editor-browser-backend/

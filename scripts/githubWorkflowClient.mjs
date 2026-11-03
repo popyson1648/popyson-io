@@ -4,6 +4,7 @@ function required(name, env) {
   return value;
 }
 
+/** @param {Record<string, string | undefined>} [env] */
 export function githubWorkflowConfig(env = process.env) {
   return {
     token: required("CONTENT_GITHUB_TOKEN", env),
@@ -40,6 +41,7 @@ export class GitHubWorkflowClient {
       `https://api.github.com/repos/${repository}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`,
       {
         method: "POST",
+        redirect: "manual",
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,
@@ -104,6 +106,7 @@ export class GitHubWorkflowClient {
     const response = await fetch(
       `https://api.github.com/repos/${repository}/actions/runs/${id}/jobs?per_page=1`,
       {
+        redirect: "manual",
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,

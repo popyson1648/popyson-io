@@ -41,7 +41,10 @@
     "lighthouse": "python3 scripts/run_lighthouse.py",
     "reading:fetch": "node scripts/fetch_instapaper.mjs",
     "reading:fetch:op": "op run --env-file=.op.env -- node scripts/fetch_instapaper.mjs",
-    "instapaper:auth:op": "op run --env-file=.op.env.auth -- node scripts/instapaper_auth.mjs"
+    "instapaper:auth:op": "op run --env-file=.op.env.auth -- node scripts/instapaper_auth.mjs",
+    "editor:worker:test": "vitest run --root workers/editor --config vitest.config.ts",
+    "editor:worker:typecheck": "tsc -p workers/editor/tsconfig.json",
+    "editor:worker:bundle": "wrangler deploy --cwd workers/editor --dry-run --outdir ../../.tmp/editor-worker"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

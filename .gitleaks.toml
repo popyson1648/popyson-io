@@ -8,3 +8,9 @@ description = "Exact non-secret idempotency fixture used by the content client t
 condition = "AND"
 paths = ['''^tests/check_content_cloud_editor\.test\.mjs$''']
 regexes = ['''^idempotency-1$''']
+
+[[allowlists]]
+description = "Exact public Cloudflare Access application audience for the hosted editor"
+condition = "AND"
+paths = ['''^workers/editor/wrangler\.jsonc$''']
+regexes = ['''^9cb72bd6863b6615a15d8c0a2569d9ceb22c36e727dc77ebc876a9c3f1827a75$''']

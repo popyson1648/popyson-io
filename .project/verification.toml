@@ -138,3 +138,24 @@ run_in_ci = true
 [phases.bundle_size]
 enabled = false
 command = ""
+
+[phases.editor_worker_typecheck]
+enabled = true
+command = "npm run editor:worker:typecheck"
+run_standard = true
+run_in_ci = true
+
+[phases.editor_worker_test]
+enabled = true
+command = "npm run editor:worker:test"
+run_standard = true
+run_in_ci = true
+
+# editor_build must run first to provide the static asset directory.
+[phases.editor_worker_bundle]
+enabled = true
+command = "npm run editor:worker:bundle"
+run_on_edit = false
+run_standard = true
+run_pre_push = true
+run_in_ci = true

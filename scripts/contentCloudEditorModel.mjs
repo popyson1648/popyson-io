@@ -1,12 +1,12 @@
 import { parse as parseToml } from "smol-toml";
 
-import { postMarkdownTemplate, workMarkdownTemplate } from "./contentScaffold.mjs";
+import { postMarkdownTemplate, workMarkdownTemplate } from "./contentTemplates.mjs";
 import {
   assertContentId,
   EditorContentError,
   serializeEditorAbout,
   serializeEditorMarkdown,
-} from "./contentEditorModel.mjs";
+} from "./editorContentSchema.mjs";
 import { parseMarkdownFrontmatter } from "./frontmatter.mjs";
 
 const ASSET_SEGMENTS = { post: "posts", work: "works", about: "about" };

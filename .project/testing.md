@@ -97,3 +97,24 @@ To preview the prompts that would be sent for unresolved AI metadata:
 ```sh
 npm run metadata:preview-prompts
 ```
+
+## Hosted editor
+
+`npm run editor:worker:test` runs in the actual Workers pool. It checks real signed
+RSA JWTs (issuer, audience, identity, expiry, forged signatures), alternate hosts,
+private assets, cross-origin writes, missing configuration, and request limits.
+The API integration tests call the existing content API against local D1/R2 with
+its real migrations. They cover create/read/list/save, stale-revision conflicts,
+history restore, visibility/delete/restore, translation settings, image upload
+and private delivery, thumbnail regeneration, About, individual/batch publication
+and progress, invalid drafts, upstream error redaction, and Markdown previews.
+Only upstream authentication and GitHub dispatch are replaced by test boundaries;
+no live content or GitHub Actions runs are created.
+
+`tests/check_editor_http.test.mjs` exercises the real local Node HTTP adapter,
+including preview and origin rejection. The deployment-config tests ensure that
+required settings fail closed and generated files cannot include secrets.
+
+Standard verification typechecks and dry-run bundles the Worker after editor_build.
+The manual deployment workflow is additionally checked with actionlint. Production
+Access login, permissions, and publication delivery require a configured deployment.

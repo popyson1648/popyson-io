@@ -117,8 +117,8 @@ The `popyson-content-api` Worker serves `content-api.popyson.com` as a custom
 domain and has no `workers.dev` route. Two path-scoped Cloudflare Access
 applications protect it, one per role:
 
-- `content-api.popyson.com/v1/author` admits only the `popyson-content-author`
-  service token.
+- `content-api.popyson.com/v1/author` admits only the currently selected
+  `popyson-io-token` service token for author operations.
 - `content-api.popyson.com/v1/ci` admits only the `popyson-content-ci` service
   token.
 

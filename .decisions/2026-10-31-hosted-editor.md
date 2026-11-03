@@ -10,7 +10,8 @@ Host the editor behind Cloudflare Access with a dedicated Worker.
 
 ## Status
 
-Accepted direction; migration in progress, not deployed.
+Accepted and deployed to editor.popyson.com on 2026-11-03. The owner completed
+hands-on verification and authorized merging PR #188.
 
 ## Decision
 
@@ -47,7 +48,8 @@ upstream redirects are not followed. The hosted preview reuses the same Markdown
 pipeline with Shiki's JavaScript regex engine and a bounded set of grammars;
 unsupported languages display as escaped plain text. This keeps the Worker small
 and avoids runtime WASM compilation. Public-site highlighting remains unchanged.
-Production authentication and delivery still require deployment validation.
+Production browser login, content listing, and existing-article reads were
+verified after deployment. See the Mac deployment plan for the validation scope.
 
 ## Revisit Conditions
 

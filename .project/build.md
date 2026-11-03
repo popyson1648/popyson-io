@@ -282,6 +282,10 @@ and performs `npm run editor:worker:bundle` (Wrangler dry-run only).
 4. Set Worker secrets CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET (the existing
    **author** service identity accepted by the content API), and
    CONTENT_GITHUB_TOKEN (repository-scoped Actions write for dispatch/progress).
+   The current author policy selects `popyson-io-token`; use its matching Client
+   ID and Client Secret. The separate `popyson-content-author` token is not
+   selected by that policy. A successful secret-name check does not verify the
+   credential pair: confirm authenticated content listing after configuration.
    Set secrets securely through Cloudflare's dashboard or `wrangler secret put`;
    never store values in tracked files or browser configuration. On first
    deployment, an absent secret makes editor APIs return 503 until configured.
@@ -330,12 +334,25 @@ one-time password field. Do not share QR codes or registration secrets in chat.
 This enrollment must be completed by the owner. App Launcher access does not
 replace the editor's separate MFA requirement.
 
-The API token injected into the Codex environment permits Access administration
-and Worker operations. A bootstrap `popyson-editor` Worker exists with no custom
-domain or assets and returns 503; workers.dev and preview URLs are disabled.
+During Cloud setup, the injected API token permitted Access administration
+and Worker operations. A bootstrap `popyson-editor` Worker was created with no
+custom domain or assets and returned 503; workers.dev and preview URLs were disabled.
 On 2026-11-03 the owner's three runtime bindings were converted from plain text
 to Secret, and their names/types were API-verified without logging values.
-The full editor still awaits deployment of the verified review artifact.
+The verified review artifact for commit `c7ff540` was deployed from the Mac on
+2026-11-03 at 20:01 JST, without merging PR #188. Initial code version
+`df1c7684-bafd-427a-b25c-1acf2a74f188` was assigned to `editor.popyson.com`;
+subsequent Secret updates retain that application code.
+Post-deployment API readback confirmed all three Secret bindings, the custom
+domain, and disabled workers.dev/preview URLs. Unauthenticated shell, script,
+API, and image requests redirect to Access login; Chrome rendered the login
+page. Owner login and authenticated listing/reading were subsequently verified
+in Chrome after correcting the author service-token bindings. The owner reported
+successful hands-on verification on 2026-11-03 and authorized merging PR #188.
+The agent did not independently exercise TOTP enforcement, draft saving, uploads,
+or publication.
+The Mac OAuth credential cannot read Access policies;
+the policy verification above was performed during the Cloud setup.
 Browser login and the API token are separate credentials.
 Proxy-bound credentials must be used over the supported
 HTTPS proxy; never copy placeholders into Worker secret values.

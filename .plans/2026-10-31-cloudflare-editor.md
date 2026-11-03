@@ -137,8 +137,16 @@ productionresultssa8.blob.core.windows.net, a different shard from the old
 artifact. A pending network draft adds this exact host; download/deployment
 remains blocked until the owner publishes the environment configuration.
 
-The production Access application, owner-only policy, and runtime secret names
-are now API-verified. Deploy the verified artifact, preserving the secrets.
-Then validate real login and isolated draft operations before
-any intended publication. Hosted preview uses a bounded language set (other
+Mac continuation on 2026-11-03 deployed artifact 13219069487 for commit c7ff540
+as Worker version `df1c7684-bafd-427a-b25c-1acf2a74f188` at
+`https://editor.popyson.com`, preserving all three Secret bindings. Custom-domain
+readback succeeded; workers.dev and preview URLs remain disabled. Shell, script,
+API, and image requests without authentication redirect to Access login, which
+also rendered in Chrome. PR #188 remains open and unmerged. See
+`.plans/2026-11-03-editor-mac-deploy.md` for the continuation record.
+
+Real browser login, content listing, and article reading were verified after
+correcting the author credentials. On 2026-11-03 the owner reported successful
+hands-on testing and explicitly authorized merge subject to final checks. The
+agent did not publish content during validation. Hosted preview uses a bounded language set (other
 languages fall back to plain text); production CPU/plan limits need measurement.

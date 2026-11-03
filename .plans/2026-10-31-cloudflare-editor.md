@@ -125,13 +125,20 @@ Cloudflare credential failed with "No access to the specified resource" on
 Worker secret metadata. Review branch runs now export a one-day artifact of
 compiled code/assets and nonsecret configuration for deployment with the
 authorized Codex-held Cloudflare credential; no raw content snapshot is exported.
-Ordinary PR pushes remain verification-only. Runtime author/GitHub secrets are
-still required and must be entered securely in the Worker, never in chat.
-Rechecked the owner-only TOTP policy and confirmed Worker API permissions; the
-editor Worker does not exist yet (404), superseding the earlier 403 finding.
+Ordinary PR pushes remain verification-only. A bootstrap Worker was created to
+receive runtime secrets, without assets/custom domain and with workers.dev and
+preview URLs disabled. On 2026-11-03 the owner registered all three credentials
+as plain-text bindings. Converted them atomically through PATCH settings to
+secret_text and verified secret-name metadata, without logging their values.
+Rechecked the owner-only TOTP policy. The previous artifact expired; rerunning
+Actions run 41314413535 passed all verification and packaging for commit
+c7ff540404171e22bfe2d244f63d0780025b4ca2. Artifact 13219069487 is stored on
+productionresultssa8.blob.core.windows.net, a different shard from the old
+artifact. A pending network draft adds this exact host; download/deployment
+remains blocked until the owner publishes the environment configuration.
 
-The production Access application and owner-only policy are now API-verified. Supply
-author service secrets, GitHub Actions credential, and Cloudflare
-deploy credentials with Worker permissions. Then validate real login and isolated draft operations before
+The production Access application, owner-only policy, and runtime secret names
+are now API-verified. Deploy the verified artifact, preserving the secrets.
+Then validate real login and isolated draft operations before
 any intended publication. Hosted preview uses a bounded language set (other
 languages fall back to plain text); production CPU/plan limits need measurement.

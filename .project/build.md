@@ -331,8 +331,12 @@ This enrollment must be completed by the owner. App Launcher access does not
 replace the editor's separate MFA requirement.
 
 The API token injected into the Codex environment permits Access administration
-and Worker operations; metadata lookup confirms that the editor Worker has not
-yet been created. Browser login and the API token are separate credentials.
+and Worker operations. A bootstrap `popyson-editor` Worker exists with no custom
+domain or assets and returns 503; workers.dev and preview URLs are disabled.
+On 2026-11-03 the owner's three runtime bindings were converted from plain text
+to Secret, and their names/types were API-verified without logging values.
+The full editor still awaits deployment of the verified review artifact.
+Browser login and the API token are separate credentials.
 Proxy-bound credentials must be used over the supported
 HTTPS proxy; never copy placeholders into Worker secret values.
 

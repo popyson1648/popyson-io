@@ -12,6 +12,7 @@ import {
   validateCloudContent,
 } from "./contentCloudEditorModel.mjs";
 import { EditorContentError } from "./editorContentSchema.mjs";
+import { GitHubWorkflowError } from "./githubWorkflowClient.mjs";
 import { publishProgress } from "./publishProgress.mjs";
 
 const MAX_JSON_BYTES = 15 * 1024 * 1024;
@@ -52,7 +53,12 @@ export function editorApiError(error) {
   return json(status, {
     error: {
       code: error.code || "internal_error",
-      message: status >= 500 ? "Editor service unavailable" : error.message || "Invalid request",
+      message:
+        error instanceof GitHubWorkflowError && [401, 403, 404].includes(error.upstreamStatus)
+          ? error.message
+          : status >= 500
+            ? "Editor service unavailable"
+            : error.message || "Invalid request",
     },
   });
 }

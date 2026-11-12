@@ -18,8 +18,22 @@ export class GitHubWorkflowError extends Error {
   constructor(message, status = 500) {
     super(message);
     this.name = "GitHubWorkflowError";
-    this.status = status;
+    this.status = 502;
+    this.upstreamStatus = status;
     this.code = "workflow_dispatch_failed";
+    if (status === 401) {
+      this.code = "workflow_auth_failed";
+      this.message =
+        "公開用の GitHub 認証が拒否されました。管理者は CONTENT_GITHUB_TOKEN を有効なトークンに更新してから、もう一度公開してください。";
+    } else if (status === 403) {
+      this.code = "workflow_permission_denied";
+      this.message =
+        "GitHub が公開処理を拒否しました。管理者は公開用トークンの対象リポジトリ、Actions の書き込み権限、利用制限を確認してください。";
+    } else if (status === 404) {
+      this.code = "workflow_not_found";
+      this.message =
+        "公開先のリポジトリまたはワークフローにアクセスできません。管理者は公開先設定とトークンのアクセス権を確認してください。";
+    }
   }
 }
 

@@ -377,6 +377,25 @@ assets cannot be fetched without login, create/save an isolated draft, check
 preview/upload/history, and verify publication only with a deliberately selected
 item. Do not publish test fixtures to the live site.
 
+### Publication dispatch authentication
+
+About, Works, posts, and batch publication use the same CONTENT_GITHUB_TOKEN.
+A GitHub dispatch 401 means the server credential was rejected, not that the
+editor owner must log in again. The editor returns 502 with a fixed recovery
+message for GitHub 401/403/404 and never forwards provider response bodies.
+
+For a 401, update popyson-editor → Settings → Variables and Secrets →
+CONTENT_GITHUB_TOKEN (type Secret) with a valid fine-grained token restricted to
+popyson1648/popyson-io and Actions: Read and write. Check expiry/revocation and
+organization approval where applicable. Do not paste tokens into chat or logs.
+Secret-name metadata only proves the binding exists, not that its value works.
+For a 403, also check permissions and GitHub usage limits; for a 404, check the
+repository/workflow configuration and token repository access.
+
+Retry publication of the intended item after rotation. Confirm a GitHub run
+starts and the editor reports completion. All three kinds share the repair;
+local regression tests cover failed dispatch and retry for each and for batches.
+
 ### Rotation and rollback
 
 Rotate author service credentials and GitHub credentials in Worker Secrets;

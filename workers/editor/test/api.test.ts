@@ -50,7 +50,7 @@ afterEach(() => vi.unstubAllGlobals());
 function callBackend(request: Request, bindings: RuntimeEnv) {
   return backend.fetch(request as Parameters<typeof backend.fetch>[0], bindings);
 }
-function upstreams() {
+function upstreams(dispatchStatus = 204) {
   const dispatched: unknown[] = [];
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init);
@@ -67,7 +67,7 @@ function upstreams() {
     );
     expect(request.headers.get("authorization")).toBe(`Bearer ${bindings.CONTENT_GITHUB_TOKEN}`);
     dispatched.push(await request.json());
-    return new Response(null, { status: 204 });
+    return new Response(null, { status: dispatchStatus });
   });
   return dispatched;
 }
@@ -204,6 +204,51 @@ describe("hosted editor with real local D1/R2", () => {
     );
   });
 
+  it.each(["post", "work"])(
+    "reports dispatch authentication failures and retries %s",
+    async (kind) => {
+      upstreams(401);
+      const created = await json(
+        await call(`/api/editor/content/${kind}`, "POST", { slug: "auth-retry" }),
+        201,
+      );
+      const path = `/api/editor/content/${kind}/${created.id}/publish`;
+      const failed = await json(await call(path, "POST", {}), 502);
+      expect(failed.error.code).toBe("workflow_auth_failed");
+      expect(failed.error.message).toContain("CONTENT_GITHUB_TOKEN");
+      expect(JSON.stringify(failed)).not.toContain(bindings.CONTENT_GITHUB_TOKEN);
+      const dispatches = upstreams();
+      const retried = await json(await call(path, "POST", {}), 202);
+      expect(dispatches).toEqual([{ ref: "main", inputs: { job_id: retried.id } }]);
+    },
+  );
+
+  it.each([401, 403, 404, 500])(
+    "handles batch dispatch failure %s without exposing upstream data",
+    async (status) => {
+      upstreams(status);
+      await json(
+        await call("/api/editor/content/work", "POST", { slug: `auth-batch-${status}` }),
+        201,
+      );
+      const preflight = await json(await call("/api/editor/publication"));
+      const body = { intentChecksum: preflight.intentChecksum };
+      const failed = await json(await call("/api/editor/publication", "POST", body), 502);
+      expect(failed.error.code).toBe(
+        {
+          401: "workflow_auth_failed",
+          403: "workflow_permission_denied",
+          404: "workflow_not_found",
+          500: "workflow_dispatch_failed",
+        }[status],
+      );
+      if (status === 500) expect(failed.error.message).toBe("Editor service unavailable");
+      const dispatches = upstreams();
+      const retried = await json(await call("/api/editor/publication", "POST", body), 202);
+      expect(dispatches).toEqual([{ ref: "main", inputs: { job_id: retried.id } }]);
+    },
+  );
+
   it("rejects invalid public drafts and supports thumbnail regeneration", async () => {
     upstreams();
     const created = await json(await call("/api/editor/content/post", "POST", {}), 201);
@@ -249,6 +294,14 @@ describe("hosted editor with real local D1/R2", () => {
     ];
     const saved = await json(await call("/api/editor/content/about/about", "PUT", about));
     expect(saved.files.ja.meta.newsItems[0].title).toBe("更新");
+    const path = "/api/editor/content/about/about/publish";
+    upstreams(401);
+    const failed = await json(await call(path, "POST", {}), 502);
+    expect(failed.error.code).toBe("workflow_auth_failed");
+    expect(failed.error.message).toContain("CONTENT_GITHUB_TOKEN");
+    const dispatches = upstreams();
+    const retried = await json(await call(path, "POST", {}), 202);
+    expect(dispatches).toEqual([{ ref: "main", inputs: { job_id: retried.id } }]);
   });
 
   it("renders Markdown, code, and safe links in the actual Worker runtime", async () => {

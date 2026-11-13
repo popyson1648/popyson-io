@@ -404,3 +404,10 @@ identity in coordination with its existing clients. To roll back a broken editor
 release use Cloudflare Worker deployment rollback while preserving Access policy
 and secrets. The local editor remains a recovery path; D1/R2 data and public-site
 deployment are separate from an editor code rollback.
+
+### Blog list table dependency
+
+The blog list uses TanStack Table v9 with explicit filtering/sorting features
+and controlled toolbar state. Keep the feature registry stable outside render;
+use v9 row-model feature slots and direct filter/sort functions. The BlogList
+component tests cover combined filters, route tag changes, and date/kana order.

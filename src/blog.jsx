@@ -12,15 +12,26 @@ import {
 } from "react";
 import {
   createColumnHelper,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
+  columnFilteringFeature,
+  createFilteredRowModel,
+  createSortedRowModel,
+  filterFn_includesString,
+  rowSortingFeature,
+  sortFn_text,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table";
 import { AppCtx, Icon, L, PageHead, Ph, bestSnippet, bodyText, highlight } from "./components.jsx";
 import { localizedDateLabel } from "./dateLabel.js";
 import { watchEmbedFrames } from "./embedFrames.js";
 import { sectionId } from "./headingSlug.js";
+
+const BLOG_TABLE_FEATURES = tableFeatures({
+  columnFilteringFeature,
+  rowSortingFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+});
 
 const FILTER_PROPS = ["tags", "title", "body"];
 const SEARCH_RESULT_LIMIT = 8;
@@ -189,11 +200,13 @@ export function BlogList() {
   const initialTag = route?.tag && TAGS.includes(route.tag) ? route.tag : null;
   const [filters, setFilters] = useState(emptyFilters(initialTag));
   // Keep in sync if the route tag changes while this list stays mounted.
-  useEffect(() => {
-    if (route?.tag && TAGS.includes(route.tag)) {
-      setFilters((f) => (f.tags.includes(route.tag) ? f : { ...f, tags: [route.tag] }));
+  const [previousRouteTag, setPreviousRouteTag] = useState(route?.tag);
+  if (route?.tag !== previousRouteTag) {
+    setPreviousRouteTag(route?.tag);
+    if (initialTag && !filters.tags.includes(initialTag)) {
+      setFilters({ ...filters, tags: [initialTag] });
     }
-  }, [route?.tag]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
   const [sortKey, setSortKey] = useState("date"); // date | kana
   const [sortDir, setSortDir] = useState("desc"); // asc | desc
   const [openPanel, setOpenPanel] = useState(null); // null | "search" | "filter" | "sort"
@@ -202,6 +215,12 @@ export function BlogList() {
   const [pagefindResults, setPagefindResults] = useState([]);
   const [searchActive, setSearchActive] = useState(0); // highlighted result index
   const deferredQuery = useDeferredValue(searchQuery); // debounce result computation while typing
+  const [previousQuery, setPreviousQuery] = useState(deferredQuery);
+  if (deferredQuery !== previousQuery) {
+    setPreviousQuery(deferredQuery);
+    setSearchActive(0);
+    if (!deferredQuery.trim()) setPagefindResults([]);
+  }
   const panelRef = useRef(null); // .fbar-wrap — outside-click boundary
   const controlsRef = useRef(null); // .fbar-controls — animated-width target
   const backRef = useRef(null); // back arrow shown while expanded
@@ -369,11 +388,11 @@ export function BlogList() {
     return [
       column.accessor("title", {
         id: "title",
-        filterFn: "includesString",
+        filterFn: filterFn_includesString,
       }),
       column.accessor("body", {
         id: "body",
-        filterFn: "includesString",
+        filterFn: filterFn_includesString,
       }),
       column.accessor("tags", {
         id: "tags",
@@ -385,12 +404,11 @@ export function BlogList() {
       }),
       column.accessor("date", {
         id: "date",
-        sortingFn: "text",
+        sortFn: sortFn_text,
       }),
       column.accessor("kana", {
         id: "kana",
-        sortingFn: (a, b, columnId) =>
-          a.getValue(columnId).localeCompare(b.getValue(columnId), "ja"),
+        sortFn: (a, b, columnId) => a.getValue(columnId).localeCompare(b.getValue(columnId), "ja"),
       }),
     ];
   }, []);
@@ -403,20 +421,12 @@ export function BlogList() {
     [filters],
   );
   const sorting = useMemo(() => [{ id: sortKey, desc: sortDir === "desc" }], [sortKey, sortDir]);
-  // TanStack Table's useReactTable() returns functions with interior mutability
-  // that React Compiler cannot memoize safely, so it skips compiling BlogList.
-  // There is no compiler-compatible alternative API yet (planned for TanStack
-  // Table v9); accepting the skip is the upstream-recommended handling. Remove
-  // this directive once v9 ships compiler-safe APIs.
-  // https://react.dev/reference/eslint-plugin-react-hooks/lints/incompatible-library
-  // eslint-disable-next-line react-hooks/incompatible-library -- no compiler-compatible TanStack Table API yet (v9 planned)
-  const table = useReactTable({
+  // The toolbar owns filtering and sorting; the table only derives the visible rows.
+  const table = useTable({
+    features: BLOG_TABLE_FEATURES,
     data: rows,
     columns,
     state: { columnFilters, sorting },
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
   const list = table
     .getRowModel()
@@ -471,12 +481,7 @@ export function BlogList() {
   useEffect(() => {
     const term = deferredQuery.trim();
     let live = true;
-    if (!term) {
-      setPagefindResults([]);
-      return () => {
-        live = false;
-      };
-    }
+    if (!term) return;
     searchPagefindPosts(term, lang, postById, searchDocById, SEARCH_RESULT_LIMIT)
       .then((results) => {
         if (live) setPagefindResults(results);
@@ -489,9 +494,6 @@ export function BlogList() {
     };
   }, [deferredQuery, lang, postById, searchDocById]);
 
-  useEffect(() => {
-    setSearchActive(0);
-  }, [deferredQuery]);
   // aria-activedescendant doesn't auto-scroll; keep the active option in view
   useEffect(() => {
     if (openPanel !== "search") return;

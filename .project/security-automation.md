@@ -87,3 +87,50 @@ GitHub's security UI and by revoking or rotating the affected secret.
   the `dependabot` selector also matches PRs authored by `app/dependabot`.
 - If Claude cannot safely fix an alert, the workflow should leave the alert open
   for manual handling rather than making speculative changes.
+
+## Dependency remediation (2026-11-13)
+
+The baseline npm audit reported 16 affected packages (8 high, 8 moderate).
+These were dependency-chain findings, not 16 independent vulnerabilities.
+The six vulnerable leaf packages and their consumers were:
+
+| Vulnerable package | Exposure in this repository | Remediation |
+| --- | --- | --- |
+| `@vitest/mocker` | Vitest development/test mock server: unauthenticated registration and Windows path traversal | Upgrade Vitest and coverage to 4.1.12 |
+| `undici` | Miniflare local Worker tooling: TLS validation bypass, cache disclosure, response handling and denial of service | Pin Miniflare's dependency to 7.30.1 |
+| `sharp` | Miniflare's nested image library contained vulnerable libheif/librsvg versions | Reuse the root patched sharp constraint (`^0.35.5`) |
+| `zod` | Worker test configuration, lint tooling, and browser automation: memory exhaustion during validation | Resolve 4.6.7, including the Worker's pinned dependency |
+| `fflate` | Satori font/OGP build dependency: malformed ZIP64 input can loop indefinitely | Override Satori's exact pin to the compatible 0.7.5 patch |
+| `minimatch` | ESLint/config-array file matching: glob expansion can amplify resource use | Override these consumers to 11.0.1 |
+
+The static site does not run these development servers for visitors. Tooling and
+build-time input processing still warrant patched dependencies; this assessment
+does not treat development-only exposure as a reason to dismiss alerts.
+
+`package.json` scopes overrides to the affected parents. The minimatch override
+crosses a major version because 10.x remains in the advisory range; verify both
+normal linting and config file/ignore matching when changing it. Other overrides
+retain the existing dependency API series. Keep Cloudflare's Worker runtime and
+pool versions aligned rather than accepting npm's suggested downgrade to an old
+Worker pool. The compatible lockfile refresh also updates ESLint and Puppeteer's
+Zod consumers. After a clean install, npm audit reports zero vulnerabilities.
+The standard verifier (611 tests), the Lighthouse performance phase, and explicit
+ESLint config/ignore compatibility checks passed for this remediation.
+
+Remove an override when its parent resolves a patched version unaided, then run
+`npm ci`, `npm ls`, `npm audit`, and repository verification. Never edit only the
+lockfile version string or suppress advisory results to make the audit pass.
+
+Advisory references:
+
+- Vitest: [mock registration](https://github.com/advisories/GHSA-qxg6-89mg-rqv8),
+  [Windows traversal](https://github.com/advisories/GHSA-xp26-3454-mjgp).
+- Undici: the baseline audit lists multiple advisories, including
+  [TLS options](https://github.com/advisories/GHSA-2m5v-pch6-74hx),
+  [redirect cache disclosure](https://github.com/advisories/GHSA-4w7w-5xrc-9h26),
+  and [content-encoding errors](https://github.com/advisories/GHSA-xjj6-f33q-929c).
+- Sharp: [libheif](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c),
+  [librsvg](https://github.com/advisories/GHSA-wq5f-xc86-pv6w).
+- Zod: [memory exhaustion](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+- fflate: [ZIP64 loop](https://github.com/advisories/GHSA-px8p-9vwx-vf98).
+- minimatch: [glob amplification](https://github.com/advisories/GHSA-g3hv-75wg-m249).
